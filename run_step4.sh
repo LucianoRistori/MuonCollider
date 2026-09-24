@@ -39,7 +39,7 @@ set -o pipefail
 cd "$(dirname "$0")"
 
 DATA_DIR="${DATA_DIR:-$HOME/Dropbox/Documents/MuonColliderSimulation}"
-BIB_FILE="${BIB_FILE:-$DATA_DIR/ntu_bib_2evt.root}"
+BIB_FILE="${BIB_FILE:-$DATA_DIR/ntu_bib_ipp_3evt.root}"
 SIGNAL_FILE="${SIGNAL_FILE:-$DATA_DIR/ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root}"
 CUTS_CONFIG="${CUTS_CONFIG:-cuts_config.txt}"
 

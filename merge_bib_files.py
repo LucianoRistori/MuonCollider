@@ -1,20 +1,27 @@
 """
-Merge the "plus" and "minus" BIB ROOT files (each a single-entry HTAtree,
-one simulated mega-event of beam-induced background hits) into one
-combined ROOT file with 2 entries - one per original file - so that
-downstream analysis can be pointed at a single input file instead of
-always having to run twice and add results together by hand.
+Merge two or more BIB/background ROOT files (each a single-entry HTAtree,
+one simulated mega-event of beam-induced background or electromagnetic
+background hits) into one combined ROOT file with one entry per input
+file, so that downstream analysis can be pointed at a single input file
+instead of running once per component and adding results together by
+hand.
 
 All branches (per-event scalars and per-hit jagged vectors alike) are
 carried over unchanged; nothing is recomputed or reshaped. bib_common's
 load_hits() reads and flattens hits across ALL entries of a tree by
-default, so existing scripts automatically see the combined plus+minus
-hit sample when pointed at the merged file, with no other code changes
-needed - and the same load_hits() still works unmodified on the original
-single-entry plus/minus files too.
+default, so existing scripts automatically see the combined hit sample
+when pointed at the merged file, with no other code changes needed - and
+the same load_hits() still works unmodified on the original single-entry
+input files too.
 
 Usage:
-    python3 merge_bib_files.py <plus.root> <minus.root> <output.root>
+    python3 merge_bib_files.py <in1.root> <in2.root> [<in3.root> ...] <output.root>
+
+At least two input files are required (the last argument is always the
+output path). Originally written for exactly plus.root + minus.root;
+generalized to N inputs so the electromagnetic-background (ipp) file, or
+any other single-entry component, can be folded into the same combined
+file.
 """
 import sys
 
@@ -23,10 +30,10 @@ import uproot
 
 
 def main():
-    if len(sys.argv) != 4:
-        print(f"Usage: python3 {sys.argv[0]} <plus.root> <minus.root> <output.root>")
+    if len(sys.argv) < 4:
+        print(f"Usage: python3 {sys.argv[0]} <in1.root> <in2.root> [<in3.root> ...] <output.root>")
         sys.exit(1)
-    plus_path, minus_path, out_path = sys.argv[1:4]
+    *in_paths, out_path = sys.argv[1:]
 
     def read_all_branches(path):
         f = uproot.open(path)
@@ -41,11 +48,10 @@ def main():
         return tree.arrays(library="ak")
 
     print("Reading input files...")
-    arrs_plus = read_all_branches(plus_path)
-    arrs_minus = read_all_branches(minus_path)
+    arrs = [read_all_branches(p) for p in in_paths]
 
     print("Concatenating...")
-    combined = ak.concatenate([arrs_plus, arrs_minus], axis=0)
+    combined = ak.concatenate(arrs, axis=0)
     print(f"  combined: {len(combined)} entries")
 
     print(f"Writing {out_path} ...")
