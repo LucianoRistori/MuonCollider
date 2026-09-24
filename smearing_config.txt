@@ -18,13 +18,13 @@
 # via the module's own local axes, and hit_du/hit_dv are set to record
 # the sigma actually used.
 [position]
-sigma_uv_mm = 0.0
-enabled = false
+sigma_uv_mm = 0.100
+enabled = true
 
 # Time smearing acts on the raw hit_t.
 [time]
-sigma_t_ns = 0.0
-enabled = false
+sigma_t_ns = 0.100
+enabled = true
 
 # Angle smearing acts on the already-computed incidence-angle diagnostics
 # (theta_long_deg / theta_trans_deg, from bib_common.add_incidence_angles)
@@ -34,12 +34,12 @@ enabled = false
 # computed directly from the raw momentum direction, not from these two
 # angles).
 [angle_long]
-sigma_deg = 0.0
-enabled = false
+sigma_deg = 3.0
+enabled = true
 
 [angle_trans]
-sigma_deg = 0.0
-enabled = false
+sigma_deg = 3.0
+enabled = true
 
 # RNG seed, so re-running with the same sigmas reproduces the same
 # smeared sample (for a fresh random draw each run, change this between

@@ -1030,24 +1030,43 @@ def apply_position_time_smearing(hits, smear_cfg, rng):
     """
     n = len(hits["x"])
 
+    # Memory note: this runs on samples up to ~17M hits in a
+    # memory-constrained environment, so every step below is written to
+    # avoid allocating extra full-length temporaries where an in-place
+    # (+=) update or a reused scratch buffer will do, rather than the
+    # more readable `hits["x"] = hits["x"] + a*b + c*d` form (which
+    # would allocate 3-4 extra full arrays at once).
     pos_cfg = smear_cfg["position"]
     if pos_cfg["enabled"] and pos_cfg["sigma"] > 0:
         sigma = pos_cfg["sigma"]
         du = rng.normal(0.0, sigma, size=n)
         dv = rng.normal(0.0, sigma, size=n)
-        hits["u"] = hits["u"] + du
-        hits["v"] = hits["v"] + dv
-        hits["x"] = hits["x"] + du * hits["ux"] + dv * hits["vx"]
-        hits["y"] = hits["y"] + du * hits["uy"] + dv * hits["vy"]
-        hits["z"] = hits["z"] + du * hits["uz"] + dv * hits["vz"]
-        hits["r"] = np.sqrt(hits["x"] ** 2 + hits["y"] ** 2)
-        hits["du"] = np.full(n, sigma)
-        hits["dv"] = np.full(n, sigma)
+        hits["u"] += du
+        hits["v"] += dv
+
+        scratch = du * hits["ux"]
+        scratch += dv * hits["vx"]
+        hits["x"] += scratch
+
+        scratch = du * hits["uy"]
+        scratch += dv * hits["vy"]
+        hits["y"] += scratch
+
+        scratch = du * hits["uz"]
+        scratch += dv * hits["vz"]
+        hits["z"] += scratch
+        del du, dv, scratch
+
+        hits["r"] = np.hypot(hits["x"], hits["y"], out=hits["r"])
+        hits["du"].fill(sigma)
+        hits["dv"].fill(sigma)
 
     time_cfg = smear_cfg["time"]
     if time_cfg["enabled"] and time_cfg["sigma"] > 0:
-        hits["t"] = hits["t"] + rng.normal(0.0, time_cfg["sigma"], size=n)
+        hits["t"] += rng.normal(0.0, time_cfg["sigma"], size=n)
 
+    import gc
+    gc.collect()
     return hits
 
 
@@ -1071,10 +1090,10 @@ def apply_angle_smearing(hits, smear_cfg, rng):
 
     long_cfg = smear_cfg["angle_long"]
     if long_cfg["enabled"] and long_cfg["sigma"] > 0:
-        hits["theta_long_deg"] = hits["theta_long_deg"] + rng.normal(0.0, long_cfg["sigma"], size=n)
+        hits["theta_long_deg"] += rng.normal(0.0, long_cfg["sigma"], size=n)
 
     trans_cfg = smear_cfg["angle_trans"]
     if trans_cfg["enabled"] and trans_cfg["sigma"] > 0:
-        hits["theta_trans_deg"] = hits["theta_trans_deg"] + rng.normal(0.0, trans_cfg["sigma"], size=n)
+        hits["theta_trans_deg"] += rng.normal(0.0, trans_cfg["sigma"], size=n)
 
     return hits
