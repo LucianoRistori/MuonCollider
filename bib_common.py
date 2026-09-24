@@ -923,6 +923,7 @@ def subsystem_density_table(rows):
     return out
 
 
+
 # ---------------------------------------------------------------------------
 # Measurement-error ("smearing") config, for studying the effect of assumed
 # detector resolution on the analysis. The current input ROOT files carry
@@ -933,7 +934,7 @@ def subsystem_density_table(rows):
 # smearing here is applied on load, controlled by an editable config (see
 # smearing_config.txt), the same way cuts_config.txt controls the selection
 # cuts - so different error sizes can be scanned with no regeneration.
-SMEARING_SECTIONS = ["position", "time", "angle_long", "angle_trans"]
+SMEARING_SECTIONS = ["position", "time", "angle_u", "angle_v"]
 
 
 def load_smearing_config(path):
@@ -941,26 +942,31 @@ def load_smearing_config(path):
     Load a measurement-smearing config file (see smearing_config.txt for
     the canonical example/format). Plain INI (configparser), one section
     per smeared quantity:
-      - [position]: sigma_uv_mm - Gaussian sigma (mm) applied
-        independently to the hit's local hit_u and hit_v (NOT global
-        hit_x/hit_y - see apply_position_time_smearing() docstring for
-        why local u,v is the physically correct quantity to smear).
+      - [position]: sigma_u_mm, sigma_v_mm - independent Gaussian sigmas
+        (mm), one for each of the hit's own LOCAL sensor-plane axes
+        hit_u and hit_v (NOT global hit_x/hit_y - see
+        apply_position_time_smearing() docstring for why local u,v is
+        the physically correct quantity to smear). A real strip/pixel
+        sensor's resolution is generally anisotropic between its two
+        readout directions (e.g. a strip sensor is far coarser along
+        the strip than across it), hence the two independent sigmas
+        rather than one shared value.
       - [time]: sigma_t_ns - Gaussian sigma (ns) applied to raw hit_t.
-      - [angle_long] / [angle_trans]: sigma_deg - Gaussian sigma
-        (degrees) applied directly to the already-computed
-        theta_long_deg / theta_trans_deg (bib_common.add_incidence_angles
-        output) - representing angular-reconstruction uncertainty on top
-        of position/time smearing, not a re-derivation from smeared
-        positions.
+      - [angle_u] / [angle_v]: sigma_deg - independent Gaussian sigmas
+        (degrees) representing the angular-reconstruction uncertainty of
+        the track's local incidence angle, one for each of the same
+        local axes u and v (see apply_angle_smearing() docstring for how
+        these propagate into theta_long_deg/theta_trans_deg).
       - [general]: seed (int, default 42) - RNG seed, so re-running with
         the same sigmas reproduces the same smeared sample.
     Each of the four quantity sections also takes `enabled` (default
-    false). A missing section, or enabled=false, or sigma=0, all mean
-    "leave this quantity unsmeared" - so the default config (all
-    disabled) reproduces the current, exact input files unchanged.
+    false). A missing section, or enabled=false, or all its sigma(s)=0,
+    all mean "leave this quantity unsmeared" - so the default config
+    (all disabled) reproduces the current, exact input files unchanged.
 
-    Returns a dict {section_name: {"sigma": float, "enabled": bool}} for
-    each of SMEARING_SECTIONS, plus {"seed": int}.
+    Returns a dict {section_name: {...}} for each of SMEARING_SECTIONS
+    ("position" has {"sigma_u", "sigma_v", "enabled"}; the other three
+    have {"sigma", "enabled"}), plus {"seed": int}.
     """
     import configparser
 
@@ -969,14 +975,20 @@ def load_smearing_config(path):
     if not read_ok:
         raise FileNotFoundError(f"smearing config not found: {path}")
 
-    sigma_key = {
-        "position": "sigma_uv_mm",
-        "time": "sigma_t_ns",
-        "angle_long": "sigma_deg",
-        "angle_trans": "sigma_deg",
-    }
     cfg = {}
-    for name in SMEARING_SECTIONS:
+
+    if cp.has_section("position"):
+        sec = cp["position"]
+        cfg["position"] = {
+            "sigma_u": sec.getfloat("sigma_u_mm", fallback=0.0),
+            "sigma_v": sec.getfloat("sigma_v_mm", fallback=0.0),
+            "enabled": sec.getboolean("enabled", fallback=False),
+        }
+    else:
+        cfg["position"] = {"sigma_u": 0.0, "sigma_v": 0.0, "enabled": False}
+
+    sigma_key = {"time": "sigma_t_ns", "angle_u": "sigma_deg", "angle_v": "sigma_deg"}
+    for name in ("time", "angle_u", "angle_v"):
         if cp.has_section(name):
             sec = cp[name]
             cfg[name] = {
@@ -985,6 +997,7 @@ def load_smearing_config(path):
             }
         else:
             cfg[name] = {"sigma": 0.0, "enabled": False}
+
     cfg["seed"] = cp.getint("general", "seed", fallback=42) if cp.has_section("general") else 42
     return cfg
 
@@ -992,6 +1005,22 @@ def load_smearing_config(path):
 def smearing_rng(smear_cfg):
     """Build the numpy Generator to use for a run, from a loaded smearing config's seed."""
     return np.random.default_rng(smear_cfg["seed"])
+
+
+def describe_smearing(smear_cfg):
+    """One-line human-readable summary of which smearing components are
+    active in a loaded smear_cfg (see load_smearing_config()), for the
+    startup banner each analysis script prints. Returns "all
+    disabled/zero" if nothing is active."""
+    parts = []
+    pos = smear_cfg["position"]
+    if pos["enabled"] and (pos["sigma_u"] > 0 or pos["sigma_v"] > 0):
+        parts.append(f"position sigma_u={pos['sigma_u']} sigma_v={pos['sigma_v']}")
+    for name in ("time", "angle_u", "angle_v"):
+        c = smear_cfg[name]
+        if c["enabled"] and c["sigma"] > 0:
+            parts.append(f"{name} sigma={c['sigma']}")
+    return ", ".join(parts) if parts else "all disabled/zero"
 
 
 def apply_position_time_smearing(hits, smear_cfg, rng):
@@ -1010,21 +1039,26 @@ def apply_position_time_smearing(hits, smear_cfg, rng):
     "hit_du/hit_dv" description), so resolution belongs there, not on the
     global frame (which would ignore module tilt/orientation, wrong for
     endcap disks and tilted barrel ladders alike - see
-    add_incidence_angles()'s n_tilt_deg).
+    add_incidence_angles()'s n_tilt_deg). u and v get their OWN sigma
+    (sigma_u_mm, sigma_v_mm), since a real sensor's resolution is
+    generally different along its two readout axes (e.g. a strip sensor
+    is far coarser along the strip than across it).
 
-    After drawing delta_u, delta_v ~ N(0, sigma_uv_mm) independently per
-    hit and adding them to hits["u"]/hits["v"], hits["x"]/["y"]/["z"] are
-    updated by the SAME delta, expressed in the global frame via the
-    module's own local axes (hits["ux"/"uy"/"uz"], ["vx"/"vy"/"vz"]):
+    After drawing delta_u ~ N(0, sigma_u_mm), delta_v ~ N(0, sigma_v_mm)
+    independently per hit and adding them to hits["u"]/hits["v"],
+    hits["x"]/["y"]/["z"] are updated by the SAME delta, expressed in the
+    global frame via the module's own local axes (hits["ux"/"uy"/"uz"],
+    ["vx"/"vy"/"vz"]):
         new_global = old_global + delta_u * u_axis + delta_v * v_axis
     This keeps hit_u/hit_v and hit_x/y/z mutually consistent (the same
     self-consistency check that confirmed the input files are currently
     unsmeared - see check_smearing.py - continues to pass after this
     smearing is applied), and only moves the hit within its sensor's
     plane (out-of-plane position is unaffected, as for a real planar
-    sensor). hits["du"]/["dv"] are set to the sigma actually applied, so
-    the assumed resolution is visible in the (smeared) hits dict too.
-    hits["r"] = sqrt(x^2+y^2) is recomputed to stay consistent.
+    sensor). hits["du"]/["dv"] are set to sigma_u_mm/sigma_v_mm
+    respectively, so the assumed resolution is visible in the (smeared)
+    hits dict too. hits["r"] = sqrt(x^2+y^2) is recomputed to stay
+    consistent.
 
     Time smearing simply adds N(0, sigma_t_ns) to hits["t"].
     """
@@ -1037,10 +1071,10 @@ def apply_position_time_smearing(hits, smear_cfg, rng):
     # more readable `hits["x"] = hits["x"] + a*b + c*d` form (which
     # would allocate 3-4 extra full arrays at once).
     pos_cfg = smear_cfg["position"]
-    if pos_cfg["enabled"] and pos_cfg["sigma"] > 0:
-        sigma = pos_cfg["sigma"]
-        du = rng.normal(0.0, sigma, size=n)
-        dv = rng.normal(0.0, sigma, size=n)
+    if pos_cfg["enabled"] and (pos_cfg["sigma_u"] > 0 or pos_cfg["sigma_v"] > 0):
+        sigma_u, sigma_v = pos_cfg["sigma_u"], pos_cfg["sigma_v"]
+        du = rng.normal(0.0, sigma_u, size=n) if sigma_u > 0 else np.zeros(n)
+        dv = rng.normal(0.0, sigma_v, size=n) if sigma_v > 0 else np.zeros(n)
         hits["u"] += du
         hits["v"] += dv
 
@@ -1058,8 +1092,8 @@ def apply_position_time_smearing(hits, smear_cfg, rng):
         del du, dv, scratch
 
         hits["r"] = np.hypot(hits["x"], hits["y"], out=hits["r"])
-        hits["du"].fill(sigma)
-        hits["dv"].fill(sigma)
+        hits["du"].fill(sigma_u)
+        hits["dv"].fill(sigma_v)
 
     time_cfg = smear_cfg["time"]
     if time_cfg["enabled"] and time_cfg["sigma"] > 0:
@@ -1072,28 +1106,155 @@ def apply_position_time_smearing(hits, smear_cfg, rng):
 
 def apply_angle_smearing(hits, smear_cfg, rng):
     """
-    Apply Gaussian smearing directly to the already-computed
-    theta_long_deg / theta_trans_deg (per the [angle_long]/[angle_trans]
-    sections of `smear_cfg` - see load_smearing_config()), in place.
-    Must be called AFTER add_incidence_angles(). No-op for a disabled/
-    zero-sigma quantity.
+    Apply Gaussian angular-reconstruction smearing to `hits` in place,
+    per the [angle_u]/[angle_v] sections of `smear_cfg` (see
+    load_smearing_config()). Must be called AFTER add_incidence_angles().
+    No-op if both are disabled/zero-sigma.
 
-    This represents angular-reconstruction uncertainty as an independent
-    error source on top of position/time smearing (e.g. multiple
-    scattering or track-fit angular resolution), rather than deriving it
-    from smeared hit positions - it does NOT touch z_axis_intercept_mm,
-    inv_radius_per_mm or psi_transverse_deg, which are computed
-    independently from the raw momentum direction, not from
-    theta_long_deg/theta_trans_deg.
+    Unlike position smearing (which perturbs where a hit is measured),
+    this represents uncertainty in the RECONSTRUCTED track angle at the
+    hit - e.g. from cluster-shape/eta-based angle reconstruction, or
+    multiple scattering - as an independent error source layered on top
+    of the (possibly already position/time-smeared) hit.
+
+    The two sigmas are defined along the sensor's own local readout axes
+    u and v (hits["ux/uy/uz"], ["vx/vy/vz"]), exactly like position
+    smearing, rather than along the global longitudinal/transverse
+    (meridian-plane / azimuthal) directions theta_long_deg/theta_trans_deg
+    are defined in - a real sensor's angular resolution, like its
+    positional resolution, is intrinsically a property of its own u,v
+    readout, not of the beam-axis geometry. Concretely:
+
+      1. The track's unit momentum direction p_hat is decomposed in the
+         module's own orthonormal (u_hat, v_hat, n_hat) frame (n_hat is
+         the outward sensor normal, hits["n_x/n_y/n_z"]) into local
+         "slopes" tan(theta_u) = p_u/p_n, tan(theta_v) = p_v/p_n - the
+         same slope parametrization real trackers use for a hit's local
+         track angle, and exact by construction (u, v, n are always
+         mutually orthogonal, unlike the approximate rho/z/phi frame
+         theta_long/theta_trans are built from - see n_tilt_deg).
+      2. Independent Gaussian offsets, N(0, sigma_u_deg) and
+         N(0, sigma_v_deg), are added to theta_u and theta_v.
+      3. The smeared local direction is reconstructed from the smeared
+         slopes (keeping p_n's original sign - a small angular error
+         doesn't flip whether the track is going into or out of the
+         sensor), rotated back to the global frame, and used to
+         RECOMPUTE theta_long_deg, theta_trans_deg and theta_full_deg in
+         place, via the same formulas as add_incidence_angles().
+
+    Does NOT touch z_axis_intercept_mm, inv_radius_per_mm or
+    psi_transverse_deg - those are computed directly from the hit's raw,
+    unsmeared momentum direction (not from theta_long_deg/theta_trans_deg
+    or from this local u,v angle decomposition), matching how position/
+    time smearing's effect on them is confined to what actually flows
+    through load_hits()'s hit_x/y/z/t.
+
+    Processes hits in fixed-size CHUNKS (not the whole ~17M-hit array at
+    once) - this function needs ~15 full-length temporary arrays to go
+    from momentum direction to smeared theta_long/trans/full, which for
+    the full combined BIB sample would transiently need several GB on
+    top of `hits` itself; chunking bounds the transient memory to one
+    chunk's worth regardless of sample size (needed for this analysis's
+    ~3.8GB memory-constrained environment - see apply_position_time_smearing
+    for the same concern on the position/time side).
     """
+    u_cfg = smear_cfg["angle_u"]
+    v_cfg = smear_cfg["angle_v"]
+    u_on = u_cfg["enabled"] and u_cfg["sigma"] > 0
+    v_on = v_cfg["enabled"] and v_cfg["sigma"] > 0
+    if not (u_on or v_on):
+        return hits
+
     n = len(hits["theta_long_deg"])
+    ux_a, uy_a, uz_a = hits["ux"], hits["uy"], hits["uz"]
+    vx_a, vy_a, vz_a = hits["vx"], hits["vy"], hits["vz"]
+    nx_a, ny_a, nz_a = hits["n_x"], hits["n_y"], hits["n_z"]
+    px_a, py_a, pz_a = hits["px"], hits["py"], hits["pz"]
+    x_a, y_a, r_a = hits["x"], hits["y"], hits["r"]
+    theta_long_out = hits["theta_long_deg"]
+    theta_trans_out = hits["theta_trans_deg"]
+    theta_full_out = hits["theta_full_deg"]
 
-    long_cfg = smear_cfg["angle_long"]
-    if long_cfg["enabled"] and long_cfg["sigma"] > 0:
-        hits["theta_long_deg"] += rng.normal(0.0, long_cfg["sigma"], size=n)
+    sigma_u_deg = u_cfg["sigma"] if u_on else 0.0
+    sigma_v_deg = v_cfg["sigma"] if v_on else 0.0
 
-    trans_cfg = smear_cfg["angle_trans"]
-    if trans_cfg["enabled"] and trans_cfg["sigma"] > 0:
-        hits["theta_trans_deg"] += rng.normal(0.0, trans_cfg["sigma"], size=n)
+    CHUNK = 2_000_000
+    for start in range(0, n, CHUNK):
+        end = min(start + CHUNK, n)
+        sl = slice(start, end)
 
+        ux, uy, uz = ux_a[sl], uy_a[sl], uz_a[sl]
+        vx, vy, vz = vx_a[sl], vy_a[sl], vz_a[sl]
+        nx, ny, nz = nx_a[sl], ny_a[sl], nz_a[sl]
+        px, py, pz = px_a[sl], py_a[sl], pz_a[sl]
+
+        p_norm = np.sqrt(px ** 2 + py ** 2 + pz ** 2)
+        phx, phy, phz = px / p_norm, py / p_norm, pz / p_norm
+        del p_norm, px, py, pz
+
+        p_u = phx * ux + phy * uy + phz * uz
+        p_v = phx * vx + phy * vy + phz * vz
+        p_n = phx * nx + phy * ny + phz * nz
+        del phx, phy, phz
+
+        theta_u = np.arctan2(p_u, p_n)
+        theta_v = np.arctan2(p_v, p_n)
+        del p_u, p_v
+        if u_on:
+            theta_u += np.radians(rng.normal(0.0, sigma_u_deg, size=end - start))
+        if v_on:
+            theta_v += np.radians(rng.normal(0.0, sigma_v_deg, size=end - start))
+
+        # Reconstruct the smeared local direction from the smeared
+        # slopes, preserving the original sign of p_n (see docstring).
+        slope_u = np.tan(theta_u, out=theta_u)
+        slope_v = np.tan(theta_v, out=theta_v)
+        local_norm = slope_u ** 2
+        local_norm += slope_v ** 2
+        local_norm += 1.0
+        np.sqrt(local_norm, out=local_norm)
+        sign_n = np.where(p_n < 0.0, -1.0, 1.0)
+        del p_n
+        p_n2 = sign_n / local_norm
+        del sign_n, local_norm
+        p_u2 = slope_u * p_n2
+        p_v2 = slope_v * p_n2
+        del slope_u, slope_v
+
+        # Rotate the smeared local direction back to the global frame.
+        px2 = p_u2 * ux + p_v2 * vx + p_n2 * nx
+        py2 = p_u2 * uy + p_v2 * vy + p_n2 * ny
+        pz2 = p_u2 * uz + p_v2 * vz + p_n2 * nz
+        del p_u2, p_v2, p_n2, ux, uy, uz, vx, vy, vz
+
+        # Recompute theta_long_deg/theta_trans_deg/theta_full_deg from
+        # the smeared direction, exactly as add_incidence_angles() does
+        # (n_x/y/z and the hit's (x,y,z,r) position are unaffected by
+        # angle smearing).
+        x, y, r = x_a[sl], y_a[sl], r_a[sl]
+        rho_x, rho_y = x / r, y / r
+        phi_x, phi_y = -y / r, x / r
+        del x, y, r
+
+        p_rho2 = px2 * rho_x + py2 * rho_y
+        p_phi2 = px2 * phi_x + py2 * phi_y
+        del px2, py2
+
+        n_rho = nx * rho_x + ny * rho_y
+        n_phi = nx * phi_x + ny * phi_y
+        del rho_x, rho_y, phi_x, phi_y, nx, ny
+
+        p_dot_n2 = p_rho2 * n_rho
+        p_dot_n2 += p_phi2 * n_phi
+        p_dot_n2 += pz2 * nz
+
+        theta_long_out[sl] = np.degrees(np.arctan2(
+            p_rho2 * nz - pz2 * n_rho, p_rho2 * n_rho + pz2 * nz
+        ))
+        theta_trans_out[sl] = np.degrees(np.arctan2(p_phi2, p_dot_n2))
+        np.clip(p_dot_n2, -1.0, 1.0, out=p_dot_n2)
+        theta_full_out[sl] = np.degrees(np.arccos(p_dot_n2))
+
+    import gc
+    gc.collect()
     return hits

@@ -10,15 +10,23 @@
 # Loaded/applied by bib_common.load_smearing_config() /
 # apply_position_time_smearing() / apply_angle_smearing(). All Gaussian
 # (mean 0). Units: mm for position, ns for time, degrees for angles.
+#
+# Both position and angle errors are specified separately along the
+# sensor's own two LOCAL readout axes, u and v (not global X/Y, and not
+# the geometric longitudinal/transverse directions used by the
+# theta_long_deg/theta_trans_deg diagnostic plots) - a real strip/pixel
+# sensor's resolution is generally different along its two readout
+# directions (e.g. a strip sensor is far coarser along the strip than
+# across it), so u and v each get their own sigma.
 
 # Position smearing acts on the hit's own LOCAL sensor-plane coordinates
 # hit_u/hit_v (not global hit_x/hit_y - see the docstring in
-# bib_common.apply_position_time_smearing for why), applied independently
-# to u and v with the same sigma; hit_x/y/z are then updated consistently
-# via the module's own local axes, and hit_du/hit_dv are set to record
-# the sigma actually used.
+# bib_common.apply_position_time_smearing for why); hit_x/y/z are then
+# updated consistently via the module's own local axes, and hit_du/
+# hit_dv are set to record the sigma actually used.
 [position]
-sigma_uv_mm = 0.100
+sigma_u_mm = 0.100
+sigma_v_mm = 0.100
 enabled = true
 
 # Time smearing acts on the raw hit_t.
@@ -26,18 +34,18 @@ enabled = true
 sigma_t_ns = 0.100
 enabled = true
 
-# Angle smearing acts on the already-computed incidence-angle diagnostics
-# (theta_long_deg / theta_trans_deg, from bib_common.add_incidence_angles)
-# - representing angular-reconstruction uncertainty as an independent
-# error source, not a re-derivation from smeared positions. Does not
-# affect z_axis_intercept_mm or inv_radius_per_mm/momentum_gev (those are
-# computed directly from the raw momentum direction, not from these two
-# angles).
-[angle_long]
+# Angle smearing represents angular-reconstruction uncertainty (e.g.
+# from cluster-shape/eta reconstruction, or multiple scattering) along
+# the sensor's local u and v axes - see the docstring in
+# bib_common.apply_angle_smearing for exactly how this propagates into
+# the theta_long_deg/theta_trans_deg/theta_full_deg diagnostics. Does
+# not affect z_axis_intercept_mm or inv_radius_per_mm/momentum_gev
+# (those are computed directly from the raw momentum direction).
+[angle_u]
 sigma_deg = 3.0
 enabled = true
 
-[angle_trans]
+[angle_v]
 sigma_deg = 3.0
 enabled = true
 
