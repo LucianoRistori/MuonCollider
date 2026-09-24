@@ -39,7 +39,7 @@ import numpy as np
 
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
-    prepare_output_dir, _display_path, SYSTEM_NAMES,
+    prepare_output_dir, _display_path, SYSTEM_NAMES, load_cuts,
     load_smearing_config, smearing_rng, apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -51,6 +51,37 @@ from time_of_flight_plots import TC_RANGE_NS, TC_ZOOM_RANGE_NS
 
 BIB_COLOR = "#3b7dd8"
 SIG_COLOR = "#2ca858"
+
+CUT_LINE_COLOR = "#a83232"
+
+
+def draw_symmetric_cut_lines(ax, cuts, name, xmax=None):
+    """For a simple |value - center| <= halfwidth cut (t_corrected_ns,
+    z_axis_intercept_mm): draw vertical lines at the two edges, if the
+    cut is enabled and (optionally) within the visible range."""
+    spec = cuts[name]
+    if not spec["enabled"]:
+        return
+    lo, hi = spec["center"] - spec["halfwidth"], spec["center"] + spec["halfwidth"]
+    for edge in (lo, hi):
+        if xmax is None or abs(edge) <= xmax:
+            ax.axvline(edge, color=CUT_LINE_COLOR, linewidth=1.1,
+                       linestyle="--", alpha=0.8)
+
+
+def draw_momentum_cut_lines(ax, cuts, xmax=None):
+    """momentum_gev cut accepts |inv_radius_per_mm| <= threshold (a band
+    around 1/R=0); draw its two edges on the curvature axis (in 1/m,
+    matching the plotted units bv = inv_radius_per_mm*1000)."""
+    spec = cuts["momentum_gev"]
+    if not spec["enabled"]:
+        return
+    inv_radius_threshold_per_m = (GEV_PER_INV_M / spec["halfwidth"])
+    for edge in (-inv_radius_threshold_per_m, inv_radius_threshold_per_m):
+        if xmax is None or abs(edge) <= xmax:
+            ax.axvline(edge, color=CUT_LINE_COLOR, linewidth=1.1,
+                       linestyle="--", alpha=0.8)
+
 
 
 def overlay_hist(ax, bib_v, sig_v, bins, n_sig_events):
@@ -69,12 +100,21 @@ def overlay_hist(ax, bib_v, sig_v, bins, n_sig_events):
 
 def main():
     if len(sys.argv) < 3:
-        print(f"Usage: python3 {sys.argv[0]} <bib.root> <signal.root> [output_dir]")
+        print(f"Usage: python3 {sys.argv[0]} <bib.root> <signal.root> "
+              f"[output_dir] [cuts_config]")
         sys.exit(1)
     bib_file = sys.argv[1]
     signal_file = sys.argv[2]
     outdir = Path(sys.argv[3] if len(sys.argv) > 3 else "../output_signal_angle_overlay")
+    cuts_config = sys.argv[4] if len(sys.argv) > 4 else \
+        str(Path(__file__).resolve().parent / "cuts_config.txt")
     outdir = prepare_output_dir(outdir)
+
+    cuts = load_cuts(cuts_config)
+    print(f"Loading cuts (for reference lines): {_display_path(cuts_config)}")
+    for name, c in cuts.items():
+        state = "enabled" if c["enabled"] else "disabled"
+        print(f"  {name:20s}  center={c['center']:+.4g}  halfwidth={c['halfwidth']:.4g}  [{state}]")
 
     smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
     smear_cfg = None
@@ -126,6 +166,7 @@ def main():
         sv = sv[np.abs(sv) <= Z0_RANGE_MM]
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_RANGE_MM, Z0_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
+        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", xmax=Z0_RANGE_MM)
         ax.set_yscale("log")
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
@@ -149,6 +190,7 @@ def main():
         sv = sv[np.abs(sv) <= Z0_ZOOM_RANGE_MM]
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_ZOOM_RANGE_MM, Z0_ZOOM_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
+        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", xmax=Z0_ZOOM_RANGE_MM)
         ax.set_yscale("log")
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
@@ -169,6 +211,7 @@ def main():
         sv = sig_hits["inv_radius_per_mm"][sig_sys == s] * 1000.0
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_MAX, INV_R_MAX, 161),
                      n_sig_events=n_sig_events)
+        draw_momentum_cut_lines(ax, cuts, xmax=INV_R_MAX)
         ax.set_yscale("log")
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_xticks(pt_ticks)
@@ -197,6 +240,7 @@ def main():
         sv = sx[np.abs(sx) <= INV_R_ZOOM_MAX]
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_ZOOM_MAX, INV_R_ZOOM_MAX, 121),
                      n_sig_events=n_sig_events)
+        draw_momentum_cut_lines(ax, cuts, xmax=INV_R_ZOOM_MAX)
         ax.set_yscale("log")
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_xticks(pt_zoom_ticks)
@@ -221,6 +265,7 @@ def main():
         sv = sv[np.isfinite(sv)]
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_RANGE_NS, TC_RANGE_NS, 161),
                      n_sig_events=n_sig_events)
+        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", xmax=TC_RANGE_NS)
         ax.set_yscale("log")
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
@@ -243,6 +288,7 @@ def main():
         sv = sv[np.abs(sv) <= TC_ZOOM_RANGE_NS]
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_ZOOM_RANGE_NS, TC_ZOOM_RANGE_NS, 121),
                      n_sig_events=n_sig_events)
+        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", xmax=TC_ZOOM_RANGE_NS)
         ax.set_yscale("log")
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
