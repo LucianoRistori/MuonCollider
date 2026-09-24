@@ -1134,29 +1134,37 @@ def apply_angle_smearing(hits, smear_cfg, rng):
          mutually orthogonal, unlike the approximate rho/z/phi frame
          theta_long/theta_trans are built from - see n_tilt_deg).
       2. Independent Gaussian offsets, N(0, sigma_u_deg) and
-         N(0, sigma_v_deg), are added to theta_u and theta_v.
-      3. The smeared local direction is reconstructed from the smeared
-         slopes (keeping p_n's original sign - a small angular error
-         doesn't flip whether the track is going into or out of the
-         sensor), rotated back to the global frame, and used to
-         RECOMPUTE theta_long_deg, theta_trans_deg and theta_full_deg in
-         place, via the same formulas as add_incidence_angles().
-
-    Does NOT touch z_axis_intercept_mm, inv_radius_per_mm or
-    psi_transverse_deg - those are computed directly from the hit's raw,
-    unsmeared momentum direction (not from theta_long_deg/theta_trans_deg
-    or from this local u,v angle decomposition), matching how position/
-    time smearing's effect on them is confined to what actually flows
-    through load_hits()'s hit_x/y/z/t.
-
-    Processes hits in fixed-size CHUNKS (not the whole ~17M-hit array at
-    once) - this function needs ~15 full-length temporary arrays to go
-    from momentum direction to smeared theta_long/trans/full, which for
-    the full combined BIB sample would transiently need several GB on
-    top of `hits` itself; chunking bounds the transient memory to one
-    chunk's worth regardless of sample size (needed for this analysis's
-    ~3.8GB memory-constrained environment - see apply_position_time_smearing
-    for the same concern on the position/time side).
+         N(0, sigma_v_deg), are added to theta_u and theta_v - this is
+         the "measured" incidence angle at the hit; with truth momentum
+         only available in simulation, this represents what a real
+         angle reconstruction (cluster shape, eta) would actually see.
+      3. The smeared/measured local direction is reconstructed from the
+         smeared slopes (keeping p_n's original sign - a small angular
+         error doesn't flip whether the track is going into or out of
+         the sensor), rotated back to the global frame, and used to
+         RECOMPUTE, in place, every quantity add_incidence_angles()
+         derives from the momentum direction: theta_long_deg,
+         theta_trans_deg, theta_full_deg, z_axis_intercept_mm,
+         psi_transverse_deg and inv_radius_per_mm (and hence the
+         momentum_gev cut, which is based on inv_radius_per_mm). This
+         is deliberate: in a real detector, z0 and the transverse
+         curvature/momentum are themselves reconstructed FROM the
+         measured hit angle (there is no other way to get a direction
+         out of a single hit), so once angle smearing is enabled, these
+         downstream quantities must respond to it exactly like the
+         angle diagnostics do - it would be inconsistent (and let the
+         cuts silently "cheat" off the truth momentum) to smear the
+         angle plots but keep the cuts computed from the unsmeared
+         truth direction.
+         With angle smearing DISABLED (this function then no-ops
+         entirely, leaving add_incidence_angles()'s truth-based values
+         in place), the two are mathematically identical anyway: with
+         zero noise, decomposing p_hat into u,v,n slopes and
+         reconstructing from them is an exact round trip. So enabling
+         angle smearing with sigma=0 (or leaving both sections
+         disabled) reproduces the truth-based baseline exactly, and
+         only a nonzero sigma actually changes z_axis_intercept_mm/
+         inv_radius_per_mm from their truth values.
     """
     u_cfg = smear_cfg["angle_u"]
     v_cfg = smear_cfg["angle_v"]
@@ -1170,10 +1178,13 @@ def apply_angle_smearing(hits, smear_cfg, rng):
     vx_a, vy_a, vz_a = hits["vx"], hits["vy"], hits["vz"]
     nx_a, ny_a, nz_a = hits["n_x"], hits["n_y"], hits["n_z"]
     px_a, py_a, pz_a = hits["px"], hits["py"], hits["pz"]
-    x_a, y_a, r_a = hits["x"], hits["y"], hits["r"]
+    x_a, y_a, z_a, r_a = hits["x"], hits["y"], hits["z"], hits["r"]
     theta_long_out = hits["theta_long_deg"]
     theta_trans_out = hits["theta_trans_deg"]
     theta_full_out = hits["theta_full_deg"]
+    z0_out = hits["z_axis_intercept_mm"]
+    psi_out = hits["psi_transverse_deg"]
+    inv_r_out = hits["inv_radius_per_mm"]
 
     sigma_u_deg = u_cfg["sigma"] if u_on else 0.0
     sigma_v_deg = v_cfg["sigma"] if v_on else 0.0
@@ -1221,20 +1232,25 @@ def apply_angle_smearing(hits, smear_cfg, rng):
         p_v2 = slope_v * p_n2
         del slope_u, slope_v
 
-        # Rotate the smeared local direction back to the global frame.
+        # Rotate the smeared local direction back to the global frame -
+        # this is the "measured" momentum direction, standing in for
+        # the (unknowable in a real detector) truth direction from here
+        # on for every downstream quantity.
         px2 = p_u2 * ux + p_v2 * vx + p_n2 * nx
         py2 = p_u2 * uy + p_v2 * vy + p_n2 * ny
         pz2 = p_u2 * uz + p_v2 * vz + p_n2 * nz
         del p_u2, p_v2, p_n2, ux, uy, uz, vx, vy, vz
 
-        # Recompute theta_long_deg/theta_trans_deg/theta_full_deg from
-        # the smeared direction, exactly as add_incidence_angles() does
-        # (n_x/y/z and the hit's (x,y,z,r) position are unaffected by
-        # angle smearing).
-        x, y, r = x_a[sl], y_a[sl], r_a[sl]
+        # Recompute theta_long_deg/theta_trans_deg/theta_full_deg AND
+        # z_axis_intercept_mm/psi_transverse_deg/inv_radius_per_mm from
+        # the measured direction, exactly as add_incidence_angles()
+        # does from the truth direction (n_x/y/z and the hit's
+        # (x,y,z,r) position - already reflecting any position smearing
+        # - are unaffected by angle smearing).
+        x, y, z, r = x_a[sl], y_a[sl], z_a[sl], r_a[sl]
         rho_x, rho_y = x / r, y / r
         phi_x, phi_y = -y / r, x / r
-        del x, y, r
+        del x, y
 
         p_rho2 = px2 * rho_x + py2 * rho_y
         p_phi2 = px2 * phi_x + py2 * phi_y
@@ -1254,6 +1270,22 @@ def apply_angle_smearing(hits, smear_cfg, rng):
         theta_trans_out[sl] = np.degrees(np.arctan2(p_phi2, p_dot_n2))
         np.clip(p_dot_n2, -1.0, 1.0, out=p_dot_n2)
         theta_full_out[sl] = np.degrees(np.arccos(p_dot_n2))
+        del n_rho, n_phi, nz, p_dot_n2
+
+        # z_axis_intercept_mm: meridian-plane (rho,z) extrapolation back
+        # to rho=0, using the MEASURED p_rho2/pz2 slope (undefined/NaN
+        # for p_rho2 ~ 0, same convention as add_incidence_angles()).
+        with np.errstate(divide="ignore", invalid="ignore"):
+            z0_out[sl] = np.where(
+                np.abs(p_rho2) > 1e-9, z - r * (pz2 / p_rho2), np.nan
+            )
+
+        # psi_transverse_deg / inv_radius_per_mm: transverse-plane
+        # tangent-chord curvature, from the MEASURED p_phi2/p_rho2.
+        psi2 = np.arctan2(p_phi2, p_rho2)
+        psi_out[sl] = np.degrees(psi2)
+        inv_r_out[sl] = 2.0 * np.sin(psi2) / r
+        del z, r, p_rho2, p_phi2, pz2, psi2
 
     import gc
     gc.collect()

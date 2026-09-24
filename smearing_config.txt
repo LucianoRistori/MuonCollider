@@ -37,10 +37,15 @@ enabled = true
 # Angle smearing represents angular-reconstruction uncertainty (e.g.
 # from cluster-shape/eta reconstruction, or multiple scattering) along
 # the sensor's local u and v axes - see the docstring in
-# bib_common.apply_angle_smearing for exactly how this propagates into
-# the theta_long_deg/theta_trans_deg/theta_full_deg diagnostics. Does
-# not affect z_axis_intercept_mm or inv_radius_per_mm/momentum_gev
-# (those are computed directly from the raw momentum direction).
+# bib_common.apply_angle_smearing for exactly how. This is the
+# MEASURED incidence angle standing in for the (unknowable in a real
+# detector) truth momentum direction: once enabled, it drives not only
+# the theta_long_deg/theta_trans_deg/theta_full_deg diagnostics but also
+# z_axis_intercept_mm and inv_radius_per_mm (hence the momentum_gev
+# cut) - all of these are just different projections of the same
+# reconstructed hit direction. With sigma=0 (or disabled), the measured
+# angle is mathematically identical to the truth angle, so the cuts see
+# exactly the unsmeared/truth-based values.
 [angle_u]
 sigma_deg = 3.0
 enabled = true
