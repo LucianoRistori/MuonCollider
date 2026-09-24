@@ -33,6 +33,7 @@ judged by eye against the N-1 distribution:
 Usage:
     python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir]
 """
+import os
 import sys
 from pathlib import Path
 
@@ -44,6 +45,8 @@ import numpy as np
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, prepare_output_dir, _display_path, SYSTEM_NAMES,
+    load_smearing_config, smearing_rng, apply_position_time_smearing,
+    apply_angle_smearing,
 )
 from incidence_angle_plots import (
     pt_ticks_for_axis, panel_grid,
@@ -113,16 +116,37 @@ def main():
     outdir = Path(sys.argv[4] if len(sys.argv) > 4 else "../output_n1_cuts")
     outdir = prepare_output_dir(outdir)
 
+    smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
+    smear_cfg = None
+    smear_rng = None
+    if smearing_config:
+        smear_cfg = load_smearing_config(smearing_config)
+        smear_rng = smearing_rng(smear_cfg)
+        applied = [f"{name} sigma={smear_cfg[name]['sigma']}"
+                   for name in ("position", "time", "angle_long", "angle_trans")
+                   if smear_cfg[name]["enabled"] and smear_cfg[name]["sigma"] > 0]
+        joined = ", ".join(applied) if applied else "all disabled/zero"
+        print(f"Smearing config: {_display_path(smearing_config)} "
+              f"({joined})")
+
     print(f"Loading BIB file: {_display_path(bib_file)}")
     bib_hits = load_hits(bib_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(bib_hits, smear_cfg, smear_rng)
     add_incidence_angles(bib_hits)
+    if smear_cfg is not None:
+        apply_angle_smearing(bib_hits, smear_cfg, smear_rng)
     add_time_of_flight(bib_hits)
     n_bib_hit = len(bib_hits["x"])
     print(f"  {bib_hits['_tree_name']}: {bib_hits['_n_events']} event(s), n_hit={n_bib_hit:,}")
 
     print(f"Loading signal file: {_display_path(signal_file)}")
     sig_hits = load_hits(signal_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
     add_incidence_angles(sig_hits)
+    if smear_cfg is not None:
+        apply_angle_smearing(sig_hits, smear_cfg, smear_rng)
     add_time_of_flight(sig_hits)
     n_sig_hit = len(sig_hits["x"])
     n_sig_events = sig_hits["_n_events"]

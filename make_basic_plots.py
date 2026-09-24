@@ -9,6 +9,7 @@ Usage:
     python3 make_basic_plots.py <input.root> [output_dir]
 """
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -20,6 +21,8 @@ import numpy as np
 from bib_common import (
     load_hits, region_table, add_peak_density, subsystem_density_table,
     write_logfile, prepare_output_dir, _display_path, SYSTEM_NAMES,
+    load_smearing_config, smearing_rng, apply_position_time_smearing,
+    apply_angle_smearing,
 )
 import geometry as geom_mod
 
@@ -52,7 +55,21 @@ def main():
     geom_dir = Path(sys.argv[3]) if len(sys.argv) > 3 else Path(root_file).resolve().parent
     outdir = prepare_output_dir(outdir)
 
+    smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
+    smear_cfg = None
+    smear_rng = None
+    if smearing_config:
+        smear_cfg = load_smearing_config(smearing_config)
+        smear_rng = smearing_rng(smear_cfg)
+        applied = [f"{name} sigma={smear_cfg[name]['sigma']}"
+                   for name in ("position", "time", "angle_long", "angle_trans")
+                   if smear_cfg[name]["enabled"] and smear_cfg[name]["sigma"] > 0]
+        joined = ", ".join(applied) if applied else "all disabled/zero"
+        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+
     hits = load_hits(root_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(hits, smear_cfg, smear_rng)
     p = hits["_primary"]
     n_hit = len(hits["x"])
     pdg_unique = np.unique(p["pdg"])

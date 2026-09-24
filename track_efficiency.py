@@ -33,6 +33,7 @@ Usage:
     python3 track_efficiency.py <signal1.root> [signal2.root ...] [--cuts cuts_config.txt] [--out output_dir] [--bins N]
 """
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -45,6 +46,8 @@ from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, load_track_params, VERTEX_SYSTEM_IDS,
     prepare_output_dir, _display_path,
+    load_smearing_config, smearing_rng, apply_position_time_smearing,
+    apply_angle_smearing,
 )
 
 N_BINS_DEFAULT = 150  # evenly spaced in 1/pT; x10 finer than the initial 15
@@ -153,7 +156,8 @@ def pt_ticks_for_inv_pt_axis(inv_pt_min, inv_pt_max,
     return major_ticks, major_labels, minor_ticks
 
 
-def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False):
+def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False,
+                   smear_cfg=None, smear_rng=None):
     """Returns (pT_gen [n_events], found [n_events] bool) for one file's tracks.
 
     If exclude_vertex_hits is True, hits in the vertex detector (VXD
@@ -163,11 +167,15 @@ def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False):
     the vertex detector."""
     print(f"\nLoading signal file: {_display_path(signal_file)}")
     hits = load_hits(signal_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(hits, smear_cfg, smear_rng)
     n_events = hits["_n_events"]
     n_hit = len(hits["x"])
     print(f"  {hits['_tree_name']}: {n_events:,} event(s)/track(s), n_hit={n_hit:,}")
 
     add_incidence_angles(hits)
+    if smear_cfg is not None:
+        apply_angle_smearing(hits, smear_cfg, smear_rng)
     add_time_of_flight(hits)
     combined_mask, _ = apply_cuts(hits, cuts)
 
@@ -190,6 +198,18 @@ def main():
     signal_files, cuts_config, outdir, n_bins = parse_args(sys.argv[1:])
     outdir = prepare_output_dir(outdir)
 
+    smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
+    smear_cfg = None
+    smear_rng = None
+    if smearing_config:
+        smear_cfg = load_smearing_config(smearing_config)
+        smear_rng = smearing_rng(smear_cfg)
+        applied = [f"{name} sigma={smear_cfg[name]['sigma']}"
+                   for name in ("position", "time", "angle_long", "angle_trans")
+                   if smear_cfg[name]["enabled"] and smear_cfg[name]["sigma"] > 0]
+        joined = ", ".join(applied) if applied else "all disabled/zero"
+        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+
     print(f"Loading cuts: {_display_path(cuts_config)}")
     cuts = load_cuts(cuts_config)
     for name, spec in cuts.items():
@@ -203,7 +223,8 @@ def main():
 
     pT_all, found_all = [], []
     for f in signal_files:
-        pT_gen, found = load_one_file(f, cuts, min_hits_found, exclude_vertex_hits)
+        pT_gen, found = load_one_file(f, cuts, min_hits_found, exclude_vertex_hits,
+                                       smear_cfg=smear_cfg, smear_rng=smear_rng)
         pT_all.append(pT_gen)
         found_all.append(found)
     pT_gen = np.concatenate(pT_all)

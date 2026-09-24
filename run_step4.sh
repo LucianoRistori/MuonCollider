@@ -42,6 +42,12 @@ DATA_DIR="${DATA_DIR:-$HOME/Dropbox/Documents/MuonColliderSimulation}"
 BIB_FILE="${BIB_FILE:-$DATA_DIR/ntu_bib_ipp_3evt.root}"
 SIGNAL_FILE="${SIGNAL_FILE:-$DATA_DIR/ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root}"
 CUTS_CONFIG="${CUTS_CONFIG:-cuts_config.txt}"
+# SMEARING_CONFIG is optional - unset/empty means no measurement-error
+# smearing (the current exact input files, unchanged). Set it to a
+# smearing config file (see smearing_config.txt) to study the effect of
+# assumed detector resolution on the cuts/efficiency results.
+SMEARING_CONFIG="${SMEARING_CONFIG:-}"
+export SMEARING_CONFIG
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 RUN_DIR="$DATA_DIR/results/step4_runs/$TIMESTAMP"
@@ -55,6 +61,7 @@ run_all() {
     echo "Using cuts: $CUTS_CONFIG"
     echo "  BIB file:    $BIB_FILE"
     echo "  Signal file: $SIGNAL_FILE"
+    echo "  Smearing:    ${SMEARING_CONFIG:-(none - exact hits)}"
     echo "Archiving this run to: $RUN_DIR"
     echo
 

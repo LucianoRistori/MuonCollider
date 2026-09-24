@@ -1,0 +1,48 @@
+# Measurement-error ("smearing") config, for studying the effect of
+# different assumed detector resolutions on the analysis. The current
+# input ROOT files carry zero measurement error (verified with
+# check_smearing.py), so with every section below disabled/zero, the
+# analysis sees the exact, unsmeared hits - matching the input files as
+# they are today. Edit sigma values and enabled=true to try a resolution
+# hypothesis, then re-run (e.g. run_all_steps.sh / run_step4.sh) with
+# SMEARING_CONFIG=smearing_config.txt.
+#
+# Loaded/applied by bib_common.load_smearing_config() /
+# apply_position_time_smearing() / apply_angle_smearing(). All Gaussian
+# (mean 0). Units: mm for position, ns for time, degrees for angles.
+
+# Position smearing acts on the hit's own LOCAL sensor-plane coordinates
+# hit_u/hit_v (not global hit_x/hit_y - see the docstring in
+# bib_common.apply_position_time_smearing for why), applied independently
+# to u and v with the same sigma; hit_x/y/z are then updated consistently
+# via the module's own local axes, and hit_du/hit_dv are set to record
+# the sigma actually used.
+[position]
+sigma_uv_mm = 0.0
+enabled = false
+
+# Time smearing acts on the raw hit_t.
+[time]
+sigma_t_ns = 0.0
+enabled = false
+
+# Angle smearing acts on the already-computed incidence-angle diagnostics
+# (theta_long_deg / theta_trans_deg, from bib_common.add_incidence_angles)
+# - representing angular-reconstruction uncertainty as an independent
+# error source, not a re-derivation from smeared positions. Does not
+# affect z_axis_intercept_mm or inv_radius_per_mm/momentum_gev (those are
+# computed directly from the raw momentum direction, not from these two
+# angles).
+[angle_long]
+sigma_deg = 0.0
+enabled = false
+
+[angle_trans]
+sigma_deg = 0.0
+enabled = false
+
+# RNG seed, so re-running with the same sigmas reproduces the same
+# smeared sample (for a fresh random draw each run, change this between
+# runs).
+[general]
+seed = 42

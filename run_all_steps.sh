@@ -20,6 +20,7 @@ echo "PLUS:      $PLUS"
 echo "MINUS:     $MINUS"
 echo "COMBINED:  $COMBINED  (plus+minus+ipp)"
 echo "SIGNAL:    $SIGNAL"
+echo "SMEARING:  ${SMEARING_CONFIG:-(none - exact hits)}"
 echo
 
 echo "=== Step 1: make_basic_plots.py ==="

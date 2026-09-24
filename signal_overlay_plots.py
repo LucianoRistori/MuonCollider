@@ -34,6 +34,7 @@ Usage:
     python3 signal_overlay_plots.py <bib.root> <signal.root> [output_dir] [geometry_dir]
 """
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -45,6 +46,8 @@ import numpy as np
 from bib_common import (
     load_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
+    load_smearing_config, smearing_rng, apply_position_time_smearing,
+    apply_angle_smearing,
 )
 import geometry as geom_mod
 
@@ -73,13 +76,29 @@ def main():
     geom_dir = Path(sys.argv[4]) if len(sys.argv) > 4 else Path(bib_file).resolve().parent
     outdir = prepare_output_dir(outdir)
 
+    smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
+    smear_cfg = None
+    smear_rng = None
+    if smearing_config:
+        smear_cfg = load_smearing_config(smearing_config)
+        smear_rng = smearing_rng(smear_cfg)
+        applied = [f"{name} sigma={smear_cfg[name]['sigma']}"
+                   for name in ("position", "time", "angle_long", "angle_trans")
+                   if smear_cfg[name]["enabled"] and smear_cfg[name]["sigma"] > 0]
+        joined = ", ".join(applied) if applied else "all disabled/zero"
+        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+
     print(f"Loading BIB file: {_display_path(bib_file)}")
     bib_hits = load_hits(bib_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(bib_hits, smear_cfg, smear_rng)
     n_bib_hit = len(bib_hits["x"])
     print(f"  {bib_hits['_tree_name']}: {bib_hits['_n_events']} event(s), n_hit={n_bib_hit:,}")
 
     print(f"Loading signal file: {_display_path(signal_file)}")
     sig_hits = load_hits(signal_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
     n_sig_hit = len(sig_hits["x"])
     n_sig_events = sig_hits["_n_events"]
     print(f"  {sig_hits['_tree_name']}: {n_sig_events:,} event(s), n_hit={n_sig_hit:,} "

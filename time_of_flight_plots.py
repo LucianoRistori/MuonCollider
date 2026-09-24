@@ -19,6 +19,7 @@ Usage:
     python3 time_of_flight_plots.py <input.root> [output_dir]
 """
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -30,6 +31,8 @@ import numpy as np
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
+    load_smearing_config, smearing_rng, apply_position_time_smearing,
+    apply_angle_smearing,
 )
 
 T_RANGE_NS = 40.0          # raw hit-time histogram range
@@ -48,9 +51,25 @@ def main():
     outdir = Path(sys.argv[2] if len(sys.argv) > 2 else "../output_time_of_flight")
     outdir = prepare_output_dir(outdir)
 
+    smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
+    smear_cfg = None
+    smear_rng = None
+    if smearing_config:
+        smear_cfg = load_smearing_config(smearing_config)
+        smear_rng = smearing_rng(smear_cfg)
+        applied = [f"{name} sigma={smear_cfg[name]['sigma']}"
+                   for name in ("position", "time", "angle_long", "angle_trans")
+                   if smear_cfg[name]["enabled"] and smear_cfg[name]["sigma"] > 0]
+        joined = ", ".join(applied) if applied else "all disabled/zero"
+        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+
     hits = load_hits(root_file)
+    if smear_cfg is not None:
+        apply_position_time_smearing(hits, smear_cfg, smear_rng)
     n_hit = len(hits["x"])
     add_incidence_angles(hits)
+    if smear_cfg is not None:
+        apply_angle_smearing(hits, smear_cfg, smear_rng)
     add_time_of_flight(hits)
     system = hits["system"]
     sys_ids = sorted(SYSTEM_NAMES.keys())
