@@ -1,18 +1,18 @@
 #!/bin/bash
 # =====================================================================
 # Full BIB analysis, steps 1-4, run from a WORKING FOLDER that holds the
-# two editable settings files. Normally started with the ./run_all
+# three editable settings files. Normally started with the ./run_all
 # launcher that lives in that folder:
 #
 #     cd ~/Dropbox/Documents/MuonColliderSimulation/results
-#     (edit cuts_config.txt and/or smearing_config.txt)
+#     (edit cuts_config.txt, smearing_config.txt, input_files_config.txt)
 #     ./run_all
 #
 # What one run does:
 #   1. Checks everything first - settings files (typos, bad values),
-#      input ROOT files, Python packages. If anything is wrong it stops
+#      input files, Python packages. If anything is wrong it stops
 #      before running anything.
-#   2. Creates runs/<date>_<time>/ in the working folder and copies both
+#   2. Creates runs/<date>_<time>/ in the working folder and copies the
 #      settings files into it at the START, so the archive records
 #      exactly what was used (editing the files during a run has no
 #      effect on that run).
@@ -25,8 +25,11 @@
 #      If anything fails, the run folder is renamed <date>_<time>_FAILED
 #      and the step* folders are left as they were.
 #
-# Input ROOT files are read from the folder ABOVE the working folder
-# (override with DATA_DIR=...); Python is python3 (override: PYTHON=...).
+# Input files: named in input_files_config.txt, and read from the Data/
+# (ROOT) and Geometry/ (XML) folders inside the folder ABOVE the working
+# folder (override that folder with SIM_DIR=...). If the combined BIB file
+# is missing, or doesn't contain exactly the plus/minus/ipp files listed,
+# it is (re)built first. Python is python3 (override: PYTHON=...).
 #
 # Splitting a run into pieces (only needed under a time limit):
 #   ./run_all --steps 1,2                   start a run with steps 1-2
@@ -90,17 +93,13 @@ done
 [ -d "$WORKDIR" ] || stop "working folder not found: $WORKDIR"
 WORKDIR="$(cd "$WORKDIR" && pwd -P)"
 
-DATA_DIR="${DATA_DIR:-$(dirname "$WORKDIR")}"
-PLUS="$DATA_DIR/ntu_bib_plus_1evt.root"
-MINUS="$DATA_DIR/ntu_bib_minus_1evt.root"
-COMBINED="$DATA_DIR/ntu_bib_ipp_3evt.root"
-SIGNAL="$DATA_DIR/ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root"
+SIM_DIR="${SIM_DIR:-${DATA_DIR:-$(dirname "$WORKDIR")}}"   # holds Data/ and Geometry/
 
 # ---------------------------------------------------------------- checks
 command -v "$PYTHON" >/dev/null 2>&1 || stop "'$PYTHON' not found. Install Python 3, or run with PYTHON=/path/to/python3 ./run_all"
 
 if [ -z "$RUN_ID" ]; then
-    for f in cuts_config.txt smearing_config.txt; do
+    for f in cuts_config.txt smearing_config.txt input_files_config.txt; do
         if [ ! -f "$WORKDIR/$f" ]; then
             if [ -f "$CODE_DIR/templates/$f" ]; then
                 cp "$CODE_DIR/templates/$f" "$WORKDIR/$f"
@@ -121,12 +120,13 @@ else
     CFG_DIR="$WORKDIR/runs/$RUN_ID"
 fi
 
+[ -f "$CFG_DIR/input_files_config.txt" ] || stop "input_files_config.txt not found in $CFG_DIR"
 "$PYTHON" "$CODE_DIR/check_configs.py" --quiet "$CFG_DIR/cuts_config.txt" "$CFG_DIR/smearing_config.txt" \
+    "$CFG_DIR/input_files_config.txt" --sim-dir "$SIM_DIR" \
     || stop "fix the settings file(s) as listed above, then run again. Nothing was run."
-
-for f in "$PLUS" "$MINUS" "$COMBINED" "$SIGNAL"; do
-    [ -f "$f" ] || stop "input file not found: $f"
-done
+assignments="$("$PYTHON" "$CODE_DIR/input_files.py" shell "$CFG_DIR/input_files_config.txt" "$SIM_DIR")" \
+    || stop "could not read input_files_config.txt"
+eval "$assignments"   # PLUS MINUS IPP COMBINED SIGNAL GEOM_MAIN GEOM_VERTEX GEOM_IT GEOM_OT
 
 missing=""
 for pkg in numpy uproot awkward matplotlib; do
@@ -143,7 +143,7 @@ if [ -z "$RUN_ID" ]; then
     done
     RUN_DIR="$WORKDIR/runs/$RUN_ID"
     mkdir -p "$RUN_DIR" || stop "cannot create $RUN_DIR"
-    cp "$WORKDIR/cuts_config.txt" "$WORKDIR/smearing_config.txt" "$RUN_DIR/" \
+    cp "$WORKDIR/cuts_config.txt" "$WORKDIR/smearing_config.txt" "$WORKDIR/input_files_config.txt" "$RUN_DIR/" \
         || stop "cannot copy the settings files into $RUN_DIR"
     {
         say "Run:            $RUN_ID"
@@ -161,10 +161,6 @@ if [ -z "$RUN_ID" ]; then
             fi
         fi
         say "Python:         $("$PYTHON" -c 'import sys; print(sys.version.split()[0])') ($(command -v "$PYTHON"))"
-        say "Input files:"
-        for f in "$PLUS" "$MINUS" "$COMBINED" "$SIGNAL"; do
-            say "    $(ls -l "$f" | awk '{print $5" bytes, "$6" "$7" "$8}')  $(basename "$f")"
-        done
     } > "$RUN_DIR/code_version.txt"
 else
     RUN_DIR="$WORKDIR/runs/$RUN_ID"
@@ -172,6 +168,7 @@ fi
 
 CUTS="$RUN_DIR/cuts_config.txt"
 export SMEARING_CONFIG="$RUN_DIR/smearing_config.txt"
+export BIB_GEOMETRY_FILES="$GEOM_MAIN:$GEOM_VERTEX:$GEOM_IT:$GEOM_OT"
 export BIB_RUN_ALL=1
 export MPLBACKEND=Agg
 
@@ -223,19 +220,24 @@ main() {
     say "======================================================================"
     say " BIB analysis run $RUN_ID   (steps: $STEPS)"
     say " Working folder: $(tilde "$WORKDIR")"
-    say ""
-    say " Input files (in $(tilde "$DATA_DIR")):"
-    say "   BIB plus       $(basename "$PLUS")"
-    say "   BIB minus      $(basename "$MINUS")"
-    say "   BIB combined   $(basename "$COMBINED")   (plus + minus + ipp)"
-    say "   signal         $(basename "$SIGNAL")"
-    say ""
     say " Settings (copies kept in runs/$RUN_ID/):"
-    "$PYTHON" "$CODE_DIR/check_configs.py" "$CUTS" "$SMEARING_CONFIG" | sed 's/^/   /'
+    "$PYTHON" "$CODE_DIR/check_configs.py" "$CUTS" "$SMEARING_CONFIG" \
+        "$RUN_DIR/input_files_config.txt" --sim-dir "$SIM_DIR" | sed 's/^/   /'
     say "======================================================================"
     # run the scripts from inside the run folder, so the output folders
     # they report show up as short relative paths (step1_basic_plots/ ...)
     cd "$RUN_DIR" || return 1
+    run_py "Combined BIB file" input_files.py prepare "$RUN_DIR/input_files_config.txt" "$SIM_DIR" \
+        || return 1
+    if ! grep -q "^Input files" "$RUN_DIR/code_version.txt" 2>/dev/null; then
+        {
+            say "Input files (bytes, modified):"
+            for f in "$PLUS" "$MINUS" ${IPP:+"$IPP"} "$COMBINED" "$SIGNAL" \
+                     "$GEOM_MAIN" "$GEOM_VERTEX" "$GEOM_IT" "$GEOM_OT"; do
+                say "    $(ls -l "$f" | awk '{print $5", "$6" "$7" "$8}')  $(tilde "$f")"
+            done
+        } >> "$RUN_DIR/code_version.txt"
+    fi
     local s t0
     for s in $STEPS; do
         if grep -qx "step $s" "$RUN_DIR/steps_done.txt" 2>/dev/null; then
@@ -299,7 +301,8 @@ fi
 # ---------------------------------------------------------------- finish
 {
     say "Run $RUN_ID"
-    "$PYTHON" "$CODE_DIR/check_configs.py" --brief "$RUN_DIR/cuts_config.txt" "$RUN_DIR/smearing_config.txt"
+    "$PYTHON" "$CODE_DIR/check_configs.py" --brief "$RUN_DIR/cuts_config.txt" "$RUN_DIR/smearing_config.txt" \
+        "$RUN_DIR/input_files_config.txt" --sim-dir "$SIM_DIR"
     say ""
     awk '/Summary: BIB rejection vs. signal efficiency/ {print; f=1; next} f && /^  [^ ]/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
 } > "$RUN_DIR/summary.txt"

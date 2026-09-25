@@ -22,7 +22,8 @@ load_track_params and load_smearing_config read - keep them in sync if
 a setting is added there.
 
 Usage:
-    python3 check_configs.py <cuts_config.txt> <smearing_config.txt> [--brief]
+    python3 check_configs.py <cuts_config.txt> <smearing_config.txt>
+                             [<input_files_config.txt> --sim-dir <folder>] [--brief]
 Exit code 0 = OK (warnings allowed), 1 = at least one error.
 --brief prints just two summary lines (used for runs/<id>/summary.txt);
 --quiet prints nothing unless there is a problem.
@@ -31,8 +32,9 @@ import configparser
 import difflib
 import math
 import sys
+from pathlib import Path
 
-NUMBER, WHOLE, TRUEFALSE = "number", "whole number", "true/false value"
+NUMBER, WHOLE, TRUEFALSE, FILENAME = "number", "whole number", "true/false value", "file name"
 
 # section -> {setting: (kind, required)}
 CUTS_SPEC = {
@@ -52,6 +54,14 @@ SMEAR_SPEC = {
     "angle_v": {"sigma_deg": (NUMBER, True), "enabled": (TRUEFALSE, True)},
     "general": {"seed": (WHOLE, True)},
 }
+# input_files_config.txt - same keys as input_files.DATA_KEYS / GEOMETRY_KEYS
+INPUTS_SPEC = {
+    "data": {k: (FILENAME, True) for k in
+             ("bib_plus", "bib_minus", "bib_ipp", "bib_combined", "signal")},
+    "geometry": {k: (FILENAME, True) for k in
+                 ("main", "vertex", "inner_tracker", "outer_tracker")},
+}
+MAY_BE_EMPTY = {"bib_ipp"}
 MUST_NOT_BE_NEGATIVE = {"halfwidth", "zoom_halfwidth", "sigma_u_mm", "sigma_v_mm",
                         "sigma_t_ns", "sigma_deg", "min_hits_found"}
 # same defaults as bib_common.ZOOM_HALFWIDTH_DEFAULTS
@@ -103,6 +113,13 @@ def read_and_check(path, spec, errors):
                     errors.append(f"{label}: missing setting '{key}' in [{section}]")
                 continue
             raw = cp[section][key]
+            if kind == FILENAME:
+                name = raw.strip()
+                if not name and key not in MAY_BE_EMPTY:
+                    errors.append(f"{label}: [{section}] {key} is empty")
+                    continue
+                values[(section, key)] = name
+                continue
             try:
                 if kind == NUMBER:
                     val = cp.getfloat(section, key)
@@ -231,18 +248,78 @@ def warnings_for(cuts, smear):
     return warn
 
 
+def _tilde(path):
+    home = str(Path.home())
+    s = str(path)
+    return "~" + s[len(home):] if s == home or s.startswith(home + "/") else s
+
+
+def check_input_files(inputs, sim_dir, errors):
+    """Every file named in input_files_config.txt must exist in Data/ or
+    Geometry/ under the simulation folder - except the combined BIB file,
+    which ./run_all builds when needed."""
+    sim_dir = Path(sim_dir)
+    for key, (kind, _) in INPUTS_SPEC["data"].items():
+        name = inputs.get(("data", key), "")
+        if not name or key == "bib_combined":
+            continue
+        if not (sim_dir / "Data" / name).is_file():
+            errors.append(f"input_files_config.txt: [data] {key}: file not found: "
+                          f"{_tilde(sim_dir / 'Data' / name)}")
+    for key in INPUTS_SPEC["geometry"]:
+        name = inputs.get(("geometry", key), "")
+        if name and not (sim_dir / "Geometry" / name).is_file():
+            errors.append(f"input_files_config.txt: [geometry] {key}: file not found: "
+                          f"{_tilde(sim_dir / 'Geometry' / name)}")
+
+
+def describe_inputs(inputs, sim_dir):
+    ipp = inputs.get(("data", "bib_ipp"), "")
+    made_of = "plus + minus + ipp" if ipp else "plus + minus"
+    combined = inputs[("data", "bib_combined")]
+    if sim_dir and not (Path(sim_dir) / "Data" / combined).is_file():
+        made_of += ", will be built"
+    geo = [inputs[("geometry", k)] for k in INPUTS_SPEC["geometry"]]
+    lines = []
+    if sim_dir:
+        lines.append(("folder", f"{_tilde(sim_dir)}  (Data/ and Geometry/)"))
+    lines += [
+        ("BIB plus", inputs[("data", "bib_plus")]),
+        ("BIB minus", inputs[("data", "bib_minus")]),
+        ("BIB ipp", ipp or "(none)"),
+        ("BIB combined", f"{combined}  (= {made_of})"),
+        ("signal", inputs[("data", "signal")]),
+        ("geometry", ", ".join(geo[:2]) + ","),
+        ("", ", ".join(geo[2:])),
+    ]
+    brief = (f"BIB data:    {combined} ({made_of.split(',')[0]})\n"
+             f"Signal:      {inputs[('data', 'signal')]}")
+    return lines, brief
+
+
 def main(argv):
     brief = "--brief" in argv
     quiet = "--quiet" in argv
-    paths = [a for a in argv if a not in ("--brief", "--quiet")]
-    if len(paths) != 2:
+    sim_dir = None
+    args = []
+    it = iter(argv)
+    for a in it:
+        if a == "--sim-dir":
+            sim_dir = next(it, None)
+        elif a not in ("--brief", "--quiet"):
+            args.append(a)
+    if len(args) not in (2, 3):
         print(__doc__.split("Usage:")[1].split("Exit code")[0].strip())
         return 2
-    cuts_path, smear_path = paths
+    cuts_path, smear_path = args[0], args[1]
+    inputs_path = args[2] if len(args) == 3 else None
 
     errors = []
     cuts = read_and_check(cuts_path, CUTS_SPEC, errors)
     smear = read_and_check(smear_path, SMEAR_SPEC, errors)
+    inputs = read_and_check(inputs_path, INPUTS_SPEC, errors) if inputs_path else None
+    if inputs is not None and sim_dir:
+        check_input_files(inputs, sim_dir, errors)
     if errors:
         print("Problems found in the settings files:")
         for e in errors:
@@ -253,9 +330,16 @@ def main(argv):
         return 0
     cut_lines, smear_lines = describe(cuts, smear)
     if brief:
+        if inputs is not None:
+            print(describe_inputs(inputs, sim_dir)[1])
         for line in brief_lines(cuts, smear):
             print(line)
         return 0
+
+    if inputs is not None:
+        print(f"Input files  ({inputs_path.split('/')[-1]})")
+        for n, t_ in describe_inputs(inputs, sim_dir)[0]:
+            print(f"  {n:<12} {t_}")
 
     print(f"Cuts         ({cuts_path.split('/')[-1]})")
     for n, t in cut_lines:

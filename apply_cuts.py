@@ -37,7 +37,7 @@ from bib_common import (
     mask_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
-    under_run_all, short_path, loaded_line, print_table, default_cuts_config,
+    under_run_all, short_path, loaded_line, print_table, resolve_geometry, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -46,10 +46,6 @@ import geometry as geom_mod
 PEAK_PERCENTILE = 99.0
 PEAK_KEY = f"peak_density_p{PEAK_PERCENTILE:.0f}_hits_per_mm2"
 PEAK_TARGET_HITS_PER_BIN = 20.0
-GEOMETRY_FILES = (
-    "MuSIC_v2.xml", "Vertex_o2_v06_01.xml",
-    "InnerTracker_o2_v07_01.xml", "OuterTracker_o2_v07_01.xml",
-)
 CUT_ORDER = ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev")
 BIB_COLOR = "#3b7dd8"
 BIB_COLOR_AFTER = "#0b2e63"
@@ -208,9 +204,10 @@ def main():
 
     # ---- geometry-based area, if available -------------------------------
     area_lookup = None
-    if all((geom_dir / f).exists() for f in GEOMETRY_FILES):
+    geometry = resolve_geometry(geom_dir)
+    if all(p.exists() for p in geometry.values()):
         try:
-            area_lookup = geom_mod.build_area_lookup(geom_dir)
+            area_lookup = geom_mod.build_area_lookup(geometry)
             print("Sensitive areas from the detector geometry")
         except Exception as e:
             print(f"WARNING: geometry parsing failed ({e}); using hit-inferred area.")

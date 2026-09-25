@@ -3,13 +3,24 @@
 ## How to run the analysis
 
 Everything is run from the results folder in Dropbox, which holds the
-two editable settings files:
+three editable settings files:
 
 ```
 cd ~/Dropbox/Documents/MuonColliderSimulation/results
-# edit cuts_config.txt (cuts) and/or smearing_config.txt (resolutions)
+# edit cuts_config.txt (cuts), smearing_config.txt (resolutions)
+# and/or input_files_config.txt (which data and geometry files to use)
 ./run_all
 ```
+
+Input files live in two folders of `MuonColliderSimulation`: the ROOT
+files in `Data/`, the detector-geometry XML files in `Geometry/`.
+`input_files_config.txt` just names them (BIB plus, minus, ipp, the
+combined BIB file, the signal sample, and the 4 geometry files). The
+combined BIB file is derived from plus + minus (+ ipp): before running,
+`./run_all` checks that it contains exactly those files (same entries,
+run/event numbers and hit counts, in order) and builds or rebuilds it
+automatically when it doesn't - e.g. after new plus/minus/ipp files
+were put in `Data/`.
 
 `./run_all` first checks the settings files (misspelled, unknown or
 missing settings, values that aren't numbers or true/false, negative
@@ -36,10 +47,12 @@ zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
 
 The code folder (`~/code/MuonCollider`) keeps only templates of the
 settings files (`templates/`); the copies in the results folder are the
-ones used. `./run_all` finds the code in `~/code/MuonCollider` (or set
-`MUONCOLLIDER_CODE=/path`), reads the ROOT files from the folder above
-the results folder, and calls `run_all_steps.sh` (see
-`./run_all --help`).
+ones used, and each run keeps a copy of all three. `./run_all` finds the
+code in `~/code/MuonCollider` (or set `MUONCOLLIDER_CODE=/path`), reads
+the input files from `Data/` and `Geometry/` in the folder above the
+results folder (or set `SIM_DIR=/path`), and calls `run_all_steps.sh`
+(see `./run_all --help`). Each run's `code_version.txt` also records the
+size and date of every input file used.
 
 ## Source files
 `ntu_bib_plus_1evt.root` and `ntu_bib_minus_1evt.root`, tree `HTAtree` —
@@ -164,9 +177,9 @@ includes `Vertex_o2_v06_01.xml`, `InnerTracker_o2_v07_01.xml`,
 hit in a given event — the latter undercounts area whenever an event
 doesn't strike every installed module (a big effect for the sparser
 IT/OT barrel layers: mean density there dropped by roughly 40x after
-switching to the geometry-based area). All 4 XML files live alongside
-the ROOT files in `~/Dropbox/Documents/MuonColliderSimulation/` and are
-parsed by `geometry.py` (`build_area_lookup`), which resolves the XML's
+switching to the geometry-based area). All 4 XML files live in
+`~/Dropbox/Documents/MuonColliderSimulation/Geometry/` (named in
+`input_files_config.txt`) and are parsed by `geometry.py` (`build_area_lookup`), which resolves the XML's
 symbolic constants and computes exact area for VXD barrel/endcap and
 IT/OT barrel/endcap (41/41 regions matched). Local copies of the
 geometry files are used in preference to fetching from GitHub.
@@ -816,8 +829,13 @@ ntuples and gives identical results. Code lives in
 - `geometry.py` — parses the true detector geometry XML to get exact
   sensitive area per region (`build_area_lookup`,
   `annotate_rows_with_geometry_area`).
-- `merge_bib_files.py` — merges the plus/minus BIB files into one
-  2-entry file (see "Merged file" above).
+- `merge_bib_files.py` — merges single-entry BIB files (plus, minus,
+  ipp) into one combined file, one entry per input (see "Merged file"
+  above); its `merge()` is what `./run_all` uses to (re)build the
+  combined file, via `input_files.py`.
+- `input_files.py` — reads `input_files_config.txt` (paths of all input
+  files), and checks/rebuilds the combined BIB file
+  (`ensure_combined`).
 - `make_basic_plots.py` — step 1 main script; produces per-subsystem/
   layer/disk density plots (mean vs. peak, log y-axis, disks ordered
   by signed z), an r-z hit map, `region_summary.csv`,

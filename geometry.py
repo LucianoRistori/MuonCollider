@@ -166,20 +166,37 @@ def _find_barrel_layers(xml_text, layer_id_re=r'<layer\s+(?:module="[^"]*"\s+)?i
     return out
 
 
-def build_area_lookup(geom_dir):
+# Default names of the 4 geometry files (the file names actually used come
+# from input_files_config.txt under ./run_all - see
+# bib_common.resolve_geometry).
+DEFAULT_FILE_NAMES = {
+    "main": "MuSIC_v2.xml",
+    "vertex": "Vertex_o2_v06_01.xml",
+    "inner_tracker": "InnerTracker_o2_v07_01.xml",
+    "outer_tracker": "OuterTracker_o2_v07_01.xml",
+}
+
+
+def build_area_lookup(geometry):
     """
-    Parse the 4 geometry XML files under `geom_dir` and return
+    Parse the 4 geometry XML files and return
     {(system, side, layer): area_mm2} for every region we can compute.
+    `geometry` is either a dict {"main", "vertex", "inner_tracker",
+    "outer_tracker"} -> file path (see bib_common.resolve_geometry), or a
+    folder holding the files under their DEFAULT_FILE_NAMES.
 
     side convention matches bib_common's decode_id0(): 0 = barrel,
     1/3 = endcap +z/-z (endcap area is the same for both sides, by
     symmetry, so both are filled with the same value).
     """
-    geom_dir = Path(geom_dir)
-    main_xml = _strip_comments((geom_dir / "MuSIC_v2.xml").read_text())
-    vtx_xml = _strip_comments((geom_dir / "Vertex_o2_v06_01.xml").read_text())
-    it_xml = _strip_comments((geom_dir / "InnerTracker_o2_v07_01.xml").read_text())
-    ot_xml = _strip_comments((geom_dir / "OuterTracker_o2_v07_01.xml").read_text())
+    if isinstance(geometry, dict):
+        files = {k: Path(v) for k, v in geometry.items()}
+    else:
+        files = {k: Path(geometry) / n for k, n in DEFAULT_FILE_NAMES.items()}
+    main_xml = _strip_comments(files["main"].read_text())
+    vtx_xml = _strip_comments(files["vertex"].read_text())
+    it_xml = _strip_comments(files["inner_tracker"].read_text())
+    ot_xml = _strip_comments(files["outer_tracker"].read_text())
 
     R = GeometryResolver()
     for txt in (main_xml, vtx_xml, it_xml, ot_xml):

@@ -22,7 +22,7 @@ from bib_common import (
     load_hits, region_table, add_peak_density, subsystem_density_table,
     write_logfile, prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
-    under_run_all, short_path, loaded_line, print_table,
+    under_run_all, short_path, loaded_line, print_table, resolve_geometry,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -37,10 +37,6 @@ PEAK_KEY = f"peak_density_p{PEAK_PERCENTILE:.0f}_hits_per_mm2"
 # ones. See bib_common.add_peak_density() for the adaptive-sizing rule.
 PEAK_TARGET_HITS_PER_BIN = 20.0
 
-GEOMETRY_FILES = (
-    "MuSIC_v2.xml", "Vertex_o2_v06_01.xml",
-    "InnerTracker_o2_v07_01.xml", "OuterTracker_o2_v07_01.xml",
-)
 
 
 def region_label(row):
@@ -79,9 +75,10 @@ def main():
     rows = region_table(hits)
 
     geometry_used = False
-    if all((geom_dir / f).exists() for f in GEOMETRY_FILES):
+    geometry = resolve_geometry(geom_dir)
+    if all(p.exists() for p in geometry.values()):
         try:
-            area_lookup = geom_mod.build_area_lookup(geom_dir)
+            area_lookup = geom_mod.build_area_lookup(geometry)
             geom_mod.annotate_rows_with_geometry_area(rows, area_lookup)
             geometry_used = True
             print(f"Sensitive areas from the detector geometry "
@@ -90,7 +87,7 @@ def main():
             print(f"WARNING: geometry parsing failed ({e}); "
                   f"falling back to hit-inferred area for all regions.")
     else:
-        missing = [f for f in GEOMETRY_FILES if not (geom_dir / f).exists()]
+        missing = [p.name for p in geometry.values() if not p.exists()]
         print(f"NOTE: geometry file(s) not found in {short_path(geom_dir)} "
               f"({', '.join(missing)}); using hit-inferred area (less accurate, "
               f"see bib_common.region_table docstring).")

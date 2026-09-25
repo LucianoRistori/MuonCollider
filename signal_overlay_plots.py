@@ -47,7 +47,7 @@ from bib_common import (
     load_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
-    under_run_all, short_path, loaded_line, print_table,
+    under_run_all, short_path, loaded_line, print_table, resolve_geometry,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -57,10 +57,6 @@ PEAK_PERCENTILE = 99.0
 PEAK_KEY = f"peak_density_p{PEAK_PERCENTILE:.0f}_hits_per_mm2"
 PEAK_TARGET_HITS_PER_BIN = 20.0
 
-GEOMETRY_FILES = (
-    "MuSIC_v2.xml", "Vertex_o2_v06_01.xml",
-    "InnerTracker_o2_v07_01.xml", "OuterTracker_o2_v07_01.xml",
-)
 
 
 def region_key(row):
@@ -103,9 +99,10 @@ def main():
     sig_rows = region_table(sig_hits)
 
     geometry_used = False
-    if all((geom_dir / f).exists() for f in GEOMETRY_FILES):
+    geometry = resolve_geometry(geom_dir)
+    if all(p.exists() for p in geometry.values()):
         try:
-            area_lookup = geom_mod.build_area_lookup(geom_dir)
+            area_lookup = geom_mod.build_area_lookup(geometry)
             geom_mod.annotate_rows_with_geometry_area(bib_rows, area_lookup)
             geom_mod.annotate_rows_with_geometry_area(sig_rows, area_lookup)
             geometry_used = True

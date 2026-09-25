@@ -740,6 +740,30 @@ def add_peak_density(hits, rows, bin_size_mm=None, percentile=99.0,
     return rows
 
 
+def resolve_geometry(default_dir):
+    """
+    The 4 detector-geometry XML files to use, as {"main", "vertex",
+    "inner_tracker", "outer_tracker"} -> Path. Under ./run_all they come
+    from input_files_config.txt (passed in as BIB_GEOMETRY_FILES). A
+    script run by hand looks for them, under their default names
+    (geometry.DEFAULT_FILE_NAMES), in `default_dir`, then in a Geometry/
+    folder next to it - the MuonColliderSimulation layout, with the ROOT
+    files in Data/ and the XML files in Geometry/.
+    """
+    from geometry import DEFAULT_FILE_NAMES
+    env = os.environ.get("BIB_GEOMETRY_FILES", "").strip()
+    if env:
+        parts = env.split(os.pathsep)
+        if len(parts) == len(DEFAULT_FILE_NAMES):
+            return {k: Path(p) for k, p in zip(DEFAULT_FILE_NAMES, parts)}
+    d = Path(default_dir)
+    for folder in (d, d.parent / "Geometry", d / "Geometry"):
+        files = {k: folder / n for k, n in DEFAULT_FILE_NAMES.items()}
+        if all(p.exists() for p in files.values()):
+            return files
+    return {k: d / n for k, n in DEFAULT_FILE_NAMES.items()}
+
+
 def under_run_all():
     """
     True when running as part of the ./run_all workflow (run_all_steps.sh
