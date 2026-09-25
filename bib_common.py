@@ -544,6 +544,94 @@ def apply_cuts(hits, cuts, B_FIELD_T=5.0):
         combined &= mask
     return combined, per_cut
 
+
+# ---------------------------------------------------------------------------
+# How the results are quoted
+#   BIB rejection factor: n_before / n_after = 1 / (1 - R), where R is the
+#     fraction of BIB hits the cuts remove - "the cuts reduce the BIB by a
+#     factor N".
+#   Efficiencies for pT -> infinity: the signal sample is flat in 1/pT from
+#     1.5 GeV/c up, so an efficiency averaged over the whole sample mostly
+#     reflects how many of its muons lie below the pT cut. What is quoted
+#     instead is the limit pT -> infinity, from a fit (see
+#     efficiency_at_infinite_pt) to the muons well above the pT cut.
+# ---------------------------------------------------------------------------
+
+PT_INF_FIT_MIN_GEV = 10.0       # the fit never goes below this pT ...
+PT_INF_FIT_CUT_MULTIPLE = 2.0   # ... nor below this multiple of the pT cut
+
+
+def rejection_factor(n_before, n_after):
+    """BIB rejection factor n_before / n_after = 1/(1 - R), with R the
+    fraction of hits removed (infinite if no hit survives)."""
+    return n_before / n_after if n_after else float("inf")
+
+
+def format_rejection_factor(n_before, n_after):
+    """The rejection factor to about 3 significant figures, e.g. '588',
+    '42.6', '1.85'; '>N' (N = n_before) when no hit survives."""
+    if not n_after:
+        return f">{n_before:,}"
+    x = n_before / n_after
+    if x >= 100:
+        return f"{x:,.0f}"
+    if x >= 10:
+        return f"{x:.1f}"
+    return f"{x:.2f}"
+
+
+def pt_inf_fit_min(cuts, systems=None):
+    """
+    Lower pT edge (GeV/c) of the fit that extrapolates an efficiency to
+    pT -> infinity (efficiency_at_infinite_pt): twice the largest pT cut
+    among `systems` (default: all subsystems), and at least 10 GeV/c - far
+    enough above the cut that the efficiency there changes only slowly
+    with pT, as the fit assumes.
+    """
+    per_system = cuts["momentum_gev"]["per_system"]
+    ids = per_system.keys() if systems is None else systems
+    pt_cut = max((per_system[s] for s in ids if per_system.get(s)), default=0.0)
+    return max(PT_INF_FIT_MIN_GEV, PT_INF_FIT_CUT_MULTIPLE * pt_cut)
+
+
+def efficiency_at_infinite_pt(pt, passed, pt_min, groups=None):
+    """
+    Efficiency in the limit pT -> infinity, from trials (tracks, or hits)
+    with generated transverse momentum `pt` (GeV/c) and outcome `passed`.
+    Fits eff = eff_inf + c/pT^2 by least squares to the trials with
+    pT > pt_min, and returns (eff_inf, its statistical uncertainty,
+    number of trials fitted).
+
+    Why this form: near 1/pT = 0 the efficiency has no term linear in
+    1/pT - the sample has muons of both charges, which bend by the same
+    amount in opposite directions, and multiple scattering deflects
+    either way - so the first correction is quadratic in 1/pT.
+
+    The uncertainty is the heteroscedasticity-robust ("sandwich") one;
+    `groups` (e.g. the event number of each hit) makes it robust to
+    correlations between trials of the same group - the hits of one
+    track are not independent of each other.
+    """
+    pt = np.asarray(pt, dtype=float)
+    y = np.asarray(passed, dtype=float)
+    sel = pt > pt_min
+    n = int(sel.sum())
+    if n < 10:
+        return float("nan"), float("nan"), n
+    y = y[sel]
+    X = np.column_stack([np.ones(n), (1.0 / pt[sel]) ** 2])
+    xtx_inv = np.linalg.inv(X.T @ X)
+    beta = xtx_inv @ (X.T @ y)
+    resid = y - X @ beta
+    if groups is None:
+        scores = X * resid[:, None]
+    else:
+        g = np.unique(np.asarray(groups)[sel], return_inverse=True)[1]
+        scores = np.column_stack([np.bincount(g, weights=X[:, j] * resid)
+                                  for j in range(X.shape[1])])
+    cov = xtx_inv @ (scores.T @ scores) @ xtx_inv
+    return float(beta[0]), float(np.sqrt(cov[0, 0])), n
+
 def mask_hits(hits, mask):
     """
     Return a new hits dict with every per-hit array field filtered by

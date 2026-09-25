@@ -21,6 +21,14 @@ Multiple input files are still supported (their tracks are simply
 pooled before binning), in case additional muon-gun samples covering a
 different pT range are added later.
 
+The number quoted for the run is the efficiency in the limit
+pT -> infinity (not the average over the sample, which mostly reflects
+how many of its muons lie below the pT cut): a fit eff = eff_inf +
+c/pT^2 to the tracks well above the pT cut (bib_common.
+efficiency_at_infinite_pt, pt_inf_fit_min), extrapolated to 1/pT = 0.
+It is printed, written to track_efficiency_limit.csv, and drawn on the
+plot (the fitted curve, and eff_inf at the pT = infinity end of the axis).
+
 The plot's x-axis is linear in 1/pT (not pT, and not logarithmic) -
 the same convention used for the curvature/pT axis in
 incidence_angle_plots.py: tick *positions* stay evenly spaced in 1/pT,
@@ -50,6 +58,7 @@ from bib_common import (
     under_run_all, short_path, loaded_line, print_table, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
+    pt_inf_fit_min, efficiency_at_infinite_pt, SYSTEM_NAMES,
 )
 
 N_BINS_DEFAULT = 150  # evenly spaced in 1/pT; x10 finer than the initial 15
@@ -229,6 +238,23 @@ def main():
     print(f"{n_tracks:,} tracks{pooled}, generated pT {pT_gen.min():.3g} to "
           f"{pT_gen.max():.3g} GeV/c")
 
+    # Efficiency for pT -> infinity: fit eff_inf + c/pT^2 to the tracks well
+    # above the pT cut of the subsystems whose hits count toward "found".
+    counted = [s for s in SYSTEM_NAMES
+               if not (exclude_vertex_hits and s in VERTEX_SYSTEM_IDS)]
+    fit_pt_min = pt_inf_fit_min(cuts, counted)
+    eff_inf, eff_inf_unc, n_fit = efficiency_at_infinite_pt(pT_gen, found, fit_pt_min)
+    sel = pT_gen > fit_pt_min
+    fit_c = (float(np.polyfit((1.0 / pT_gen[sel]) ** 2, found[sel].astype(float), 1)[0])
+             if n_fit >= 10 else float("nan"))
+    print(f"Track-finding efficiency for pT -> inf: {eff_inf*100:.1f} +- {eff_inf_unc*100:.1f}% "
+          f"(fit eff + c/pT^2 to the {n_fit:,} tracks with pT > {fit_pt_min:g} GeV/c)")
+    with open(outdir / "track_efficiency_limit.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["efficiency_pt_inf", "efficiency_pt_inf_unc", "fit_pt_min_gev",
+                    "fit_n_tracks", "fit_c_gev2", "n_tracks", "efficiency_all_tracks"])
+        w.writerow([eff_inf, eff_inf_unc, fit_pt_min, n_fit, fit_c, n_tracks, float(found.mean())])
+
     # Bin evenly spaced in 1/pT (matches the flat-in-1/pT generation - see
     # module docstring), so bin statistics stay roughly equal all the way
     # into the high-pT tail instead of thinning out there.
@@ -291,13 +317,24 @@ def main():
         x_hi = inv_pT_center[above_1pct[-1]] + 1.5 * bin_width_inv
     else:
         x_hi = edges_inv[-1]
-    x_lo = edges_inv[0]
+    x_lo = -1.2 * bin_width_inv     # room for the pT = infinity point at 1/pT = 0
 
-    tick_pos, tick_labels, minor_tick_pos = pt_ticks_for_inv_pt_axis(x_lo, x_hi)
+    tick_pos, tick_labels, minor_tick_pos = pt_ticks_for_inv_pt_axis(edges_inv[0], x_hi)
+    tick_pos, tick_labels = [0.0] + tick_pos, ["\u221e"] + tick_labels
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
     ax.errorbar(inv_pT_center, eff_arr, yerr=unc, xerr=xerr,
-                fmt="o", markersize=4, capsize=2, color="#2ca858", ecolor="#8fcaa4")
+                fmt="o", markersize=4, capsize=2, color="#2ca858", ecolor="#8fcaa4",
+                label="efficiency per bin")
+    if np.isfinite(eff_inf):
+        xf = np.linspace(0.0, 1.0 / fit_pt_min, 50)
+        ax.plot(xf, 100 * (eff_inf + fit_c * xf ** 2), "--", color="#a83232", linewidth=1.4,
+                label=f"fit $\\epsilon_\\infty$ + c/p$_T^2$, p$_T$ > {fit_pt_min:g} GeV/c")
+        ax.errorbar([0.0], [100 * eff_inf], yerr=[100 * eff_inf_unc], fmt="D", markersize=6,
+                    capsize=3, color="#a83232", zorder=5,
+                    label=f"p$_T$ \u2192 \u221e: {100 * eff_inf:.1f} \u00b1 "
+                          f"{100 * eff_inf_unc:.1f}%")
+        ax.legend(loc="upper right", fontsize=9)
     ax.set_xlim(x_lo, x_hi)
     ax.set_xticks(tick_pos)
     ax.set_xticklabels(tick_labels)
@@ -316,7 +353,8 @@ def main():
     plt.savefig(outdir / "track_efficiency_vs_pt.png", dpi=140)
     plt.close(fig)
 
-    print(f"Wrote track_efficiency_vs_pt.csv and .png to {short_path(outdir)}/")
+    print(f"Wrote track_efficiency_vs_pt.csv and .png, track_efficiency_limit.csv "
+          f"to {short_path(outdir)}/")
 
 
 if __name__ == "__main__":

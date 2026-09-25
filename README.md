@@ -31,9 +31,11 @@ archives the whole run in `runs/<date>_<time>/`: every plot and table,
 the three settings files exactly as used (copied at the start, so
 editing them during a run has no effect on it), the complete log
 (`run_log.txt`), the code version (`code_version.txt`) and a short
-`summary.txt` (settings + BIB rejection / signal efficiency per
-subsystem, with each subsystem's cuts next to its results when the cuts
-differ between subsystems). Only when every step succeeds are the `step*` folders next
+`summary.txt`: the settings; per subsystem, the BIB rejection factor
+and the signal hit efficiency for pT → ∞ (with each subsystem's cuts
+next to its results when the cuts differ between subsystems); and the
+track-finding efficiency for pT → ∞ - see "How the results are quoted"
+below. Only when every step succeeds are the `step*` folders next
 to the settings files replaced by that run's results; `latest_run.txt`
 says which run they show. A failed or interrupted run is kept as
 `runs/<date>_<time>_FAILED` (or `_INTERRUPTED`) and leaves the `step*`
@@ -48,8 +50,9 @@ time distributions with the signal overlaid - both without cuts (step
 zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
 `_highlights/` also holds `highlights_<date>_<time>.pdf`, a landscape
 (16:9) presentation that `make_highlights_pdf.py` makes at the end of
-every successful run: a title page (input files, settings, BIB
-rejection and signal efficiency per subsystem), a page with each
+every successful run: a title page (input files, settings, and the
+results: BIB rejection factor and signal efficiency for pT → ∞ per
+subsystem, track-finding efficiency for pT → ∞), a page with each
 subsystem's cuts next to its results (only when the cuts differ between
 subsystems), then five of the plots - BIB density before/after the
 cuts, track-finding efficiency, and the three zoomed N-1 plots - one per
@@ -642,8 +645,31 @@ overlay plots and on the step-4 N-1 plots are drawn panel by panel, each
 at its own subsystem's value, which is also given in the panel title.
 When the cuts differ between subsystems, the results summary (end of
 `run_log.txt`, `summary.txt`, `latest_run.txt`) lists each subsystem's
-cuts next to its BIB rejection and signal efficiency, and the PDF in
-`_highlights/` has a page with the same table.
+cuts next to its BIB rejection factor and signal efficiency, and the
+PDF in `_highlights/` has a page with the same table.
+
+**How the results are quoted.**
+- **BIB rejection factor** = BIB hits before the cuts / BIB hits after
+  them = 1/(1 - R), with R the fraction of BIB hits the cuts remove
+  ("the cuts reduce the BIB by a factor N"). Per subsystem and overall.
+- **Signal efficiencies for pT → ∞**, not averaged over the sample: the
+  muon-gun sample is flat in 1/pT from 1.5 GeV/c up, so most of its
+  muons lie below the pT cut, and an average over it mostly measures
+  that. The limit pT → ∞ is obtained by fitting eff(pT) = eff_inf +
+  c/pT² to the muons well above the pT cut - pT above twice the pT cut,
+  and at least 10 GeV/c - and extrapolating to 1/pT = 0
+  (`bib_common.efficiency_at_infinite_pt`). There is no term linear in
+  1/pT: muons of both charges bend by the same amount in opposite
+  directions, and multiple scattering deflects either way, so the first
+  correction is quadratic. The statistical uncertainty is the robust
+  ("sandwich") one, with hits grouped by event, since the hits of one
+  track are correlated. Checked with the settings of run
+  2026-09-25_155610: the fit agrees within errors with the plain average
+  over pT > 50 or > 100 GeV/c, and with a fit that also has a 1/pT
+  term. Quoted for
+  the fraction of a signal muon's hits kept, per subsystem
+  (`apply_cuts.py`), and for the track-finding efficiency
+  (`track_efficiency.py`).
 
 **`exclude_vertex_hits`** (`[track]` section): if true, hits in the
 vertex detector (VXD barrel/endcap) are excluded from the per-track
@@ -672,9 +698,14 @@ Analysis/step4_cuts`. Outputs, in `Analysis/step4_cuts/`:
 - `cutflow_bib.csv` / `cutflow_signal.csv` - per subsystem (and an "ALL"
   row): hit counts passing each individual cut on its own, and all three
   combined, plus the combined pass fraction.
+- `summary_by_region.csv` - per subsystem (and "ALL"): its cuts, BIB
+  hits before/after the cuts, the BIB rejection factor, and the signal
+  hit efficiency for pT → ∞ with its uncertainty and fit range - the
+  numbers of the run's summary table (see "How the results are quoted"
+  above).
 - `density_before_after_cuts.csv` - per subsystem: **BIB only** n_hits/
-  mean density/peak density, before and after cuts, plus BIB rejection
-  fraction (using the true geometry area, same as step 1/3). Signal hit
+  mean density/peak density, before and after cuts, plus the BIB
+  rejection factor (using the true geometry area, same as step 1/3). Signal hit
   density was dropped from this table and plot per the user's
   instruction - it isn't an interesting quantity on its own (signal
   efficiency is instead measured properly by track, see
@@ -728,8 +759,15 @@ from an initial 15 to better resolve the sharp turn-on described below.
 Outputs, in `Analysis/step4_track_efficiency/`:
 - `track_efficiency_vs_pt.csv` - per bin: 1/pT range/center, pT
   range/mean, n tracks examined/found, efficiency, uncertainty.
+- `track_efficiency_limit.csv` - the track-finding efficiency for
+  pT → ∞ and its uncertainty (see "How the results are quoted" above),
+  the fit range and number of tracks fitted, the fitted c, and, for
+  reference only, the efficiency averaged over the whole sample. The
+  same number is printed in the log and copied to `summary.txt`.
 - `track_efficiency_vs_pt.png` - efficiency (%) vs. 1/pT bin center,
-  with vertical (binomial) and horizontal (bin half-width) error bars.
+  with vertical (binomial) and horizontal (bin half-width) error bars,
+  plus the pT → ∞ fit (dashed red, over its fit range) and its result
+  (red diamond at the "∞" end of the axis, 1/pT = 0).
   **Axis convention**: linear in **1/pT**, not pT and not logarithmic -
   matching the variable the binning is actually evenly spaced in (same
   convention as `inv_radius_per_subsystem.png` in step 2). Tick
@@ -844,7 +882,9 @@ ntuples and gives identical results. Code lives in
   (time-of-flight-corrected hit time, described above; requires
   `add_incidence_angles` to have been called first; also adds the
   signed curvature-derived `pT_curv_gev`), `load_cuts`/`apply_cuts`
-  (per-subsystem selection cuts, described above), `load_track_params`
+  (per-subsystem selection cuts, described above), `rejection_factor`/
+  `format_rejection_factor`, `efficiency_at_infinite_pt`/`pt_inf_fit_min`
+  (how results are quoted, see above), `load_track_params`
   (the `[track]` section of `__cuts_config.txt`: `min_hits_found` and
   `exclude_vertex_hits`), `mask_hits` (filter every per-hit
   array field of a hits dict by a boolean mask, keeping metadata

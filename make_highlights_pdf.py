@@ -1,6 +1,7 @@
 """
 Build a landscape (16:9) PDF presentation of a run's key plots: a title
-page (input files, settings, BIB rejection vs. signal efficiency), a page
+page (input files, settings, BIB rejection factor and signal efficiency
+for pT -> infinity, track-finding efficiency for pT -> infinity), a page
 with the cuts and results per subsystem when the cuts differ between
 subsystems, then one plot per page with a short caption underneath.
 Captions take their numbers (cut values, resolutions, results) from the
@@ -27,6 +28,7 @@ from matplotlib.lines import Line2D
 
 import check_configs as cc
 import cuts_table as ct
+from bib_common import format_rejection_factor
 
 PAGE = (13.333, 7.5)                     # inches, 16:9 landscape
 INK, MUTED, RULE = "#1a1a1a", "#6b6b6b", "#c8c8c8"
@@ -71,19 +73,25 @@ def load_run(run_dir):
     def read_csv(path):
         with open(path) as f:
             return list(csv.DictReader(f))
-    bib = {r["system_name"]: r for r in read_csv(run_dir / "step4_cuts" / "cutflow_bib.csv")}
-    sig = {r["system_name"]: r for r in read_csv(run_dir / "step4_cuts" / "cutflow_signal.csv")}
-    table = [(name, 100 * (1 - float(bib[name]["frac_after_all"])),
-              100 * float(sig[name]["frac_after_all"])) for name in bib]
-
-    eff = read_csv(run_dir / "step4_track_efficiency" / "track_efficiency_vs_pt.csv")
-    high = [r for r in eff if float(r["pT_lo_gev"]) >= 10.0]
-    n_high = sum(int(float(r["n_tracks_examined"])) for r in high)
-    plateau = 100 * sum(int(float(r["n_tracks_found"])) for r in high) / n_high if n_high else float("nan")
-    n_tracks = sum(int(float(r["n_tracks_examined"])) for r in eff)
+    by_region = run_dir / "step4_cuts" / "summary_by_region.csv"
+    limit = run_dir / "step4_track_efficiency" / "track_efficiency_limit.csv"
+    if not (by_region.is_file() and limit.is_file()):
+        sys.exit(f"Run {run_dir.name} was made before the results were quoted as a rejection "
+                 f"factor and as efficiencies for pT -> infinity (it has no {by_region.name}); "
+                 f"run ./run_all again to get a PDF.")
+    # (region, BIB rejection factor as text, signal efficiency for pT -> inf, its uncertainty)
+    table = [(r["system_name"],
+              format_rejection_factor(int(r["bib_n_hits"]), int(r["bib_n_hits_after_cuts"])),
+              100 * float(r["signal_efficiency_pt_inf"]),
+              100 * float(r["signal_efficiency_pt_inf_unc"])) for r in read_csv(by_region)]
+    lim = read_csv(limit)[0]
+    track = {"eff": 100 * float(lim["efficiency_pt_inf"]),
+             "unc": 100 * float(lim["efficiency_pt_inf_unc"]),
+             "pt_min": float(lim["fit_pt_min_gev"]), "n_tracks": int(lim["n_tracks"])}
+    signal_pt_min = sorted({float(r["fit_pt_min_gev"]) for r in read_csv(by_region)})
 
     return {"name": run_dir.name, "cuts": cuts, "smear": smear, "inputs": inputs,
-            "table": table, "plateau": plateau, "n_tracks": n_tracks}
+            "table": table, "track": track, "signal_pt_min": signal_pt_min}
 
 
 def nice(s):
@@ -141,6 +149,7 @@ def captions(run):
                 f"are kept." + (f" The cut is off in {', '.join(off)}." if off else ""))
 
     rej_all, eff_all = run["table"][-1][1], run["table"][-1][2]
+    trk = run["track"]
     if uniform:
         v = {col: ct.values(c, col)[0] for col in ct.COLUMNS}
         cut_list = [f"|t - t$_{{TOF}}$| ≤ {v['time']:g} ns" if on("time") else None,
@@ -158,22 +167,25 @@ def captions(run):
     if not on("pt"):
         pt_tail = ""
     elif ct.is_uniform(c, "pt"):
-        pt_tail = f", and drops to zero just below the $p_T$ ≥ {ct.values(c, 'pt')[0]:g} GeV/c cut"
+        pt_tail = (f"; it falls off toward low $p_T$ because of the $p_T$ ≥ "
+                   f"{ct.values(c, 'pt')[0]:g} GeV/c cut")
     else:
-        pt_tail = f", and falls off below the subsystems' $p_T$ cuts ({ct.value_range(c, 'pt')})"
+        pt_tail = (f"; it falls off toward low $p_T$ because of the subsystems' $p_T$ cuts "
+                   f"({ct.value_range(c, 'pt')})")
     return [
         ("density_before_after_cuts.png",
          "BIB hit density before and after the cuts",
          f"Mean BIB hit density per subsystem (hits/mm$^2$, log scale) for one collision's worth of "
          f"background{made_of}, before the cuts (light blue) and after all cuts combined (dark blue). "
-         f"{cut_sentence} Overall the cuts remove {rej_all:.2f}% of the BIB hits and keep "
-         f"{eff_all:.2f}% of the signal hits."),
+         f"{cut_sentence} Overall they reduce the BIB hits by a factor {rej_all} (rejection "
+         f"factor), and keep {eff_all:.1f}% of the hits of a signal muon with $p_T$ → ∞."),
         ("track_efficiency_vs_pt.png",
          "Track-finding efficiency vs. transverse momentum",
          f"Fraction of signal muons counted as found – at least {trk_min} of their hits survive "
-         f"all cuts{vtx} – vs. generated $p_T$ ({run['n_tracks']:,} muons, one per event; the axis is "
-         f"linear in 1/$p_T$ and cropped where the efficiency is below 1%). Above 10 GeV/c the "
-         f"efficiency averages {run['plateau']:.1f}%{pt_tail}."),
+         f"all cuts{vtx} – vs. generated $p_T$ ({trk['n_tracks']:,} muons, one per event; the axis is "
+         f"linear in 1/$p_T$ and cropped where the efficiency is below 1%). For $p_T$ → ∞ it is "
+         f"{trk['eff']:.1f} ± {trk['unc']:.1f}% (red diamond), from a fit of ε$_∞$ + c/$p_T^2$ to the "
+         f"muons above {trk['pt_min']:g} GeV/c (dashed){pt_tail}."),
         ("z_axis_intercept_per_subsystem_zoom_n1.png",
          "$z$-axis intercept $z_0$ (N-1)",
          f"Where each hit's direction, extrapolated in the $r$-$z$ plane, crosses the beam line, for "
@@ -206,19 +218,24 @@ def page_frame(fig, title, run, page, n_pages, footer):
 
 def draw_table(ax, header, cells, col_widths, fontsize, row_scale):
     """A table in the style of the title page: horizontal rules only, first
-    column left-aligned, header and ALL row in bold."""
+    column left-aligned, header and ALL row in bold. Header labels may
+    have two lines ("a\nb"); the header row is then made taller."""
     ax.set_axis_off()
     tab = ax.table(cellText=cells, colLabels=header, colLoc="right", cellLoc="right",
                    loc="upper left", edges="horizontal", colWidths=col_widths)
     tab.auto_set_font_size(False)
     tab.set_fontsize(fontsize)
     tab.scale(1, row_scale)
+    two_lines = any("\n" in h for h in header)
     for (r, col), cell in tab.get_celld().items():
         cell.set_edgecolor(RULE)
         if col == 0:
             cell.set_text_props(ha="left")
         if r == 0 or cells[r - 1][0] == "ALL":
             cell.set_text_props(weight="bold")
+        if r == 0 and two_lines:
+            cell.set_height(cell.get_height() * 1.75)
+            cell.set_text_props(va="top" if col == 0 else "center")
     return tab
 
 
@@ -274,11 +291,22 @@ def main(argv):
                     y -= 0.045
             y -= 0.04
         ax = fig.add_axes([0.6, 0.22, 0.34, 0.45])
-        ax.set_title("BIB rejection vs. signal efficiency\n(all cuts combined)", fontsize=12,
+        ax.set_title("BIB rejection and signal efficiency\n(all cuts combined)", fontsize=12,
                      weight="bold", color=INK, loc="left")
-        draw_table(ax, ["region", "BIB rejection", "signal efficiency"],
-                   [[name, f"{rej:.2f}%", f"{eff:.2f}%"] for name, rej, eff in run["table"]],
-                   [0.36, 0.3, 0.34], 11, 1.55)
+        tab = draw_table(ax, ["region", "BIB rejection\nfactor", "signal efficiency\n($p_T$ → ∞)"],
+                         [[name, rej, f"{eff:.1f} ± {unc:.1f}%"] for name, rej, eff, unc in run["table"]],
+                         [0.32, 0.3, 0.38], 11, 1.55)
+        fig.canvas.draw()
+        box = tab.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
+        trk = run["track"]
+        fig.text(0.6, box.y0 - 0.06, f"Track-finding efficiency for $p_T$ → ∞:  "
+                 f"{trk['eff']:.1f} ± {trk['unc']:.1f}%", fontsize=11.5, weight="bold", color=INK)
+        pt_min = run["signal_pt_min"]
+        fig.text(0.6, box.y0 - 0.105,
+                 "rejection factor = 1/(1 − fraction of BIB hits removed)\n"
+                 "efficiencies for $p_T$ → ∞: fit of ε$_∞$ + c/$p_T^2$ to muons above "
+                 + (f"{pt_min[0]:g} GeV/c" if len(pt_min) == 1 else "twice the $p_T$ cut"),
+                 fontsize=8.5, color=MUTED, va="top", linespacing=1.5)
         page_frame(fig, "", run, 1, n_pages, footer)
         pdf.savefig(fig)
         plt.close(fig)
@@ -290,19 +318,21 @@ def main(argv):
             cuts = run["cuts"]
             by_name = {ct.NAMES[s]: s for s in ct.SYSTEM_IDS}
             cells = []
-            for name, rej, eff in run["table"]:
+            for name, rej, eff, unc in run["table"]:
                 s = by_name.get(name)
                 cut_cells = ([ct.fmt(cuts["cuts"][col][s]) for col in ct.COLUMNS] if s
                              else ["", "", ""])
-                cells.append([name] + cut_cells + [f"{rej:.2f}%", f"{eff:.2f}%"])
+                cells.append([name] + cut_cells + [rej, f"{eff:.1f} ± {unc:.1f}%"])
             ax = fig.add_axes([0.1, 0.27, 0.8, 0.56])
-            draw_table(ax, ["region", "time (ns)", "$z_0$ (mm)", "$p_T$ (GeV/c)",
-                            "BIB rejection", "signal efficiency"],
-                       cells, [0.2, 0.14, 0.14, 0.16, 0.17, 0.19], 14, 2.3)
+            draw_table(ax, ["region", "time\n(ns)", "$z_0$\n(mm)", "$p_T$\n(GeV/c)",
+                            "BIB rejection\nfactor", "signal efficiency\n($p_T$ → ∞)"],
+                       cells, [0.2, 0.12, 0.12, 0.14, 0.19, 0.23], 14, 2.1)
             caption = ("A hit is kept only if it passes all three cuts of its own subsystem: "
                        "|t - t$_{TOF}$| ≤ time, |$z_0$| ≤ $z_0$ and $p_T$ ≥ $p_T$ (off: that cut "
-                       "is not applied there). BIB rejection is the fraction of BIB hits removed by "
-                       "all cuts combined; signal efficiency is the fraction of signal hits kept.")
+                       "is not applied there). BIB rejection factor: BIB hits before / after all "
+                       "cuts, = 1/(1 − R) with R the fraction removed. Signal efficiency: fraction "
+                       "of a signal muon's hits kept, in the limit $p_T$ → ∞ (fit of ε$_∞$ + "
+                       "c/$p_T^2$ to muons well above the $p_T$ cut).")
             fig.text(0.04, 0.172, wrap(caption), fontsize=11.5, color=INK,
                      va="top", linespacing=1.4)
             pdf.savefig(fig)

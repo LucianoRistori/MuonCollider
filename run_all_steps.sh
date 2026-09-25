@@ -18,8 +18,10 @@
 #      effect on that run).
 #   3. Runs steps 1-4, writing every plot and table into that run folder,
 #      and saves everything printed to runs/<date>_<time>/run_log.txt.
-#   4. Only if ALL steps succeed: writes summary.txt (settings + BIB
-#      rejection / signal efficiency), gathers the key plots in
+#   4. Only if ALL steps succeed: writes summary.txt (settings, BIB
+#      rejection factor and signal efficiency for pT -> infinity per
+#      subsystem, track-finding efficiency for pT -> infinity), gathers
+#      the key plots in
 #      _highlights/ together with a PDF presentation of the main ones
 #      (highlights_<date>_<time>.pdf), and replaces the step* folders in
 #      the working folder with this run's copy, so they always show the
@@ -306,7 +308,9 @@ fi
     "$PYTHON" "$CODE_DIR/check_configs.py" --brief "$RUN_DIR/__cuts_config.txt" "$RUN_DIR/__smearing_config.txt" \
         "$RUN_DIR/__input_files_config.txt" --sim-dir "$SIM_DIR"
     say ""
-    awk '/Summary: BIB rejection vs. signal efficiency/ {print; f=1; next} f && /^  [^ ]/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
+    awk '/^Summary: BIB rejection/ {print; f=1; next} f && /^  [^ ]/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
+    trk="$(grep -m1 '^Track-finding efficiency for pT -> inf' "$RUN_DIR/run_log.txt")"
+    [ -z "$trk" ] || { say ""; say "$trk"; }
 } > "$RUN_DIR/summary.txt"
 
 missing_hl=""

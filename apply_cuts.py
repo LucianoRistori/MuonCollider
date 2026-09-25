@@ -14,6 +14,13 @@ Two kinds of comparison are produced:
   1. A cutflow (hit counts before / after each individual cut / after
      all three combined, per subsystem) for BIB and for signal
      separately - this shows each cut's own selectivity.
+     The run's summary table is built from it: per subsystem, the BIB
+     rejection factor (hits before / hits after = 1/(1 - R), R being
+     the fraction of BIB hits removed) and the signal hit efficiency in
+     the limit pT -> infinity (bib_common.efficiency_at_infinite_pt -
+     not averaged over the sample, which is flat in 1/pT from 1.5
+     GeV/c and so mostly made of muons below the pT cut). Also written
+     to summary_by_region.csv.
   2. A before/after hit-density comparison (mean density, hits/mm^2,
      using the true detector geometry area when available - same
      definition as step 1/3) for BIB only. (Signal hit density isn't
@@ -43,6 +50,8 @@ from bib_common import (
     under_run_all, short_path, loaded_line, print_table, resolve_geometry, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
+    rejection_factor, format_rejection_factor, pt_inf_fit_min, efficiency_at_infinite_pt,
+    PT_INF_FIT_MIN_GEV,
 )
 import cuts_table
 import geometry as geom_mod
@@ -71,14 +80,14 @@ FIELDS_NEEDED_FOR_CUTS_AND_DENSITY = {
 }
 
 
-def slim_hits(hits):
+def slim_hits(hits, keep=()):
     """Drop per-hit fields not needed for cuts/density (see
-    FIELDS_NEEDED_FOR_CUTS_AND_DENSITY), freeing their memory immediately.
-    Mutates hits in place and returns it."""
+    FIELDS_NEEDED_FOR_CUTS_AND_DENSITY) or listed in `keep`, freeing their
+    memory immediately. Mutates hits in place and returns it."""
     for k in list(hits.keys()):
         if k.startswith("_"):
             continue
-        if k not in FIELDS_NEEDED_FOR_CUTS_AND_DENSITY:
+        if k not in FIELDS_NEEDED_FOR_CUTS_AND_DENSITY and k not in keep:
             del hits[k]
     return hits
 
@@ -179,7 +188,7 @@ def main():
     add_time_of_flight(sig_hits)
     n_sig_events = sig_hits["_n_events"]
     n_sig_hit = len(sig_hits["x"])
-    slim_hits(sig_hits)
+    slim_hits(sig_hits, keep={"event_id"})   # event_id: generated pT of each hit
     gc.collect()
     print(loaded_line(signal_file, sig_hits, "signal"))
 
@@ -231,7 +240,7 @@ def main():
     fields = ["system", "system_name",
               "bib_n_hits_before", "bib_mean_density_before", f"bib_{PEAK_KEY}_before",
               "bib_n_hits_after", "bib_mean_density_after", f"bib_{PEAK_KEY}_after",
-              "bib_rejection_frac"]
+              "bib_rejection_factor"]
     with open(csv_path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields, restval="")
         w.writeheader()
@@ -247,7 +256,8 @@ def main():
                 "bib_n_hits_after": ba["n_hits"],
                 "bib_mean_density_after": ba["density_hits_per_mm2"],
                 f"bib_{PEAK_KEY}_after": ba.get(PEAK_KEY, ""),
-                "bib_rejection_frac": 1.0 - ba["n_hits"] / bib_n_before if bib_n_before else "",
+                "bib_rejection_factor": rejection_factor(bib_n_before, ba["n_hits"])
+                if bib_n_before else "",
             })
 
     # ---- plot: BIB density before/after ------------------------------------
@@ -277,27 +287,60 @@ def main():
     plt.close(fig)
 
     print(f"Wrote cutflow_bib.csv, cutflow_signal.csv, density_before_after_cuts.csv "
-          f"and .png to {short_path(outdir)}/")
+          f"and .png, summary_by_region.csv to {short_path(outdir)}/")
+
+    # Signal hit efficiency for pT -> infinity, per subsystem and overall:
+    # each hit gets the generated pT of its event's muon.
+    px, py = sig_hits["_primary"]["px"], sig_hits["_primary"]["py"]
+    sig_pt = np.sqrt(px ** 2 + py ** 2)[sig_hits["event_id"]]
+    sig_sys = sig_hits["system"]
+    eff_inf = {}
+    for s in sorted(SYSTEM_NAMES.keys()) + ["ALL"]:
+        sel = (sig_sys == s) if s != "ALL" else np.ones(len(sig_sys), dtype=bool)
+        pt_min = pt_inf_fit_min(cuts, None if s == "ALL" else [s])
+        eff_inf[s] = efficiency_at_infinite_pt(sig_pt[sel], sig_mask[sel], pt_min,
+                                               groups=sig_hits["event_id"][sel]) + (pt_min,)
 
     # When the cuts differ between subsystems, each region's own cut values
     # are shown next to its results.
     per_system = any(len(set(c["per_system"].values())) > 1 for c in cuts.values())
-    summary_rows = []
+    summary_rows, csv_rows = [], []
     for r_b, r_s in zip(bib_cutflow, sig_cutflow):
-        rej = 1.0 - r_b["frac_after_all"] if r_b["n_total"] else float("nan")
-        eff = r_s["frac_after_all"]
+        s = r_b["system"]
+        eff, unc, n_fit, pt_min = eff_inf[s]
         cut_cells = []
         if per_system:
-            s = r_b["system"]
             cut_cells = ([cuts_table.fmt(cuts[n]["per_system"][s]) for n in CUT_ORDER]
                          if s in SYSTEM_NAMES else ["", "", ""])
         summary_rows.append([r_b["system_name"]] + cut_cells
-                            + [f"{rej*100:.2f}%", f"{eff*100:.2f}%"])
+                            + [format_rejection_factor(r_b["n_total"], r_b["n_after_all"]),
+                               f"{eff*100:.1f} +- {unc*100:.1f}%"])
+        csv_rows.append({
+            "system": s, "system_name": r_b["system_name"],
+            "time_cut_ns": cuts_table.fmt(cuts["t_corrected_ns"]["per_system"].get(s)) if s in SYSTEM_NAMES else "",
+            "z0_cut_mm": cuts_table.fmt(cuts["z_axis_intercept_mm"]["per_system"].get(s)) if s in SYSTEM_NAMES else "",
+            "pt_cut_gev": cuts_table.fmt(cuts["momentum_gev"]["per_system"].get(s)) if s in SYSTEM_NAMES else "",
+            "bib_n_hits": r_b["n_total"], "bib_n_hits_after_cuts": r_b["n_after_all"],
+            "bib_rejection_factor": rejection_factor(r_b["n_total"], r_b["n_after_all"]),
+            "signal_efficiency_pt_inf": eff, "signal_efficiency_pt_inf_unc": unc,
+            "fit_pt_min_gev": pt_min, "fit_n_hits": n_fit,
+        })
+    with open(outdir / "summary_by_region.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(csv_rows[0].keys()))
+        w.writeheader()
+        w.writerows(csv_rows)
     header = (["region"] + (["time (ns)", "z0 (mm)", "pT (GeV/c)"] if per_system else [])
-              + ["BIB rejection", "signal efficiency"])
+              + ["BIB rejection factor", "signal efficiency, pT -> inf"])
     print()
-    print_table("Summary: BIB rejection vs. signal efficiency (all cuts combined)",
-                header, summary_rows)
+    print_table("Summary: BIB rejection factor and signal hit efficiency for pT -> inf "
+                "(all cuts combined)", header, summary_rows)
+    pt_mins = sorted({v[3] for v in eff_inf.values()})
+    window = (f"pT > {pt_mins[0]:g} GeV/c" if len(pt_mins) == 1
+              else "pT above twice their subsystem's pT cut (at least "
+                   f"{PT_INF_FIT_MIN_GEV:g} GeV/c)")
+    print("  Rejection factor: BIB hits before / after the cuts = 1/(1 - R), "
+          "R = fraction removed.")
+    print(f"  Efficiency for pT -> inf: fit eff + c/pT^2 to the hits of muons with {window}.")
     print()
 
 
