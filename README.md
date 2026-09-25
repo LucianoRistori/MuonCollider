@@ -1,5 +1,38 @@
 # BIB n-tuple format and first plots
 
+## How to run the analysis
+
+Everything is run from the results folder in Dropbox, which holds the
+two editable settings files:
+
+```
+cd ~/Dropbox/Documents/MuonColliderSimulation/results
+# edit cuts_config.txt (cuts) and/or smearing_config.txt (resolutions)
+./run_all
+```
+
+`./run_all` first checks the settings files (misspelled, unknown or
+missing settings, values that aren't numbers or true/false, negative
+widths/sigmas, duplicates - nothing runs until they are fixed), the
+input ROOT files and the Python packages. It then runs steps 1-4 and
+archives the whole run in `runs/<date>_<time>/`: every plot and table,
+the two settings files exactly as used (copied at the start, so editing
+them during a run has no effect on it), the complete log
+(`run_log.txt`), the code version (`code_version.txt`) and a short
+`summary.txt` (settings + BIB rejection / signal efficiency per
+subsystem). Only when every step succeeds are the `step*` folders next
+to the settings files replaced by that run's results; `latest_run.txt`
+says which run they show. A failed or interrupted run is kept as
+`runs/<date>_<time>_FAILED` (or `_INTERRUPTED`) and leaves the `step*`
+folders untouched. To compare runs: `cat runs/*/summary.txt`.
+
+The code folder (`~/code/MuonCollider`) keeps only templates of the
+settings files (`templates/`); the copies in the results folder are the
+ones used. `./run_all` finds the code in `~/code/MuonCollider` (or set
+`MUONCOLLIDER_CODE=/path`), reads the ROOT files from the folder above
+the results folder, and calls `run_all_steps.sh` (see
+`./run_all --help`).
+
 ## Source files
 `ntu_bib_plus_1evt.root` and `ntu_bib_minus_1evt.root`, tree `HTAtree` —
 1 entry each, one seed/primary particle (`part_pdg = -14`, muon
@@ -447,11 +480,8 @@ run as `signal_overlay_angle_plots.py ntu_bib_2evt.root
 ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root
 results/step3_signal_overlay` (same output folder as
 `signal_overlay_plots.py`, so the r-z map/CSV and these 6 plots live
-together — note `prepare_output_dir` archives the *whole* folder on
-each run, so after running one of the two step-3 scripts alone, re-copy
-the other script's prior outputs back in from `OldResults/` before
-treating the folder as complete, or just re-run both scripts back to
-back).
+together; under `./run_all` both scripts simply write into that one
+folder).
 
 **Normalization: hits / collision / bin.** Per the physical picture
 above, both curves are put on the same, addable footing:
@@ -571,57 +601,12 @@ cuts - i.e. "found" then means `min_hits_found`+ surviving hits *outside*
 the vertex detector. Default false (vertex hits count the same as any
 other subsystem's).
 
-**`run_step4.sh`** ties the two step-4 scripts together: after editing
-`cuts_config.txt`, running
-```
-./run_step4.sh
-```
-(from `~/code/MuonCollider`, no arguments needed for the normal case)
-re-runs `apply_cuts.py`, `track_efficiency.py`, and `n1_cut_plots.py`
-against the current cut values and regenerates every plot/table that
-depends on them in one command, rather than having to remember to
-re-run each script separately. It assumes the standard layout - this
-script next to the others, ROOT files and `results/` under
-`~/Dropbox/Documents/MuonColliderSimulation` - and reads those via
-`DATA_DIR`/`BIB_FILE`/`SIGNAL_FILE` shell variables (each overridable,
-e.g. `SIGNAL_FILE=/path/to/other.root ./run_step4.sh`, for a one-off
-run against different inputs without editing the script).
-
-**Every run is archived**, not overwritten: each invocation stamps a
-`YYYYMMDD-HHMMSS` timestamp and writes a self-contained folder under
-`results/step4_runs/<timestamp>/`, containing:
-- `cuts_config.txt` - a copy of the exact cut values used for this run
-- `cuts/cutflow_bib.csv`, `cutflow_signal.csv`,
-  `density_before_after_cuts.csv`, `density_before_after_cuts.png`
-  (via `apply_cuts.py`)
-- `track_efficiency/track_efficiency_vs_pt.csv`,
-  `track_efficiency_vs_pt.png` (via `track_efficiency.py`)
-- `n1_cuts/` - the 6 N-1 cut-validation plots (via `n1_cut_plots.py`,
-  described below)
-- `run_log.txt` - everything printed to the terminal during this run
-  (all three scripts' output, concatenated in order), captured via
-  `tee`. Most of it duplicates the CSVs above - `apply_cuts.py` and
-  `track_efficiency.py` both print their full per-row tables, not just
-  a summary, so the log mostly restates `cutflow_bib.csv`/
-  `cutflow_signal.csv`/`track_efficiency_vs_pt.csv` in a more readable
-  form - but it also captures the one thing that otherwise isn't saved
-  to any file: `apply_cuts.py`'s closing "BIB rejection vs. signal
-  efficiency" summary. Kept mainly so a run can be skimmed without
-  opening several CSVs.
-
-So every cut hypothesis that's ever been tried stays on disk, grouped
-together with the config that produced it, and nothing from an earlier
-run is ever lost or silently replaced by a later one. In addition, the
-familiar fixed-name folders `results/step4_cuts/`,
-`results/step4_track_efficiency/`, and `results/step4_n1_cuts/` (plus
-`results/step4_run_log.txt`) are refreshed on every run as an always-
-"latest" convenience copy of the just-completed run - for anything
-(e.g. this doc, or a quick look) that just wants the current results
-without digging into `step4_runs/`.
-
-Nothing from steps 1-3 depends on `cuts_config.txt`, so those outputs
-are untouched by this script and don't need to be re-run after a cuts
-change.
+**Running step 4.** Step 4 (`apply_cuts.py`, `track_efficiency.py`,
+`n1_cut_plots.py`) runs as part of `./run_all` together with steps 1-3
+(see "How to run the analysis" at the top); every run is archived with
+the exact settings that produced it in `results/runs/<date>_<time>/`.
+Steps 1-3 are re-run too, since the measurement smearing affects them
+and the step-3 overlay plots draw the current cut thresholds.
 
 **`apply_cuts.py`** (step 4, part 1) runs the configured cuts on both BIB
 and signal and reports the comparison with vs. without cuts - the point
@@ -812,8 +797,14 @@ ntuples and gives identical results. Code lives in
   array field of a hits dict by a boolean mask, keeping metadata
   fields unchanged - used to re-run region_table/add_peak_density on
   only the hits passing cuts), `subsystem_density_table`,
-  `write_logfile`, `prepare_output_dir` (archives old results into
-  `OldResults/` instead of overwriting).
+  `write_logfile`, `prepare_output_dir` (when a script is run by hand,
+  archives old results into `OldResults/` instead of overwriting;
+  skipped under `./run_all`, which gives every run its own folder),
+  `default_cuts_config` (the cuts file a script uses when run by hand
+  without one: `./cuts_config.txt` if present, else the template), and
+  the smearing functions `load_smearing_config`,
+  `apply_position_time_smearing`, `apply_angle_smearing`,
+  `describe_smearing`.
 - `geometry.py` — parses the true detector geometry XML to get exact
   sensitive area per region (`build_area_lookup`,
   `annotate_rows_with_geometry_area`).
@@ -848,8 +839,12 @@ ntuples and gives identical results. Code lives in
   diagnostic plots (z-axis intercept full+zoom, transverse curvature/pT
   full+zoom, TOF-corrected time full+zoom), in hits/collision/bin,
   described above.
-- `cuts_config.txt` — editable selection-cuts config (see "Selection
-  cuts" above).
+- `templates/cuts_config.txt`, `templates/smearing_config.txt` —
+  templates of the two settings files; the live, editable copies are in
+  the results folder (see "How to run the analysis" at the top).
+- `check_configs.py` — checks the two settings files before a run and
+  prints a readable summary of them; `./run_all` refuses to start if it
+  finds a problem.
 - `apply_cuts.py` — step 4 (part 1) script; applies the configured cuts
   to BIB and signal and reports the with-cuts-vs-without-cuts
   comparison (BIB density only - signal density dropped per the user's
@@ -861,32 +856,27 @@ ntuples and gives identical results. Code lives in
   validation plots (each cut variable plotted with the other cuts
   applied, not its own), reusing `signal_overlay_angle_plots.py`'s
   layout/conventions, described above.
-- `run_step4.sh` — driver script; re-runs all three step-4 scripts
-  (`apply_cuts.py`, `track_efficiency.py`, and `n1_cut_plots.py`) with
-  the current `cuts_config.txt` in one command, described above.
+- `run_all_steps.sh` — the full pipeline (steps 1-4) behind the
+  `./run_all` launcher in the results folder (see "How to run the
+  analysis" at the top). Replaces the former `run_step4.sh`.
 
 Step 1, step 2 (both the angle and time-of-flight scripts) are run for
-the original plus/minus files AND the merged file on every full analysis
-pass, plus once on the signal file for the time-of-flight validation;
-step 3 (both scripts) and step 4 use the merged BIB file plus the signal
-file. Results are written to
-`~/Dropbox/Documents/MuonColliderSimulation/results/step1_basic_plots/`,
-`step1_basic_plots_minus/`, `step1_basic_plots_combined/`,
-`step2_incidence_angles/`, `step2_incidence_angles_minus/`,
-`step2_incidence_angles_combined/`, `step2_time_of_flight/`,
-`step2_time_of_flight_minus/`, `step2_time_of_flight_combined/`,
-`step2_time_of_flight_signal/`, `step3_signal_overlay/` (shared by both
-step-3 scripts — see the note under "Signal overlay on the
-incidence-angle/curvature/time plots" above about running both together),
-`step4_cuts/`, `step4_track_efficiency/`, `step4_n1_cuts/`, and
-`step4_run_log.txt` (the "latest" convenience copy of the most recent
-`run_step4.sh` run, refreshed on every run - see "`run_step4.sh`"
-above), plus `step4_runs/<timestamp>/` (one self-contained,
-permanently-kept archive per `run_step4.sh` invocation, each with its
-own `cuts_config.txt` + `cuts/` + `track_efficiency/` + `n1_cuts/` +
-`run_log.txt`). Everything else (steps 1-3, and the "latest" step 4
-copies) is archived into `OldResults/` (with a timestamp) before being
-overwritten on a re-run.
+the original plus/minus files AND the merged file on every run, plus
+once on the signal file for the time-of-flight validation; step 3 (both
+scripts) and step 4 use the merged BIB file plus the signal file. Each
+run's results go to
+`~/Dropbox/Documents/MuonColliderSimulation/results/runs/<date>_<time>/`
+(`step1_basic_plots/`, `step1_basic_plots_minus/`,
+`step1_basic_plots_combined/`, `step2_incidence_angles/`,
+`step2_incidence_angles_minus/`, `step2_incidence_angles_combined/`,
+`step2_time_of_flight/`, `step2_time_of_flight_minus/`,
+`step2_time_of_flight_combined/`, `step2_time_of_flight_signal/`,
+`step3_signal_overlay/` (shared by both step-3 scripts), `step4_cuts/`,
+`step4_track_efficiency/`, `step4_n1_cuts/`, plus the two settings
+files, `run_log.txt`, `code_version.txt` and `summary.txt`); the same
+`step*` folders directly in `results/` always hold the latest successful
+run. `runs/` also keeps the older step-4-only archives made before this
+workflow existed (suffix `_step4-only`, each with a `NOTE.txt`).
 
 ## Next step (in progress)
 The step-4 cut framework is in place, the starting hypothesis has been
@@ -900,7 +890,7 @@ cut is, and loosening its halfwidth would likely trade some BIB
 rejection for a smoother, more physically informative efficiency curve
 (worth discussing with the user before changing it). More generally,
 next: iterate on the cut values in `cuts_config.txt` (tighter/looser
-windows, or disabling individual cuts) - `run_step4.sh` regenerates
+windows, or disabling individual cuts) - `./run_all` regenerates
 everything that depends on them in one command - to see how the
 BIB-rejection/track-efficiency trade-off moves, and decide with the
 user whether/how to combine the three cuts differently (e.g. an

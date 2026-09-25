@@ -46,7 +46,7 @@ from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, load_track_params, VERTEX_SYSTEM_IDS,
     prepare_output_dir, _display_path,
-    load_smearing_config, smearing_rng, describe_smearing,
+    load_smearing_config, smearing_rng, describe_smearing, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -56,7 +56,7 @@ N_BINS_DEFAULT = 150  # evenly spaced in 1/pT; x10 finer than the initial 15
 
 def parse_args(argv):
     signal_files = []
-    cuts_config = str(Path(__file__).resolve().parent / "cuts_config.txt")
+    cuts_config = default_cuts_config()
     outdir = "../output_track_efficiency"
     n_bins = N_BINS_DEFAULT
     i = 0

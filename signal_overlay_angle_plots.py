@@ -40,7 +40,7 @@ import numpy as np
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     prepare_output_dir, _display_path, SYSTEM_NAMES, load_cuts,
-    load_smearing_config, smearing_rng, describe_smearing,
+    load_smearing_config, smearing_rng, describe_smearing, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -108,7 +108,7 @@ def main():
     signal_file = sys.argv[2]
     outdir = Path(sys.argv[3] if len(sys.argv) > 3 else "../output_signal_angle_overlay")
     cuts_config = sys.argv[4] if len(sys.argv) > 4 else \
-        str(Path(__file__).resolve().parent / "cuts_config.txt")
+        default_cuts_config()
     outdir = prepare_output_dir(outdir)
 
     cuts = load_cuts(cuts_config)

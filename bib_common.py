@@ -443,6 +443,21 @@ ZOOM_HALFWIDTH_DEFAULTS = {
 VERTEX_SYSTEM_IDS = {1, 2}
 
 
+def default_cuts_config():
+    """
+    Cuts config to use when a script is run by hand without being given
+    one: cuts_config.txt in the CURRENT directory if there is one (i.e.
+    when run from the working folder of the run_all workflow, where the
+    live, editable copy lives), otherwise the template that ships with
+    the code (templates/cuts_config.txt). The run_all workflow itself
+    always passes the config explicitly and never relies on this.
+    """
+    here = Path.cwd() / "cuts_config.txt"
+    if here.is_file():
+        return str(here)
+    return str(Path(__file__).resolve().parent / "templates" / "cuts_config.txt")
+
+
 def load_cuts(path):
     """
     Load a selection-cuts config file (see cuts_config.txt for the
@@ -464,7 +479,7 @@ def load_cuts(path):
     """
     import configparser
 
-    cp = configparser.ConfigParser()
+    cp = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
     read_ok = cp.read(path)
     if not read_ok:
         raise FileNotFoundError(f"cuts config not found: {path}")
@@ -505,7 +520,7 @@ def load_track_params(path):
     """
     import configparser
 
-    cp = configparser.ConfigParser()
+    cp = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
     read_ok = cp.read(path)
     if not read_ok:
         raise FileNotFoundError(f"cuts config not found: {path}")
@@ -774,6 +789,14 @@ def prepare_output_dir(outdir):
     import shutil
 
     outdir = Path(outdir)
+    # Under the run_all workflow (run_all_steps.sh sets BIB_NO_OLDRESULTS=1)
+    # every run already writes into its own fresh, timestamped folder, so
+    # there is nothing to protect - and archiving would actively break
+    # step 3, whose two scripts share one output folder. Just make sure
+    # the folder exists and leave its contents alone.
+    if os.environ.get("BIB_NO_OLDRESULTS", "").strip() not in ("", "0"):
+        outdir.mkdir(parents=True, exist_ok=True)
+        return outdir
     if outdir.exists() and any(outdir.iterdir()):
         old_results = outdir.parent / "OldResults"
         old_results.mkdir(parents=True, exist_ok=True)
@@ -970,7 +993,7 @@ def load_smearing_config(path):
     """
     import configparser
 
-    cp = configparser.ConfigParser()
+    cp = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
     read_ok = cp.read(path)
     if not read_ok:
         raise FileNotFoundError(f"smearing config not found: {path}")

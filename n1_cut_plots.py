@@ -45,7 +45,7 @@ import numpy as np
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, prepare_output_dir, _display_path, SYSTEM_NAMES,
-    load_smearing_config, smearing_rng, describe_smearing,
+    load_smearing_config, smearing_rng, describe_smearing, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -113,7 +113,7 @@ def main():
     bib_file = sys.argv[1]
     signal_file = sys.argv[2]
     cuts_config = sys.argv[3] if len(sys.argv) > 3 else \
-        str(Path(__file__).resolve().parent / "cuts_config.txt")
+        default_cuts_config()
     outdir = Path(sys.argv[4] if len(sys.argv) > 4 else "../output_n1_cuts")
     outdir = prepare_output_dir(outdir)
 

@@ -47,11 +47,11 @@ enabled = true
 # angle is mathematically identical to the truth angle, so the cuts see
 # exactly the unsmeared/truth-based values.
 [angle_u]
-sigma_deg = 3.0
+sigma_deg = 0.5
 enabled = true
 
 [angle_v]
-sigma_deg = 3.0
+sigma_deg = 0.5
 enabled = true
 
 # RNG seed, so re-running with the same sigmas reproduces the same
