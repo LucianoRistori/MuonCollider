@@ -61,6 +61,9 @@ step4_n1_cuts/time_corrected_per_subsystem_zoom_n1.png
 step4_n1_cuts/z_axis_intercept_per_subsystem_n1.png
 step4_n1_cuts/z_axis_intercept_per_subsystem_zoom_n1.png"
 
+tilde() {   # show a path with the home folder written as ~
+    case "$1" in "$HOME"/*) printf '~/%s' "${1#"$HOME"/}" ;; *) printf '%s' "$1" ;; esac
+}
 say() { printf '%s\n' "$*"; }
 stop() { printf '\nERROR: %s\n\n' "$*" >&2; exit 1; }
 
@@ -169,7 +172,7 @@ fi
 
 CUTS="$RUN_DIR/cuts_config.txt"
 export SMEARING_CONFIG="$RUN_DIR/smearing_config.txt"
-export BIB_NO_OLDRESULTS=1
+export BIB_RUN_ALL=1
 export MPLBACKEND=Agg
 
 # ---------------------------------------------------------------- the steps
@@ -219,11 +222,20 @@ step4() {
 main() {
     say "======================================================================"
     say " BIB analysis run $RUN_ID   (steps: $STEPS)"
-    say " Working folder: $WORKDIR"
-    say " Settings used (copies kept in runs/$RUN_ID/):"
+    say " Working folder: $(tilde "$WORKDIR")"
+    say ""
+    say " Input files (in $(tilde "$DATA_DIR")):"
+    say "   BIB plus       $(basename "$PLUS")"
+    say "   BIB minus      $(basename "$MINUS")"
+    say "   BIB combined   $(basename "$COMBINED")   (plus + minus + ipp)"
+    say "   signal         $(basename "$SIGNAL")"
+    say ""
+    say " Settings (copies kept in runs/$RUN_ID/):"
     "$PYTHON" "$CODE_DIR/check_configs.py" "$CUTS" "$SMEARING_CONFIG" | sed 's/^/   /'
     say "======================================================================"
-    cd "$CODE_DIR" || return 1
+    # run the scripts from inside the run folder, so the output folders
+    # they report show up as short relative paths (step1_basic_plots/ ...)
+    cd "$RUN_DIR" || return 1
     local s t0
     for s in $STEPS; do
         if grep -qx "step $s" "$RUN_DIR/steps_done.txt" 2>/dev/null; then
@@ -289,7 +301,7 @@ fi
     say "Run $RUN_ID"
     "$PYTHON" "$CODE_DIR/check_configs.py" --brief "$RUN_DIR/cuts_config.txt" "$RUN_DIR/smearing_config.txt"
     say ""
-    awk '/Summary: BIB rejection vs. signal efficiency/ {print; f=1; next} f && /BIB rejection=/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
+    awk '/Summary: BIB rejection vs. signal efficiency/ {print; f=1; next} f && /^  [^ ]/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
 } > "$RUN_DIR/summary.txt"
 
 missing_hl=""

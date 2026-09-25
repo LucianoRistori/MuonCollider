@@ -45,7 +45,8 @@ import numpy as np
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, prepare_output_dir, _display_path, SYSTEM_NAMES,
-    load_smearing_config, smearing_rng, describe_smearing, default_cuts_config,
+    load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -124,10 +125,8 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} "
-              f"({joined})")
-
-    print(f"Loading BIB file: {_display_path(bib_file)}")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
     bib_hits = load_hits(bib_file)
     if smear_cfg is not None:
         apply_position_time_smearing(bib_hits, smear_cfg, smear_rng)
@@ -136,9 +135,7 @@ def main():
         apply_angle_smearing(bib_hits, smear_cfg, smear_rng)
     add_time_of_flight(bib_hits)
     n_bib_hit = len(bib_hits["x"])
-    print(f"  {bib_hits['_tree_name']}: {bib_hits['_n_events']} event(s), n_hit={n_bib_hit:,}")
-
-    print(f"Loading signal file: {_display_path(signal_file)}")
+    print(loaded_line(bib_file, bib_hits, "BIB"))
     sig_hits = load_hits(signal_file)
     if smear_cfg is not None:
         apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
@@ -148,15 +145,11 @@ def main():
     add_time_of_flight(sig_hits)
     n_sig_hit = len(sig_hits["x"])
     n_sig_events = sig_hits["_n_events"]
-    print(f"  {sig_hits['_tree_name']}: {n_sig_events:,} event(s), n_hit={n_sig_hit:,}")
+    print(loaded_line(signal_file, sig_hits, "signal"))
 
-    print(f"\nLoading cuts: {_display_path(cuts_config)}")
     cuts = load_cuts(cuts_config)
-    for name in ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev"):
-        c = cuts[name]
-        state = "enabled" if c["enabled"] else "DISABLED"
-        print(f"  {name:20s}  center={c['center']:+.4g}  halfwidth={c['halfwidth']:.4g}  "
-              f"zoom_halfwidth={c['zoom_halfwidth']:.4g}  [{state}]")
+    if not under_run_all():
+        print(f"Cuts: {short_path(cuts_config)}")
 
     Z0_ZOOM_RANGE_MM = cuts["z_axis_intercept_mm"]["zoom_halfwidth"]
     PT_ZOOM_RANGE_GEV = cuts["momentum_gev"]["zoom_halfwidth"]
@@ -173,13 +166,16 @@ def main():
     bib_n1_p = n1_mask(bib_per_cut, "momentum_gev")
     sig_n1_p = n1_mask(sig_per_cut, "momentum_gev")
 
-    for label, name, n in (
-        ("z_axis_intercept plots", "z_axis_intercept_mm", None),
-        ("inv_radius/pT plots", "momentum_gev", None),
-        ("t_corrected_ns plots", "t_corrected_ns", None),
-    ):
-        others = [c for c in ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev") if c != name]
-        print(f"  {label}: applying {others[0]} + {others[1]} (not {name})")
+    short = {"t_corrected_ns": "time", "z_axis_intercept_mm": "z-intercept",
+             "momentum_gev": "momentum"}
+    n1_rows = []
+    for label, name in (("z-intercept", "z_axis_intercept_mm"), ("pT", "momentum_gev"),
+                        ("time", "t_corrected_ns")):
+        others = [short[c] for c in ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev")
+                  if c != name and cuts[c]["enabled"]]
+        n1_rows.append([label, " + ".join(others) if others else "none"])
+    print_table("N-1 plots - each variable shown with the OTHER cuts applied:",
+                ["plots", "cuts applied"], n1_rows, align="ll")
 
     bib_sys = bib_hits["system"]
     sig_sys = sig_hits["system"]
@@ -345,7 +341,7 @@ def main():
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom_n1.png", dpi=130)
     plt.close(fig)
 
-    print(f"\nWrote 6 N-1 plots to {_display_path(outdir.resolve())}")
+    print(f"Wrote 6 N-1 plots to {short_path(outdir)}/")
 
 
 if __name__ == "__main__":

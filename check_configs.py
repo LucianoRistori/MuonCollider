@@ -169,6 +169,40 @@ def describe(cuts, smear):
     return cut_lines, smear_lines
 
 
+def brief_lines(cuts, smear):
+    """Three short lines summarizing the settings (for summary.txt)."""
+    def cut(sec, var, unit, off):
+        if not cuts.get((sec, "enabled"), False):
+            return off
+        c = cuts.get((sec, "center"), 0.0)
+        inner = var if c == 0 else f"{var} - ({_g(c)})"
+        return f"|{inner}| <= {_g(cuts.get((sec, 'halfwidth')))} {unit}"
+    mom = (f"pT >= {_g(cuts.get(('momentum_gev', 'halfwidth')))} GeV/c"
+           if cuts.get(("momentum_gev", "enabled"), False) else "no pT cut")
+    trk = f">= {cuts.get(('track', 'min_hits_found'))} surviving hits"
+    trk += (", vertex-detector hits not counted"
+            if cuts.get(("track", "exclude_vertex_hits"), False) else ", all subsystems counted")
+
+    def on(sec):
+        return smear.get((sec, "enabled"), False)
+
+    def val(sec, key):
+        s = smear.get((sec, key), 0.0)
+        return _g(s) if s > 0 else "0"
+    pos = (f"position u/v {val('position', 'sigma_u_mm')}/{val('position', 'sigma_v_mm')} mm"
+           if on("position") else "position off")
+    tim = f"time {val('time', 'sigma_t_ns')} ns" if on("time") else "time off"
+    au = f"{val('angle_u', 'sigma_deg')}" if on("angle_u") else "off"
+    av = f"{val('angle_v', 'sigma_deg')}" if on("angle_v") else "off"
+    ang = "angle off" if au == av == "off" else f"angle u/v {au}/{av} deg"
+    return [
+        "Cuts:        " + ", ".join([cut("t_corrected_ns", "t_corrected", "ns", "no time cut"),
+                                     cut("z_axis_intercept_mm", "z0", "mm", "no z0 cut"), mom]),
+        "Track found: " + trk,
+        "Resolutions: " + ", ".join([pos, tim, ang, f"seed {smear.get(('general', 'seed'), '')}"]),
+    ]
+
+
 def warnings_for(cuts, smear):
     warn = []
     for sec, var, unit in (("t_corrected_ns", "time", "ns"), ("z_axis_intercept_mm", "z-intercept", "mm")):
@@ -219,14 +253,14 @@ def main(argv):
         return 0
     cut_lines, smear_lines = describe(cuts, smear)
     if brief:
-        print("Cuts:        " + "; ".join(f"{n} {t}" for n, t in cut_lines))
-        print("Resolutions: " + "; ".join(f"{n} {t}" for n, t in smear_lines))
+        for line in brief_lines(cuts, smear):
+            print(line)
         return 0
 
-    print(f"Cuts         ({cuts_path})")
+    print(f"Cuts         ({cuts_path.split('/')[-1]})")
     for n, t in cut_lines:
         print(f"  {n:<12} {t}")
-    print(f"Resolutions  ({smear_path})")
+    print(f"Resolutions  ({smear_path.split('/')[-1]})")
     for n, t in smear_lines:
         print(f"  {n:<12} {t}")
     for w in warnings_for(cuts, smear):

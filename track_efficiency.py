@@ -46,7 +46,8 @@ from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, load_track_params, VERTEX_SYSTEM_IDS,
     prepare_output_dir, _display_path,
-    load_smearing_config, smearing_rng, describe_smearing, default_cuts_config,
+    load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -166,13 +167,12 @@ def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False,
     track's surviving-hit total even when they pass the selection cuts -
     i.e. "found" then requires >=min_hits_found surviving hits *outside*
     the vertex detector."""
-    print(f"\nLoading signal file: {_display_path(signal_file)}")
     hits = load_hits(signal_file)
     if smear_cfg is not None:
         apply_position_time_smearing(hits, smear_cfg, smear_rng)
     n_events = hits["_n_events"]
     n_hit = len(hits["x"])
-    print(f"  {hits['_tree_name']}: {n_events:,} event(s)/track(s), n_hit={n_hit:,}")
+    print(loaded_line(signal_file, hits, "signal"))
 
     add_incidence_angles(hits)
     if smear_cfg is not None:
@@ -206,18 +206,15 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
 
-    print(f"Loading cuts: {_display_path(cuts_config)}")
     cuts = load_cuts(cuts_config)
-    for name, spec in cuts.items():
-        state = "enabled" if spec["enabled"] else "DISABLED"
-        print(f"  {name:20s}  center={spec['center']:+.4g}  halfwidth={spec['halfwidth']:.4g}  [{state}]")
     track_params = load_track_params(cuts_config)
     min_hits_found = track_params["min_hits_found"]
     exclude_vertex_hits = track_params["exclude_vertex_hits"]
-    print(f"  min_hits_found       {min_hits_found}")
-    print(f"  exclude_vertex_hits  {exclude_vertex_hits}")
+    if not under_run_all():
+        print(f"Cuts: {short_path(cuts_config)}")
 
     pT_all, found_all = [], []
     for f in signal_files:
@@ -228,8 +225,9 @@ def main():
     pT_gen = np.concatenate(pT_all)
     found = np.concatenate(found_all)
     n_tracks = len(pT_gen)
-    print(f"\nTotal tracks pooled from {len(signal_files)} file(s): {n_tracks:,}, "
-          f"pT range [{pT_gen.min():.4g}, {pT_gen.max():.4g}] GeV/c")
+    pooled = f" (pooled from {len(signal_files)} files)" if len(signal_files) > 1 else ""
+    print(f"{n_tracks:,} tracks{pooled}, generated pT {pT_gen.min():.3g} to "
+          f"{pT_gen.max():.3g} GeV/c")
 
     # Bin evenly spaced in 1/pT (matches the flat-in-1/pT generation - see
     # module docstring), so bin statistics stay roughly equal all the way
@@ -270,12 +268,7 @@ def main():
         w.writerows(rows)
 
     vertex_note = ", excl. vertex hits" if exclude_vertex_hits else ""
-    print(f"\n-- Track-finding efficiency vs. generated pT "
-          f"({min_hits_found}+ surviving hits{vertex_note}) --")
-    for r in rows:
-        print(f"  pT=[{r['pT_lo_gev']:9.3g}, {r['pT_hi_gev']:9.3g}] GeV/c  "
-              f"n={r['n_tracks_examined']:>6,}  found={r['n_tracks_found']:>6,}  "
-              f"eff={r['efficiency']*100:6.2f}% +/- {r['efficiency_unc']*100:4.2f}%")
+    # (efficiency per pT bin: see track_efficiency_vs_pt.csv and the plot)
 
     # x-axis: linear in 1/pT (matches the binning), with tick labels
     # relabeled as the reciprocal pT in GeV/c - same convention as the
@@ -323,8 +316,7 @@ def main():
     plt.savefig(outdir / "track_efficiency_vs_pt.png", dpi=140)
     plt.close(fig)
 
-    print(f"\nWrote track_efficiency_vs_pt.csv and track_efficiency_vs_pt.png "
-          f"to {_display_path(outdir.resolve())}")
+    print(f"Wrote track_efficiency_vs_pt.csv and .png to {short_path(outdir)}/")
 
 
 if __name__ == "__main__":

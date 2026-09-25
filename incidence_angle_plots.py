@@ -23,6 +23,7 @@ from bib_common import (
     load_hits, add_incidence_angles, prepare_output_dir, _display_path,
     SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -76,7 +77,8 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
 
     hits = load_hits(root_file)
     if smear_cfg is not None:
@@ -315,53 +317,34 @@ def main():
         w.writeheader()
         w.writerows(rows)
 
-    print(f"Loaded {hits['_tree_name']}: n_hit={n_hit:,}")
-    print(f"Wrote plots and {summary_path.name} to {_display_path(outdir.resolve())}")
+    print(loaded_line(root_file, hits))
+    print(f"Wrote plots and {summary_path.name} to {short_path(outdir)}/")
     print()
-    print("-- Module out-of-meridian-plane tilt (n_tilt_deg): should be ~0 for a "
-          "perfectly axially-symmetric layer; nonzero means theta_long/theta_trans "
-          "don't exactly add up (in quadrature, in tan) to theta_full for that hit --")
-    for r in rows:
-        print(f"  {r['system_name']:12s}  n_tilt mean={r['n_tilt_deg_mean']:6.3f} deg  "
-              f"p99={r['n_tilt_deg_p99']:6.3f} deg")
+    print_table(
+        "Incidence angles vs. the sensor normal (deg, mean +/- std), and module tilt (deg):",
+        ["subsystem", "theta_long", "theta_trans", "theta_full", "tilt mean", "tilt 99%"],
+        [[r["system_name"],
+          f"{r['theta_long_deg_mean']:.2f} +/- {r['theta_long_deg_std']:.2f}",
+          f"{r['theta_trans_deg_mean']:.2f} +/- {r['theta_trans_deg_std']:.2f}",
+          f"{r['theta_full_deg_mean']:.2f} +/- {r['theta_full_deg_std']:.2f}",
+          f"{r['n_tilt_deg_mean']:.2f}", f"{r['n_tilt_deg_p99']:.2f}"] for r in rows])
     print()
-    print("-- theta_long / theta_trans / theta_full (deg): mean +/- std --")
-    for r in rows:
-        print(f"  {r['system_name']:12s}  "
-              f"long={r['theta_long_deg_mean']:7.2f}+/-{r['theta_long_deg_std']:6.2f}  "
-              f"trans={r['theta_trans_deg_mean']:7.2f}+/-{r['theta_trans_deg_std']:6.2f}  "
-              f"full={r['theta_full_deg_mean']:7.2f}+/-{r['theta_full_deg_std']:6.2f}")
+    print_table(
+        "z-axis intercept z0 (mm); 'beyond' = outside that range, or undefined:",
+        ["subsystem", "median", "1%", "99%",
+         f"beyond +/-{Z0_RANGE_MM:.0f}", f"beyond +/-{Z0_ZOOM_RANGE_MM:.0f}"],
+        [[r["system_name"], f"{r['z_axis_intercept_mm_p50']:.1f}",
+          f"{r['z_axis_intercept_mm_p01']:.1f}", f"{r['z_axis_intercept_mm_p99']:.1f}",
+          f"{z0_excluded_frac[r['system']]*100:.2f}%",
+          f"{z0_zoom_excluded_frac[r['system']]*100:.2f}%"] for r in rows])
     print()
-    print(f"-- z-axis intercept of meridian-plane track (mm), median [p01, p99] "
-          f"(only shown/plotted within +/-{Z0_RANGE_MM:.0f}mm; excluded = undefined "
-          f"p_rho~0 tracks + out-of-range tail) --")
-    for r in rows:
-        s = r["system"]
-        print(f"  {r['system_name']:12s}  "
-              f"p50={r['z_axis_intercept_mm_p50']:9.1f}  "
-              f"[{r['z_axis_intercept_mm_p01']:9.1f}, {r['z_axis_intercept_mm_p99']:9.1f}]  "
-              f"excluded={z0_excluded_frac[s]*100:5.2f}%")
-    print()
-    print("-- transverse curvature 1/R, circle through origin and hit (1/m), "
-          "median [p01, p99] --")
-    for r in rows:
-        print(f"  {r['system_name']:12s}  "
-              f"p50={r['inv_radius_per_m_p50']:8.3f}  "
-              f"[{r['inv_radius_per_m_p01']:8.3f}, {r['inv_radius_per_m_p99']:8.3f}]")
-    print()
-    print(f"-- z-axis intercept, ZOOMED to +/-{Z0_ZOOM_RANGE_MM:.0f}mm: fraction of "
-          f"hits excluded (outside this narrower window, or undefined) --")
-    for r in rows:
-        s = r["system"]
-        print(f"  {r['system_name']:12s}  excluded={z0_zoom_excluded_frac[s]*100:6.2f}%")
-    print()
-    print(f"-- transverse momentum p_T (GeV/c, B={B_FIELD_T:.0f}T), ZOOMED to the "
-          f"curvature window where |p_T| >= {PT_ZOOM_RANGE_GEV:.0f} GeV/c: fraction "
-          f"of hits excluded (|p_T| below this window, i.e. the sharply-curved, "
-          f"low-momentum tail) --")
-    for r in rows:
-        s = r["system"]
-        print(f"  {r['system_name']:12s}  excluded={pt_zoom_excluded_frac[s]*100:6.2f}%")
+    print_table(
+        f"Transverse curvature 1/R (1/m), and share of hits with |pT| < "
+        f"{PT_ZOOM_RANGE_GEV:g} GeV/c (B = {B_FIELD_T:g} T):",
+        ["subsystem", "median", "1%", "99%", f"|pT| < {PT_ZOOM_RANGE_GEV:g}"],
+        [[r["system_name"], f"{r['inv_radius_per_m_p50']:.3f}",
+          f"{r['inv_radius_per_m_p01']:.3f}", f"{r['inv_radius_per_m_p99']:.3f}",
+          f"{pt_zoom_excluded_frac[r['system']]*100:.2f}%"] for r in rows])
 
 
 if __name__ == "__main__":

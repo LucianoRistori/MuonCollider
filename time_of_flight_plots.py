@@ -32,6 +32,7 @@ from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -59,7 +60,8 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
 
     hits = load_hits(root_file)
     if smear_cfg is not None:
@@ -149,29 +151,24 @@ def main():
         w.writeheader()
         w.writerows(rows)
 
-    print(f"Loaded {hits['_tree_name']}: n_hit={n_hit:,}")
-    print(f"Wrote plots and {csv_path.name} to {_display_path(outdir.resolve())}")
+    print(loaded_line(root_file, hits))
+    print(f"Wrote plots and {csv_path.name} to {short_path(outdir)}/")
     print()
-    print("-- Corrected time t_corrected = t - TOF_expected(IP muon) (ns), "
-          "median [p05, p95], per subsystem --")
-    for r in rows:
-        print(f"  {r['system_name']:12s}  n={r['n_hits']:>9,}  "
-              f"p50={r['t_corrected_p50_ns']:7.3f}  "
-              f"[{r['t_corrected_p05_ns']:8.3f}, {r['t_corrected_p95_ns']:7.3f}]  "
-              f"frac(|t_corr|>1ns)={r['frac_abs_tcorr_gt_1ns']*100:5.2f}%")
+    print_table(
+        "Corrected hit time t - t_TOF(IP) (ns):",
+        ["subsystem", "hits", "median", "5%", "95%", "|t| > 1 ns"],
+        [[r["system_name"], f"{r['n_hits']:,}", f"{r['t_corrected_p50_ns']:.3f}",
+          f"{r['t_corrected_p05_ns']:.3f}", f"{r['t_corrected_p95_ns']:.3f}",
+          f"{r['frac_abs_tcorr_gt_1ns']*100:.2f}%"] for r in rows])
 
-    # diagnostic: for the large-|t_corrected| tail, report the raw-momentum
-    # pT of those hits, to show they're low-pT secondaries, not primaries
+    # diagnostic: for the large-|t_corrected| tail, report the true pT of
+    # those hits - they are mostly low-pT secondaries, for which the
+    # "originated at the IP" assumption behind the correction breaks down
     bad = np.abs(tc) > 1.0
     if bad.any():
         pT_raw = np.sqrt(hits["px"] ** 2 + hits["py"] ** 2)
-        print()
-        print(f"-- Diagnostic: among the {bad.sum():,} hits ({bad.mean()*100:.2f}%) with "
-              f"|t_corrected| > 1ns, raw hit p_T (GeV) --")
-        print(f"  median={np.median(pT_raw[bad]):.4g}  "
-              f"(all hits median={np.median(pT_raw):.4g}) - "
-              f"large excursions concentrate in low-p_T secondary hits, where the "
-              f"'originated at the IP' assumption behind the correction breaks down")
+        print(f"Hits with |t| > 1 ns: {bad.sum():,} ({bad.mean()*100:.2f}%), median true pT "
+              f"{np.median(pT_raw[bad]):.3g} GeV/c (all hits: {np.median(pT_raw):.3g} GeV/c)")
 
 
 if __name__ == "__main__":

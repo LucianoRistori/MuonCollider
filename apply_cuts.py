@@ -36,7 +36,8 @@ from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight, load_cuts, apply_cuts,
     mask_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
-    load_smearing_config, smearing_rng, describe_smearing, default_cuts_config,
+    load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -125,15 +126,13 @@ def write_cutflow_csv(path, rows):
 
 
 def print_cutflow(label, rows):
-    print(f"\n-- {label}: cutflow (n_hits after each individual cut, and after all combined) --")
-    header = f"  {'region':12s}  {'n_total':>10s}  " + \
-             "  ".join(f"{n.split('_')[0]:>10s}" for n in CUT_ORDER) + \
-             f"  {'combined':>10s}  {'frac_pass':>9s}"
-    print(header)
-    for r in rows:
-        print(f"  {r['system_name']:12s}  {r['n_total']:>10,}  " +
-              "  ".join(f"{r[f'n_after_{n}']:>10,}" for n in CUT_ORDER) +
-              f"  {r['n_after_all']:>10,}  {r['frac_after_all']*100:8.3f}%")
+    print()
+    print_table(
+        f"{label} cutflow - hits passing each cut on its own, and all cuts combined:",
+        ["region", "total"] + [n.split("_")[0] for n in CUT_ORDER] + ["combined", "passing"],
+        [[r["system_name"], f"{r['n_total']:,}"]
+         + [f"{r[f'n_after_{n}']:,}" for n in CUT_ORDER]
+         + [f"{r['n_after_all']:,}", f"{r['frac_after_all']*100:.3f}%"] for r in rows])
 
 
 def main():
@@ -156,12 +155,10 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} "
-              f"({joined})")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
 
     import gc
-
-    print(f"Loading BIB file: {_display_path(bib_file)}")
     bib_hits = load_hits(bib_file)
     if smear_cfg is not None:
         apply_position_time_smearing(bib_hits, smear_cfg, smear_rng)
@@ -172,9 +169,7 @@ def main():
     n_bib_hit = len(bib_hits["x"])
     slim_hits(bib_hits)
     gc.collect()
-    print(f"  {bib_hits['_tree_name']}: {bib_hits['_n_events']} event(s), n_hit={n_bib_hit:,}")
-
-    print(f"Loading signal file: {_display_path(signal_file)}")
+    print(loaded_line(bib_file, bib_hits, "BIB"))
     sig_hits = load_hits(signal_file)
     if smear_cfg is not None:
         apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
@@ -186,14 +181,11 @@ def main():
     n_sig_hit = len(sig_hits["x"])
     slim_hits(sig_hits)
     gc.collect()
-    print(f"  {sig_hits['_tree_name']}: {n_sig_events:,} event(s), n_hit={n_sig_hit:,}")
+    print(loaded_line(signal_file, sig_hits, "signal"))
 
-    print(f"\nLoading cuts: {_display_path(cuts_config)}")
     cuts = load_cuts(cuts_config)
-    for name in CUT_ORDER:
-        c = cuts[name]
-        state = "enabled" if c["enabled"] else "DISABLED"
-        print(f"  {name:20s}  center={c['center']:+.4g}  halfwidth={c['halfwidth']:.4g}  [{state}]")
+    if not under_run_all():
+        print(f"Cuts: {short_path(cuts_config)}")
 
     bib_mask, bib_per_cut = apply_cuts(bib_hits, cuts)
     sig_mask, sig_per_cut = apply_cuts(sig_hits, cuts)
@@ -219,11 +211,11 @@ def main():
     if all((geom_dir / f).exists() for f in GEOMETRY_FILES):
         try:
             area_lookup = geom_mod.build_area_lookup(geom_dir)
-            print(f"\nUsing true geometry-based area from {_display_path(geom_dir)}.")
+            print("Sensitive areas from the detector geometry")
         except Exception as e:
-            print(f"\nWARNING: geometry parsing failed ({e}); using hit-inferred area.")
+            print(f"WARNING: geometry parsing failed ({e}); using hit-inferred area.")
     else:
-        print(f"\nNOTE: geometry files not found in {_display_path(geom_dir)}; "
+        print(f"NOTE: geometry files not found in {short_path(geom_dir)}; "
               f"using hit-inferred area.")
 
     # ---- BIB density before/after cuts -------------------------------------
@@ -283,15 +275,18 @@ def main():
     plt.savefig(outdir / "density_before_after_cuts.png", dpi=140)
     plt.close(fig)
 
-    print(f"\nWrote cutflow_bib.csv, cutflow_signal.csv, density_before_after_cuts.csv, "
-          f"and density_before_after_cuts.png to {_display_path(outdir.resolve())}")
+    print(f"Wrote cutflow_bib.csv, cutflow_signal.csv, density_before_after_cuts.csv "
+          f"and .png to {short_path(outdir)}/")
 
-    print("\n-- Summary: BIB rejection vs. signal efficiency (all cuts combined) --")
+    summary_rows = []
     for r_b, r_s in zip(bib_cutflow, sig_cutflow):
         rej = 1.0 - r_b["frac_after_all"] if r_b["n_total"] else float("nan")
         eff = r_s["frac_after_all"]
-        print(f"  {r_b['system_name']:12s}  BIB rejection={rej*100:6.2f}%   "
-              f"signal efficiency={eff*100:6.2f}%")
+        summary_rows.append([r_b["system_name"], f"{rej*100:.2f}%", f"{eff*100:.2f}%"])
+    print()
+    print_table("Summary: BIB rejection vs. signal efficiency (all cuts combined)",
+                ["region", "BIB rejection", "signal efficiency"], summary_rows)
+    print()
 
 
 if __name__ == "__main__":

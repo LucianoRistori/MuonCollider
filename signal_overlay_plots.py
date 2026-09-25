@@ -47,6 +47,7 @@ from bib_common import (
     load_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -84,23 +85,19 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
-
-    print(f"Loading BIB file: {_display_path(bib_file)}")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
     bib_hits = load_hits(bib_file)
     if smear_cfg is not None:
         apply_position_time_smearing(bib_hits, smear_cfg, smear_rng)
     n_bib_hit = len(bib_hits["x"])
-    print(f"  {bib_hits['_tree_name']}: {bib_hits['_n_events']} event(s), n_hit={n_bib_hit:,}")
-
-    print(f"Loading signal file: {_display_path(signal_file)}")
+    print(loaded_line(bib_file, bib_hits, "BIB"))
     sig_hits = load_hits(signal_file)
     if smear_cfg is not None:
         apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
     n_sig_hit = len(sig_hits["x"])
     n_sig_events = sig_hits["_n_events"]
-    print(f"  {sig_hits['_tree_name']}: {n_sig_events:,} event(s), n_hit={n_sig_hit:,} "
-          f"({n_sig_hit / n_sig_events:.2f} hits/event)")
+    print(loaded_line(signal_file, sig_hits, "signal"))
 
     bib_rows = region_table(bib_hits)
     sig_rows = region_table(sig_hits)
@@ -112,11 +109,11 @@ def main():
             geom_mod.annotate_rows_with_geometry_area(bib_rows, area_lookup)
             geom_mod.annotate_rows_with_geometry_area(sig_rows, area_lookup)
             geometry_used = True
-            print(f"Using true geometry-based area from {_display_path(geom_dir)}.")
+            print("Sensitive areas from the detector geometry")
         except Exception as e:
             print(f"WARNING: geometry parsing failed ({e}); using hit-inferred area.")
     else:
-        print(f"NOTE: geometry files not found in {_display_path(geom_dir)}; "
+        print(f"NOTE: geometry files not found in {short_path(geom_dir)}; "
               f"using hit-inferred area.")
 
     add_peak_density(bib_hits, bib_rows, bin_size_mm=None, percentile=PEAK_PERCENTILE,
@@ -178,16 +175,17 @@ def main():
                     sg["density_hits_per_mm2"] / n_sig_events,
             })
 
-    print(f"\nWrote rz_map_with_signal.png and {csv_path.name} to "
-          f"{_display_path(outdir.resolve())}")
-    print(f"\nHit density (hits/mm^2) - BIB mean/peak (whole sample) vs. "
-          f"signal (per event, {n_sig_events:,} events):")
+    print(f"Wrote rz_map_with_signal.png and {csv_path.name} to {short_path(outdir)}/")
+    density_rows = []
     for s in sys_ids:
         b = bib_by_sys[s]
         sg = sig_by_sys.get(s, {"density_hits_per_mm2": 0.0})
         sd = sg["density_hits_per_mm2"] / n_sig_events
-        print(f"  {SYSTEM_NAMES[s]:12s}  BIB mean={b['density_hits_per_mm2']:.4g}  "
-              f"BIB peak={b[PEAK_KEY]:.4g}  signal/event={sd:.4g}")
+        density_rows.append([SYSTEM_NAMES[s], f"{b['density_hits_per_mm2']:.4g}",
+                             f"{b[PEAK_KEY]:.4g}", f"{sd:.4g}"])
+    print()
+    print_table("Hit density (hits/mm^2): BIB (whole sample) vs. signal (per event):",
+                ["subsystem", "BIB mean", "BIB peak", "signal per event"], density_rows)
 
 
 if __name__ == "__main__":

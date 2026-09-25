@@ -740,6 +740,63 @@ def add_peak_density(hits, rows, bin_size_mm=None, percentile=99.0,
     return rows
 
 
+def under_run_all():
+    """
+    True when running as part of the ./run_all workflow (run_all_steps.sh
+    sets BIB_RUN_ALL=1). The workflow prints the settings and input files
+    once at the top of the log, so scripts then skip their own repeated
+    settings printout, and prepare_output_dir() skips archiving.
+    """
+    return os.environ.get("BIB_RUN_ALL", "").strip() not in ("", "0")
+
+
+def short_path(path):
+    """
+    Compact form of a path for console output: relative to the current
+    folder when inside it (under ./run_all that is the run folder, so an
+    output folder shows as e.g. "step1_basic_plots/"), otherwise with the
+    home folder written as "~".
+    """
+    p = Path(path).resolve()
+    try:
+        rel = p.relative_to(Path.cwd().resolve())
+        return str(rel) if str(rel) != "." else "."
+    except ValueError:
+        pass
+    try:
+        return "~/" + str(p.relative_to(Path.home().resolve()))
+    except ValueError:
+        return _display_path(p)
+
+
+def loaded_line(path, hits, label=""):
+    """One-line description of a loaded input file, e.g.
+    'Loaded BIB ntu_bib_ipp_3evt.root: 3 events, 17,297,266 hits'."""
+    n_ev = int(hits["_n_events"])
+    events = f"{n_ev:,} event" + ("" if n_ev == 1 else "s")
+    who = f"Loaded {label} " if label else "Loaded "
+    return f"{who}{Path(path).name}: {events}, {len(hits['x']):,} hits"
+
+
+def print_table(title, header, rows, align=None, indent="  ", gap="   "):
+    """
+    Print a small table in aligned columns: `header` is a list of column
+    names, `rows` a list of rows of already-formatted cell strings.
+    `align` is one letter per column, "l" or "r" (default: first column
+    left-aligned, the others right-aligned, as for numbers). `title` (if
+    not empty) is printed first, on its own line.
+    """
+    table = [[str(c) for c in header]] + [[str(c) for c in r] for r in rows]
+    ncol = len(header)
+    align = align or ("l" + "r" * (ncol - 1))
+    widths = [max(len(r[i]) for r in table) for i in range(ncol)]
+    if title:
+        print(title)
+    for r in table:
+        cells = [c.ljust(w) if a == "l" else c.rjust(w) for c, w, a in zip(r, widths, align)]
+        print((indent + gap.join(cells)).rstrip())
+
+
 def _display_path(path):
     """
     Rewrite a filesystem path for human-facing display (logs, print
@@ -789,12 +846,12 @@ def prepare_output_dir(outdir):
     import shutil
 
     outdir = Path(outdir)
-    # Under the run_all workflow (run_all_steps.sh sets BIB_NO_OLDRESULTS=1)
-    # every run already writes into its own fresh, timestamped folder, so
-    # there is nothing to protect - and archiving would actively break
-    # step 3, whose two scripts share one output folder. Just make sure
-    # the folder exists and leave its contents alone.
-    if os.environ.get("BIB_NO_OLDRESULTS", "").strip() not in ("", "0"):
+    # Under the run_all workflow every run already writes into its own
+    # fresh, timestamped folder, so there is nothing to protect - and
+    # archiving would actively break step 3, whose two scripts share one
+    # output folder. Just make sure the folder exists and leave its
+    # contents alone.
+    if under_run_all():
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
     if outdir.exists() and any(outdir.iterdir()):

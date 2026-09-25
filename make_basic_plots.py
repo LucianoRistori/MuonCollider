@@ -22,6 +22,7 @@ from bib_common import (
     load_hits, region_table, add_peak_density, subsystem_density_table,
     write_logfile, prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
+    under_run_all, short_path, loaded_line, print_table,
     apply_position_time_smearing,
     apply_angle_smearing,
 )
@@ -63,7 +64,8 @@ def main():
         smear_cfg = load_smearing_config(smearing_config)
         smear_rng = smearing_rng(smear_cfg)
         joined = describe_smearing(smear_cfg)
-        print(f"Smearing config: {_display_path(smearing_config)} ({joined})")
+        if not under_run_all():
+            print(f"Smearing: {joined}  ({short_path(smearing_config)})")
 
     hits = load_hits(root_file)
     if smear_cfg is not None:
@@ -72,8 +74,7 @@ def main():
     n_hit = len(hits["x"])
     pdg_unique = np.unique(p["pdg"])
     pdg_str = str(pdg_unique[0]) if pdg_unique.size == 1 else f"{list(pdg_unique)} (mixed)"
-    print(f"Loaded {hits['_tree_name']}: {hits['_n_events']} event(s), "
-          f"primary pdg={pdg_str}, n_hit={n_hit:,}")
+    print(f"{loaded_line(root_file, hits)} (primary pdg {pdg_str})")
 
     rows = region_table(hits)
 
@@ -83,14 +84,14 @@ def main():
             area_lookup = geom_mod.build_area_lookup(geom_dir)
             geom_mod.annotate_rows_with_geometry_area(rows, area_lookup)
             geometry_used = True
-            print(f"Using true geometry-based area from {_display_path(geom_dir)} "
-                  f"({len(area_lookup)}/{len(rows)} regions matched).")
+            print(f"Sensitive areas from the detector geometry "
+                  f"({len(area_lookup)} of {len(rows)} regions)")
         except Exception as e:
             print(f"WARNING: geometry parsing failed ({e}); "
                   f"falling back to hit-inferred area for all regions.")
     else:
         missing = [f for f in GEOMETRY_FILES if not (geom_dir / f).exists()]
-        print(f"NOTE: geometry file(s) not found in {_display_path(geom_dir)} "
+        print(f"NOTE: geometry file(s) not found in {short_path(geom_dir)} "
               f"({', '.join(missing)}); using hit-inferred area (less accurate, "
               f"see bib_common.region_table docstring).")
 
@@ -226,13 +227,14 @@ def main():
                   script_name=Path(__file__).name, outdir=str(outdir.resolve()),
                   area_source="geometry" if geometry_used else "hit-inferred")
 
-    print(f"\nWrote plots, CSVs and {log_path.name} to {_display_path(outdir.resolve())}")
-    print(f"{len(rows)} (system, side, layer) regions found.")
-    print(f"\nSubsystem densities (hits/mm^2) - mean vs peak (p{PEAK_PERCENTILE:.0f}, "
-          f"adaptive bin size targeting ~{PEAK_TARGET_HITS_PER_BIN:.0f} hits/bin):")
-    for r in sys_rows:
-        print(f"  {r['system_name']:12s} mean={r['density_hits_per_mm2']:.4g}  "
-              f"peak={r[PEAK_KEY]:.4g}  (bin={r.get('peak_bin_size_mm', 0):.3g}mm)")
+    print(f"Wrote plots and tables to {short_path(outdir)}/")
+    print()
+    print_table(
+        f"Hit density per subsystem (hits/mm^2); peak = {PEAK_PERCENTILE:.0f}th percentile "
+        f"over bins of ~{PEAK_TARGET_HITS_PER_BIN:.0f} hits:",
+        ["subsystem", "mean", "peak", "bin (mm)"],
+        [[r["system_name"], f"{r['density_hits_per_mm2']:.4g}", f"{r[PEAK_KEY]:.4g}",
+          f"{r.get('peak_bin_size_mm', 0):.3g}"] for r in sys_rows])
 
 
 if __name__ == "__main__":
