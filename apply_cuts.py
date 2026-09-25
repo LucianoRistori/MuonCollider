@@ -7,6 +7,9 @@ density and hit counts WITH cuts vs. WITHOUT cuts, per subsystem, so a
 cut hypothesis can be judged by how much it suppresses BIB relative to
 how much signal it keeps.
 
+The cuts are set per subsystem (__cuts_config.txt): every hit is judged
+by its own subsystem's cuts.
+
 Two kinds of comparison are produced:
   1. A cutflow (hit counts before / after each individual cut / after
      all three combined, per subsystem) for BIB and for signal
@@ -41,6 +44,7 @@ from bib_common import (
     apply_position_time_smearing,
     apply_angle_smearing,
 )
+import cuts_table
 import geometry as geom_mod
 
 PEAK_PERCENTILE = 99.0
@@ -275,14 +279,25 @@ def main():
     print(f"Wrote cutflow_bib.csv, cutflow_signal.csv, density_before_after_cuts.csv "
           f"and .png to {short_path(outdir)}/")
 
+    # When the cuts differ between subsystems, each region's own cut values
+    # are shown next to its results.
+    per_system = any(len(set(c["per_system"].values())) > 1 for c in cuts.values())
     summary_rows = []
     for r_b, r_s in zip(bib_cutflow, sig_cutflow):
         rej = 1.0 - r_b["frac_after_all"] if r_b["n_total"] else float("nan")
         eff = r_s["frac_after_all"]
-        summary_rows.append([r_b["system_name"], f"{rej*100:.2f}%", f"{eff*100:.2f}%"])
+        cut_cells = []
+        if per_system:
+            s = r_b["system"]
+            cut_cells = ([cuts_table.fmt(cuts[n]["per_system"][s]) for n in CUT_ORDER]
+                         if s in SYSTEM_NAMES else ["", "", ""])
+        summary_rows.append([r_b["system_name"]] + cut_cells
+                            + [f"{rej*100:.2f}%", f"{eff*100:.2f}%"])
+    header = (["region"] + (["time (ns)", "z0 (mm)", "pT (GeV/c)"] if per_system else [])
+              + ["BIB rejection", "signal efficiency"])
     print()
     print_table("Summary: BIB rejection vs. signal efficiency (all cuts combined)",
-                ["region", "BIB rejection", "signal efficiency"], summary_rows)
+                header, summary_rows)
     print()
 
 

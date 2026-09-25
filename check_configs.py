@@ -1,31 +1,35 @@
 """
-Check __cuts_config.txt and __smearing_config.txt before a run, and print a
-short, readable summary of the settings they contain.
+Check __cuts_config.txt, __smearing_config.txt and __input_files_config.txt
+before a run, and print a short, readable summary of the settings they
+contain.
 
-Why this exists: Python's configparser (used by bib_common's loaders)
-silently falls back to a default whenever a section or setting it asks
-for isn't there. So a typo - "sigma_u_m" instead of "sigma_u_mm", or
-"[angle-u]" instead of "[angle_u]" - raises no error: that value just
-quietly stays at its default (usually "no smearing", or "no cut"), and a
-whole run is produced with different settings than intended. This script
-rejects, before anything is run:
-  - unknown or misspelled sections/settings (suggesting the closest
-    valid name), and missing ones,
-  - values that aren't a number / true-false,
-  - negative widths or sigmas,
+Why this exists: Python's configparser (used to read these files) silently
+falls back to a default whenever a section or setting it asks for isn't
+there. So a typo - "sigma_u_m" instead of "sigma_u_mm", or "[angle-u]"
+instead of "[angle_u]" - raises no error: that value just quietly stays at
+its default (usually "no smearing", or "no cut"), and a whole run is
+produced with different settings than intended. This script rejects,
+before anything is run:
+  - unknown or misspelled sections, settings and cut-table rows
+    (suggesting the closest valid name), and missing ones,
+  - values that aren't a number / true-false (or "off" in the cut table),
+  - negative cuts or sigmas,
   - duplicated sections or settings,
+  - input files that don't exist,
 and warns about settings that are probably not what was meant (e.g. a
-sigma set but its section left disabled).
+sigma set but its section left disabled, or a cut line that would fall
+outside its zoomed plot).
 
-The accepted sections/settings mirror what bib_common.load_cuts,
-load_track_params and load_smearing_config read - keep them in sync if
-a setting is added there.
+The cuts file is read by cuts_table.py - the same code bib_common.load_cuts
+uses, so the check and the analysis cannot disagree. The accepted
+smearing settings mirror bib_common.load_smearing_config, and the input
+file names input_files.py - keep them in sync if a setting is added there.
 
 Usage:
     python3 check_configs.py <__cuts_config.txt> <__smearing_config.txt>
                              [<__input_files_config.txt> --sim-dir <folder>] [--brief]
 Exit code 0 = OK (warnings allowed), 1 = at least one error.
---brief prints just two summary lines (used for runs/<id>/summary.txt);
+--brief prints just a few summary lines (used for runs/<id>/summary.txt);
 --quiet prints nothing unless there is a problem.
 """
 import configparser
@@ -34,18 +38,11 @@ import math
 import sys
 from pathlib import Path
 
+import cuts_table as ct
+
 NUMBER, WHOLE, TRUEFALSE, FILENAME = "number", "whole number", "true/false value", "file name"
 
-# section -> {setting: (kind, required)}
-CUTS_SPEC = {
-    "t_corrected_ns": {"halfwidth": (NUMBER, True), "enabled": (TRUEFALSE, True),
-                       "zoom_halfwidth": (NUMBER, False), "center": (NUMBER, False)},
-    "z_axis_intercept_mm": {"halfwidth": (NUMBER, True), "enabled": (TRUEFALSE, True),
-                            "zoom_halfwidth": (NUMBER, False), "center": (NUMBER, False)},
-    "momentum_gev": {"halfwidth": (NUMBER, True), "enabled": (TRUEFALSE, True),
-                     "zoom_halfwidth": (NUMBER, False)},
-    "track": {"min_hits_found": (WHOLE, True), "exclude_vertex_hits": (TRUEFALSE, True)},
-}
+# section -> {setting: (kind, required)}   (the cuts file: see cuts_table.py)
 SMEAR_SPEC = {
     "position": {"sigma_u_mm": (NUMBER, True), "sigma_v_mm": (NUMBER, True),
                  "enabled": (TRUEFALSE, True)},
@@ -62,10 +59,7 @@ INPUTS_SPEC = {
                  ("main", "vertex", "inner_tracker", "outer_tracker")},
 }
 MAY_BE_EMPTY = {"bib_ipp"}
-MUST_NOT_BE_NEGATIVE = {"halfwidth", "zoom_halfwidth", "sigma_u_mm", "sigma_v_mm",
-                        "sigma_t_ns", "sigma_deg", "min_hits_found"}
-# same defaults as bib_common.ZOOM_HALFWIDTH_DEFAULTS
-ZOOM_DEFAULTS = {"t_corrected_ns": 2.0, "z_axis_intercept_mm": 100.0, "momentum_gev": 1.0}
+MUST_NOT_BE_NEGATIVE = {"sigma_u_mm", "sigma_v_mm", "sigma_t_ns", "sigma_deg"}
 
 
 def _suggest(name, candidates):
@@ -143,27 +137,24 @@ def _g(x):
     return f"{x:g}"
 
 
-def describe(cuts, smear):
-    """Human-readable lines: list of (name, text) for cuts, then smearing."""
-    def cut_line(sec, var, unit):
-        if not cuts.get((sec, "enabled"), False):
-            return "off"
-        hw = cuts.get((sec, "halfwidth"))
-        c = cuts.get((sec, "center"), 0.0)
-        inner = var if c == 0 else f"{var} - ({_g(c)})"
-        return f"|{inner}| <= {_g(hw)} {unit}"
+def track_text(cuts):
+    trk = f">= {cuts['track']['min_hits_found']} surviving hits"
+    return trk + (", vertex-detector hits not counted" if cuts["track"]["exclude_vertex_hits"]
+                  else ", all subsystems counted")
 
-    mom = (f"pT >= {_g(cuts.get(('momentum_gev', 'halfwidth')))} GeV/c"
-           if cuts.get(("momentum_gev", "enabled"), False) else "off")
-    trk = f">= {cuts.get(('track', 'min_hits_found'))} surviving hits"
-    trk += (", vertex-detector hits not counted"
-            if cuts.get(("track", "exclude_vertex_hits"), False) else ", all subsystems counted")
-    cut_lines = [
-        ("time", cut_line("t_corrected_ns", "t_corrected", "ns")),
-        ("z-intercept", cut_line("z_axis_intercept_mm", "z0", "mm")),
-        ("momentum", mom),
-        ("track found", trk),
-    ]
+
+def describe(cuts, smear):
+    """Human-readable lines, as (name, text): the cuts (a table, one row per
+    subsystem), then the smearing. `cuts` is what cuts_table.read returns."""
+    header, rows = ct.table_rows(cuts)
+    widths = [max([len(header[i])] + [len(r[i + 1]) for r in rows]) for i in range(len(header))]
+
+    def cells(r):
+        return "   ".join(c.rjust(w) for c, w in zip(r, widths))
+    cut_lines = [("hits kept if", "|t_corrected| <= time, |z0| <= z0 and pT >= pT, per subsystem:"),
+                 ("", cells(header))]
+    cut_lines += [(r[0], cells(r[1:])) for r in rows]
+    cut_lines.append(("track found", track_text(cuts)))
 
     def sig(sec, key, unit):
         if not smear.get((sec, "enabled"), False):
@@ -187,19 +178,9 @@ def describe(cuts, smear):
 
 
 def brief_lines(cuts, smear):
-    """Three short lines summarizing the settings (for summary.txt)."""
-    def cut(sec, var, unit, off):
-        if not cuts.get((sec, "enabled"), False):
-            return off
-        c = cuts.get((sec, "center"), 0.0)
-        inner = var if c == 0 else f"{var} - ({_g(c)})"
-        return f"|{inner}| <= {_g(cuts.get((sec, 'halfwidth')))} {unit}"
-    mom = (f"pT >= {_g(cuts.get(('momentum_gev', 'halfwidth')))} GeV/c"
-           if cuts.get(("momentum_gev", "enabled"), False) else "no pT cut")
-    trk = f">= {cuts.get(('track', 'min_hits_found'))} surviving hits"
-    trk += (", vertex-detector hits not counted"
-            if cuts.get(("track", "exclude_vertex_hits"), False) else ", all subsystems counted")
-
+    """Three short lines summarizing the settings (for summary.txt, where
+    the results table follows - when the cuts differ between subsystems,
+    that table lists each subsystem's cuts)."""
     def on(sec):
         return smear.get((sec, "enabled"), False)
 
@@ -213,32 +194,44 @@ def brief_lines(cuts, smear):
     av = f"{val('angle_v', 'sigma_deg')}" if on("angle_v") else "off"
     ang = "angle off" if au == av == "off" else f"angle u/v {au}/{av} deg"
     return [
-        "Cuts:        " + ", ".join([cut("t_corrected_ns", "t_corrected", "ns", "no time cut"),
-                                     cut("z_axis_intercept_mm", "z0", "mm", "no z0 cut"), mom]),
-        "Track found: " + trk,
+        "Cuts:        " + (", ".join(ct.summary(cuts, c) for c in ct.COLUMNS)
+                             if ct.is_uniform(cuts) else "set per subsystem - see the table below"),
+        "Track found: " + track_text(cuts),
         "Resolutions: " + ", ".join([pos, tim, ang, f"seed {smear.get(('general', 'seed'), '')}"]),
     ]
 
 
 def warnings_for(cuts, smear):
     warn = []
-    for sec, var, unit in (("t_corrected_ns", "time", "ns"), ("z_axis_intercept_mm", "z-intercept", "mm")):
-        if cuts.get((sec, "enabled"), False):
-            hw = cuts.get((sec, "halfwidth"), 0.0)
-            zoom = cuts.get((sec, "zoom_halfwidth"), ZOOM_DEFAULTS[sec])
-            if hw == 0:
-                warn.append(f"__cuts_config.txt: [{sec}] halfwidth = 0 rejects essentially every hit")
-            elif hw > zoom:
-                warn.append(f"__cuts_config.txt: {var} cut at +/-{_g(hw)} {unit} lies outside the zoomed "
-                            f"plots' range (+/-{_g(zoom)} {unit}) - raise zoom_halfwidth in "
-                            f"[{sec}] to see the cut lines there")
-    if cuts.get(("momentum_gev", "enabled"), False):
-        hw = cuts.get(("momentum_gev", "halfwidth"), 0.0)
-        zoom = cuts.get(("momentum_gev", "zoom_halfwidth"), ZOOM_DEFAULTS["momentum_gev"])
-        if hw < zoom:
-            warn.append(f"__cuts_config.txt: momentum cut at {_g(hw)} GeV/c is below the zoomed plots' "
-                        f"lower edge ({_g(zoom)} GeV/c) - lower zoom_halfwidth in [momentum_gev] "
-                        f"to see the cut lines there")
+
+    def where(ids):
+        ids = sorted(ids)
+        return ("all subsystems" if len(ids) == len(ct.SYSTEM_IDS)
+                else ", ".join(ct.NAMES[s] for s in ids))
+
+    def zoom_setting(col):
+        return (f"zoom_halfwidth in [{ct.CUT_NAMES[col]}]" if cuts["old_format"]
+                else f"{ct.TITLES[col]} in [zoom]")
+    for col in ("time", "z0"):
+        vals, zoom = cuts["cuts"][col], cuts["zoom"][col]
+        zero = [s for s, v in vals.items() if v == 0]
+        wide = [s for s, v in vals.items() if v is not None and v > zoom]
+        if zero:
+            warn.append(f"__cuts_config.txt: {ct.TITLES[col]} = 0 rejects essentially every hit "
+                        f"({where(zero)})")
+        if wide:
+            warn.append(f"__cuts_config.txt: the {ct.TITLES[col]} cut lies outside the zoomed N-1 "
+                        f"plots' range (+/-{_g(zoom)} {ct.UNITS[col]}) in {where(wide)} - raise "
+                        f"{zoom_setting(col)} to see the cut lines there")
+    vals, zoom = cuts["cuts"]["pt"], cuts["zoom"]["pt"]
+    zero = [s for s, v in vals.items() if v == 0]
+    low = [s for s, v in vals.items() if v is not None and 0 < v < zoom]
+    if zero:
+        warn.append(f"__cuts_config.txt: pT = 0 keeps every hit, the same as off ({where(zero)})")
+    if low:
+        warn.append(f"__cuts_config.txt: the pT cut is below the zoomed N-1 plots' lower edge "
+                    f"({_g(zoom)} GeV/c) in {where(low)} - lower {zoom_setting('pt')} to see the "
+                    f"cut lines there")
     for sec, keys in (("position", ("sigma_u_mm", "sigma_v_mm")), ("time", ("sigma_t_ns",)),
                       ("angle_u", ("sigma_deg",)), ("angle_v", ("sigma_deg",))):
         if (sec, "enabled") in smear and not smear[(sec, "enabled")]:
@@ -246,6 +239,14 @@ def warnings_for(cuts, smear):
                 warn.append(f"__smearing_config.txt: [{sec}] has a nonzero sigma but enabled = false, "
                             f"so it will NOT be applied")
     return warn
+
+
+def notes_for(cuts):
+    if cuts["old_format"]:
+        return ["__cuts_config.txt is in the old format (one section per cut), so each cut "
+                "applies to every subsystem. For cuts per subsystem, use the table format - "
+                "see templates/__cuts_config.txt."]
+    return []
 
 
 def _tilde(path):
@@ -314,8 +315,7 @@ def main(argv):
     cuts_path, smear_path = args[0], args[1]
     inputs_path = args[2] if len(args) == 3 else None
 
-    errors = []
-    cuts = read_and_check(cuts_path, CUTS_SPEC, errors)
+    cuts, errors = ct.read(cuts_path)
     smear = read_and_check(smear_path, SMEAR_SPEC, errors)
     inputs = read_and_check(inputs_path, INPUTS_SPEC, errors) if inputs_path else None
     if inputs is not None and sim_dir:
@@ -349,6 +349,8 @@ def main(argv):
         print(f"  {n:<12} {t}")
     for w in warnings_for(cuts, smear):
         print(f"  WARNING: {w}")
+    for w in notes_for(cuts):
+        print(f"  NOTE: {w}")
     return 0
 
 

@@ -9,6 +9,9 @@ covered by signal_overlay_plots.py:
   - inv_radius_per_subsystem_zoom       (zoomed to |pT| ~ 1 GeV/c window)
   - time_corrected_per_subsystem        (full +/-20ns range)
   - time_corrected_per_subsystem_zoom   (+/-2ns zoom)
+Each panel is one subsystem, and shows that subsystem's own cut on the
+plotted variable (__cuts_config.txt sets the cuts per subsystem) as
+dashed red lines, with its value in the panel title.
 
 Normalization (hits per collision): the merged BIB file (plus+minus) is
 taken to represent the full background expected in a single MC collision,
@@ -57,33 +60,46 @@ SIG_COLOR = "#2ca858"
 CUT_LINE_COLOR = "#a83232"
 
 
-def draw_symmetric_cut_lines(ax, cuts, name, xmax=None):
-    """For a simple |value - center| <= halfwidth cut (t_corrected_ns,
-    z_axis_intercept_mm): draw vertical lines at the two edges, if the
-    cut is enabled and (optionally) within the visible range."""
-    spec = cuts[name]
-    if not spec["enabled"]:
+def draw_symmetric_cut_lines(ax, cuts, name, system, xmax=None):
+    """For a |value| <= limit cut (t_corrected_ns, z_axis_intercept_mm):
+    draw vertical lines at +/- the limit of this panel's own subsystem
+    (cuts are set per subsystem), unless the cut is off there or
+    (optionally) the lines fall outside the visible range."""
+    limit = cuts[name]["per_system"].get(system)
+    if limit is None:
         return
-    lo, hi = spec["center"] - spec["halfwidth"], spec["center"] + spec["halfwidth"]
-    for edge in (lo, hi):
+    for edge in (-limit, limit):
         if xmax is None or abs(edge) <= xmax:
             ax.axvline(edge, color=CUT_LINE_COLOR, linewidth=1.1,
                        linestyle="--", alpha=0.8)
 
 
-def draw_momentum_cut_lines(ax, cuts, xmax=None):
+def draw_momentum_cut_lines(ax, cuts, system, xmax=None):
     """momentum_gev cut accepts |inv_radius_per_mm| <= threshold (a band
     around 1/R=0); draw its two edges on the curvature axis (in 1/m,
-    matching the plotted units bv = inv_radius_per_mm*1000)."""
-    spec = cuts["momentum_gev"]
-    if not spec["enabled"]:
+    matching the plotted units bv = inv_radius_per_mm*1000), for this
+    panel's own subsystem."""
+    pt_min = cuts["momentum_gev"]["per_system"].get(system)
+    if not pt_min:          # off (None), or pT >= 0, which keeps every hit
         return
-    inv_radius_threshold_per_m = (GEV_PER_INV_M / spec["halfwidth"])
+    inv_radius_threshold_per_m = GEV_PER_INV_M / pt_min
     for edge in (-inv_radius_threshold_per_m, inv_radius_threshold_per_m):
         if xmax is None or abs(edge) <= xmax:
             ax.axvline(edge, color=CUT_LINE_COLOR, linewidth=1.1,
                        linestyle="--", alpha=0.8)
 
+
+def panel_title(cuts, name, system):
+    """A panel's title: its subsystem, and that subsystem's own value of
+    the cut on the plotted variable, e.g. 'OT endcap   (cut |z0| <= 40 mm)'."""
+    x = cuts[name]["per_system"].get(system)
+    if name == "t_corrected_ns":
+        cut = "no time cut" if x is None else f"cut |t - t$_{{TOF}}$| \u2264 {x:g} ns"
+    elif name == "z_axis_intercept_mm":
+        cut = "no z$_0$ cut" if x is None else f"cut |z$_0$| \u2264 {x:g} mm"
+    else:
+        cut = "no p$_T$ cut" if x is None else f"cut p$_T$ \u2265 {x:g} GeV/c"
+    return f"{SYSTEM_NAMES[system]}   ({cut})"
 
 
 def overlay_hist(ax, bib_v, sig_v, bins, n_sig_events):
@@ -160,9 +176,9 @@ def main():
         sv = sv[np.abs(sv) <= Z0_RANGE_MM]
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_RANGE_MM, Z0_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", xmax=Z0_RANGE_MM)
+        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_RANGE_MM)
         ax.set_yscale("log")
-        ax.set_title(SYSTEM_NAMES[s])
+        ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
         ax.set_ylabel("hits / collision / bin")
         ax.legend(fontsize=7)
@@ -184,9 +200,9 @@ def main():
         sv = sv[np.abs(sv) <= Z0_ZOOM_RANGE_MM]
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_ZOOM_RANGE_MM, Z0_ZOOM_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", xmax=Z0_ZOOM_RANGE_MM)
+        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_ZOOM_RANGE_MM)
         ax.set_yscale("log")
-        ax.set_title(SYSTEM_NAMES[s])
+        ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
         ax.set_ylabel("hits / collision / bin")
         ax.legend(fontsize=7)
@@ -205,9 +221,9 @@ def main():
         sv = sig_hits["inv_radius_per_mm"][sig_sys == s] * 1000.0
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_MAX, INV_R_MAX, 161),
                      n_sig_events=n_sig_events)
-        draw_momentum_cut_lines(ax, cuts, xmax=INV_R_MAX)
+        draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_MAX)
         ax.set_yscale("log")
-        ax.set_title(SYSTEM_NAMES[s])
+        ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_ticks)
         ax.set_xticklabels(pt_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
@@ -234,9 +250,9 @@ def main():
         sv = sx[np.abs(sx) <= INV_R_ZOOM_MAX]
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_ZOOM_MAX, INV_R_ZOOM_MAX, 121),
                      n_sig_events=n_sig_events)
-        draw_momentum_cut_lines(ax, cuts, xmax=INV_R_ZOOM_MAX)
+        draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_ZOOM_MAX)
         ax.set_yscale("log")
-        ax.set_title(SYSTEM_NAMES[s])
+        ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_zoom_ticks)
         ax.set_xticklabels(pt_zoom_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
@@ -259,9 +275,9 @@ def main():
         sv = sv[np.isfinite(sv)]
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_RANGE_NS, TC_RANGE_NS, 161),
                      n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", xmax=TC_RANGE_NS)
+        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_RANGE_NS)
         ax.set_yscale("log")
-        ax.set_title(SYSTEM_NAMES[s])
+        ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
         ax.set_ylabel("hits / collision / bin")
         ax.legend(fontsize=7)
@@ -282,9 +298,9 @@ def main():
         sv = sv[np.abs(sv) <= TC_ZOOM_RANGE_NS]
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_ZOOM_RANGE_NS, TC_ZOOM_RANGE_NS, 121),
                      n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", xmax=TC_ZOOM_RANGE_NS)
+        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_ZOOM_RANGE_NS)
         ax.set_yscale("log")
-        ax.set_title(SYSTEM_NAMES[s])
+        ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
         ax.set_ylabel("hits / collision / bin")
         ax.legend(fontsize=7)

@@ -19,7 +19,9 @@
 #   3. Runs steps 1-4, writing every plot and table into that run folder,
 #      and saves everything printed to runs/<date>_<time>/run_log.txt.
 #   4. Only if ALL steps succeed: writes summary.txt (settings + BIB
-#      rejection / signal efficiency) and replaces the step* folders in
+#      rejection / signal efficiency), gathers the key plots in
+#      _highlights/ together with a PDF presentation of the main ones
+#      (highlights_<date>_<time>.pdf), and replaces the step* folders in
 #      the working folder with this run's copy, so they always show the
 #      latest SUCCESSFUL run (latest_run.txt says which one).
 #      If anything fails, the run folder is renamed <date>_<time>_FAILED
@@ -316,6 +318,9 @@ for f in $HIGHLIGHTS; do
         missing_hl="$missing_hl $f"
     fi
 done
+PDF="_highlights/highlights_$RUN_ID.pdf"
+pdf_failed=0
+pdf_msg="$("$PYTHON" "$CODE_DIR/make_highlights_pdf.py" "$RUN_DIR" 2>&1)" || pdf_failed=1
 
 promote() {
     local d
@@ -343,12 +348,17 @@ elapsed=$(( $(date +%s) - T_START ))
     if promote; then
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
         say " The step folders here now show this run; key plots are in _highlights/."
+        [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: $PDF"
     else
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
         say " BUT the step folders here could not be updated (see message above);"
         say " the complete results are in runs/$RUN_ID/."
     fi
     [ -z "$missing_hl" ] || say " WARNING - these plots were not produced, so they are not in _highlights:$missing_hl"
+    if [ "$pdf_failed" = 1 ]; then
+        say " WARNING - the PDF presentation could not be made:"
+        printf '%s\n' "$pdf_msg" | sed 's/^/     /'
+    fi
     say ""
     sed 's/^/ /' "$RUN_DIR/summary.txt"
     say "======================================================================"

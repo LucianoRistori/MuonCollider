@@ -33,6 +33,8 @@ from pathlib import Path
 import numpy as np
 import uproot
 
+import cuts_table
+
 SYSTEM_NAMES = {
     1: "VXD barrel",
     2: "VXD endcap",
@@ -392,50 +394,38 @@ def add_time_of_flight(hits, B_FIELD_T=5.0, mass_gev=MUON_MASS_GEV):
 
 
 # ---------------------------------------------------------------------------
-# Selection cuts: an editable text config (__cuts_config.txt) defines a
-# symmetric acceptance window around zero for each of three quantities that
-# should be consistent with a genuine signal muon from the IP:
+# Selection cuts: an editable text file (__cuts_config.txt, read through
+# cuts_table.py) sets, separately for each of the six subsystems, a limit
+# on each of three quantities that should be consistent with a genuine
+# signal muon from the IP:
 #   t_corrected_ns      - time-of-flight-corrected hit time (see
 #                          add_time_of_flight); expected ~0 for signal.
-#                          Simple window: accept |t_corrected_ns| <= halfwidth.
+#                          Kept if |t_corrected_ns| <= the "time" limit.
 #   z_axis_intercept_mm - meridian-plane track extrapolated back to the Z
 #                          axis (see add_incidence_angles); expected ~0
-#                          (the IP) for signal. Simple window: accept
-#                          |z_axis_intercept_mm| <= halfwidth.
+#                          (the IP) for signal. Kept if
+#                          |z_axis_intercept_mm| <= the "z0" limit.
 #   momentum_gev         - transverse momentum estimated from the hit's own
-#                          curvature. This one is NOT a symmetric window on
-#                          pT itself: pT = 0.3*B/|1/R| diverges as 1/R -> 0,
+#                          curvature. This one is NOT a window on pT
+#                          itself: pT = 0.3*B/|1/R| diverges as 1/R -> 0,
 #                          so a perfectly straight track (R = Infinity, the
 #                          best-reconstructed, highest-momentum case) has
 #                          pT = +/-Infinity depending which side of R=0 you
 #                          approach from - a genuine discontinuity that no
 #                          finite window in pT-space can straddle. Instead
 #                          the cut is applied directly on the (bounded,
-#                          continuous) curvature inv_radius_per_mm: accept
-#                          |1/R| <= (0.3*B_FIELD_T/1000) / halfwidth_gev,
-#                          i.e. "reconstructed |pT| >= halfwidth_gev, with
-#                          R = Infinity always accepted since 1/R = 0 sits
-#                          at the exact center of that window".
-# Each hit must pass every *enabled* cut to be accepted. A cut whose value
-# is NaN (e.g. an undefined z_axis_intercept) fails that cut, same as it's
-# already excluded/reported separately elsewhere in this codebase.
+#                          continuous) curvature inv_radius_per_mm: kept if
+#                          |1/R| <= (0.3*B_FIELD_T/1000) / pT_min, i.e.
+#                          "reconstructed |pT| >= pT_min, with R = Infinity
+#                          always accepted since 1/R = 0 sits at the exact
+#                          center of that window".
+# Each hit must pass every cut that is on in its own subsystem ("off" in
+# the table switches one cut off in one subsystem). A hit whose cut
+# quantity is NaN (e.g. an undefined z_axis_intercept) fails that cut,
+# unless the cut is off in its subsystem.
 # ---------------------------------------------------------------------------
 
 CUT_NAMES = ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev")
-
-# Default half-range of each cut variable's *zoomed* histogram (same units
-# as that cut's halfwidth), used when __cuts_config.txt doesn't set its own
-# zoom_halfwidth - see load_cuts(). These match the values the zoomed
-# plots used before zoom_halfwidth became configurable (Z0_ZOOM_RANGE_MM,
-# PT_ZOOM_RANGE_GEV, TC_ZOOM_RANGE_NS in incidence_angle_plots.py /
-# time_of_flight_plots.py), kept here too as the fallback for scripts
-# (currently n1_cut_plots.py) that size their zoom window from the cuts
-# config so it can track a cut's own halfwidth as that's changed.
-ZOOM_HALFWIDTH_DEFAULTS = {
-    "t_corrected_ns": 2.0,          # ns
-    "z_axis_intercept_mm": 100.0,   # mm
-    "momentum_gev": 1.0,            # GeV/c
-}
 
 # system IDs (see decode_id0 / SYSTEM_NAMES above) that make up the vertex
 # detector (VXD barrel + endcap) - used by the [track] section's
@@ -458,125 +448,101 @@ def default_cuts_config():
     return str(Path(__file__).resolve().parent / "templates" / "__cuts_config.txt")
 
 
+
 def load_cuts(path):
     """
-    Load a selection-cuts config file (see __cuts_config.txt for the
-    canonical example/format). Uses the standard library configparser, so
-    the file is plain INI: one section per cut (t_corrected_ns,
-    z_axis_intercept_mm, momentum_gev), each with a `halfwidth` and an
-    `enabled` key (t_corrected_ns / z_axis_intercept_mm also take an
-    optional `center`, default 0.0; momentum_gev has no center - see the
-    module-level comment above for why it's inherently centered on
-    1/R = 0). Each cut also takes an optional `zoom_halfwidth` - the
-    half-range (same units as `halfwidth`) of that variable's zoomed
-    histogram, used by n1_cut_plots.py; defaults to
-    ZOOM_HALFWIDTH_DEFAULTS[name] if not set. Lines starting with '#' or
-    ';' are comments.
+    Load the selection cuts from a cuts config file - a [cuts] table with
+    one row per subsystem and one column per cut, plus a [zoom] section;
+    see templates/__cuts_config.txt, and cuts_table.py, which reads it.
+    Raises ValueError listing the problems if the file has any (an unknown
+    row, a value that isn't a number, ...), rather than quietly falling
+    back to a default.
 
-    Returns a dict {cut_name: {...}}. A cut with no section in the file is
-    treated as enabled=False (no cut applied), with its zoom_halfwidth
-    still defaulted from ZOOM_HALFWIDTH_DEFAULTS.
+    Returns {cut name (see CUT_NAMES): {
+        "per_system": {system id: limit, or None if the cut is off there},
+        "enabled": True if the cut is on in at least one subsystem,
+        "zoom_halfwidth": half-range of that variable's zoomed N-1 plot}}.
+    Limits are in ns (t_corrected_ns), mm (z_axis_intercept_mm) and, for
+    momentum_gev, the minimum pT in GeV/c.
     """
-    import configparser
-
-    cp = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-    read_ok = cp.read(path)
-    if not read_ok:
-        raise FileNotFoundError(f"cuts config not found: {path}")
-
+    settings = cuts_table.load(path)
     cuts = {}
-    for name in CUT_NAMES:
-        if cp.has_section(name):
-            sec = cp[name]
-            cuts[name] = {
-                "center": sec.getfloat("center", 0.0),
-                "halfwidth": sec.getfloat("halfwidth", fallback=float("inf")),
-                "enabled": sec.getboolean("enabled", fallback=True),
-                "zoom_halfwidth": sec.getfloat(
-                    "zoom_halfwidth", fallback=ZOOM_HALFWIDTH_DEFAULTS[name]),
-            }
-        else:
-            cuts[name] = {"center": 0.0, "halfwidth": float("inf"), "enabled": False,
-                           "zoom_halfwidth": ZOOM_HALFWIDTH_DEFAULTS[name]}
+    for col in cuts_table.COLUMNS:
+        per_system = dict(settings["cuts"][col])
+        cuts[cuts_table.CUT_NAMES[col]] = {
+            "per_system": per_system,
+            "enabled": any(v is not None for v in per_system.values()),
+            "zoom_halfwidth": settings["zoom"][col],
+        }
     return cuts
 
 
 def load_track_params(path):
     """
-    Load track-level parameters from the same cuts config file (see
-    __cuts_config.txt, [track] section) used by load_cuts():
+    Load track-level parameters from the [track] section of the same cuts
+    config file used by load_cuts():
       - min_hits_found: the minimum number of hits surviving the
         selection cuts (see apply_cuts()) for a simulated track (all the
         hits from one event/one generated particle, grouped by
         hits["event_id"]) to be counted as "found" - see
-        track_efficiency.py. Default 5.
+        track_efficiency.py.
       - exclude_vertex_hits: if true, hits in the vertex detector
         (VXD barrel/endcap, system in VERTEX_SYSTEM_IDS) are excluded
         from that per-track surviving-hit count, even if they pass the
         selection cuts - i.e. "found" then means >=min_hits_found
-        surviving hits *outside* the vertex detector. Default false
-        (vertex hits count same as any other).
+        surviving hits *outside* the vertex detector.
     Returns {"min_hits_found": int, "exclude_vertex_hits": bool}.
     """
-    import configparser
-
-    cp = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-    read_ok = cp.read(path)
-    if not read_ok:
-        raise FileNotFoundError(f"cuts config not found: {path}")
-    min_hits_found = cp.getint("track", "min_hits_found", fallback=5) \
-        if cp.has_section("track") else 5
-    exclude_vertex_hits = cp.getboolean("track", "exclude_vertex_hits", fallback=False) \
-        if cp.has_section("track") else False
-    return {"min_hits_found": min_hits_found, "exclude_vertex_hits": exclude_vertex_hits}
+    return dict(cuts_table.load(path)["track"])
 
 
 def apply_cuts(hits, cuts, B_FIELD_T=5.0):
     """
-    Apply a cuts dict (from load_cuts()) to `hits`. `hits` must already
+    Apply a cuts dict (from load_cuts()) to `hits`, each hit with the
+    limits of its own subsystem (hits["system"]). `hits` must already
     have had add_incidence_angles() and add_time_of_flight() called on it.
     B_FIELD_T must match whatever was used for add_time_of_flight (and the
     pT axis on the angle plots), since the momentum_gev cut converts its
-    GeV/c halfwidth to a curvature threshold using it.
+    GeV/c limit to a curvature limit using it.
 
     Returns (combined_mask, per_cut_masks) - see CUT_NAMES / the
     module-level comment above for what each cut does. per_cut_masks maps
     cut name -> its own accept mask on its own (before combining), useful
-    for a cutflow table. A disabled cut contributes an all-True mask (it's
-    simply skipped); NaN values in a cut's underlying quantity fail that
-    cut even when it's enabled.
+    for a cutflow table. Where a cut is off (in one subsystem, or in all)
+    it accepts every hit there; NaN values in a cut's underlying quantity
+    fail that cut wherever it is on. Hits of a system that has no row in
+    the table (there are none in the current files) are not cut.
     """
-    n = len(hits["t_corrected_ns"])
+    system = hits["system"]
+    n = len(system)
     combined = np.ones(n, dtype=bool)
     per_cut = {}
-
-    for name in ("t_corrected_ns", "z_axis_intercept_mm"):
-        spec = cuts[name]
-        if not spec["enabled"]:
+    gev_per_inv_mm = 0.3 * B_FIELD_T / 1000.0   # inv_radius_per_mm is in 1/mm
+    for name in CUT_NAMES:
+        if not cuts[name]["enabled"]:
             per_cut[name] = np.ones(n, dtype=bool)
             continue
-        v = hits[name]
-        lo, hi = spec["center"] - spec["halfwidth"], spec["center"] + spec["halfwidth"]
+        # look-up tables indexed by system id (5 bits, so 0-31)
+        limit = np.full(32, np.inf)
+        off = np.ones(32, dtype=bool)
+        for s, x in cuts[name]["per_system"].items():
+            if x is None:
+                continue
+            if name == "momentum_gev":
+                # pT >= x  <=>  |1/R| <= 0.3*B/x   (x = 0 keeps every hit)
+                x = gev_per_inv_mm / x if x > 0 else np.inf
+            limit[s] = x
+            off[s] = False
+        v = hits["inv_radius_per_mm" if name == "momentum_gev" else name]
+        # compare in the quantity's own precision (float32), as a plain
+        # number limit would be
+        limit = limit.astype(v.dtype) if np.issubdtype(v.dtype, np.floating) else limit
         with np.errstate(invalid="ignore"):
-            mask = (v >= lo) & (v <= hi)
+            mask = np.abs(v) <= limit[system]
+        mask |= off[system]
         per_cut[name] = mask
         combined &= mask
-
-    spec = cuts["momentum_gev"]
-    if not spec["enabled"]:
-        per_cut["momentum_gev"] = np.ones(n, dtype=bool)
-    else:
-        GEV_PER_INV_M = 0.3 * B_FIELD_T
-        GEV_PER_INV_MM = GEV_PER_INV_M / 1000.0  # inv_radius_per_mm is in 1/mm
-        inv_radius_threshold = GEV_PER_INV_MM / spec["halfwidth"]
-        v = hits["inv_radius_per_mm"]
-        with np.errstate(invalid="ignore"):
-            mask = np.abs(v) <= inv_radius_threshold
-        per_cut["momentum_gev"] = mask
-        combined &= mask
-
     return combined, per_cut
-
 
 def mask_hits(hits, mask):
     """

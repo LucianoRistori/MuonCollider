@@ -1,66 +1,40 @@
-# Selection cuts for BIB suppression analysis (used by apply_cuts.py, via
-# bib_common.load_cuts / bib_common.apply_cuts).
+# Selection cuts for the BIB-suppression analysis, one row per detector
+# subsystem. Edit the numbers, then run ./run_all.
+# Lines starting with # are comments.
 #
-# Plain INI format (stdlib configparser) - edit values and run ./run_all
-# to test a different hypothesis; no code changes needed.
-# Lines starting with '#' are comments.
-#
-# Each cut is a symmetric acceptance window around zero for a quantity
-# that should be small/consistent for a genuine signal muon from the IP.
-# Set enabled = false to switch a cut off without deleting it.
+# A hit is kept only if it passes all three cuts of its own subsystem:
+#   time  |t_corrected| <= time (ns): the hit time minus the time of flight
+#         expected for a particle coming from the interaction point
+#   z0    |z0| <= z0 (mm): where the track, extrapolated back from the hit's
+#         measured position and direction, crosses the beam line
+#   pT    pT >= pT (GeV/c): transverse momentum estimated from the hit's
+#         measured position and direction (the circle through the beam line
+#         tangent to it); a straight track (infinite pT) always passes
+# Write off instead of a number to switch one cut off in one subsystem.
 
-[t_corrected_ns]
-# Time-of-flight-corrected hit time (t - t_expected(TOF from IP), see
-# bib_common.add_time_of_flight). Peaks sharply at 0 for signal; BIB does
-# not (see project doc, "Time-of-flight correction"). Accept
-# |t_corrected_ns| <= halfwidth.
-halfwidth = 0.3
-enabled = true
-# Half-range (ns) of this variable's ZOOMED histogram (n1_cut_plots.py's
-# time_corrected_per_subsystem_zoom_n1.png). Purely a plot display range -
-# does not affect the cut itself. Widen this if halfwidth is loosened
-# enough that the cut-threshold line would otherwise fall outside the
-# zoomed view.
-zoom_halfwidth = 2.0
+[cuts]
+#             time    z0     pT
+#             (ns)    (mm)   (GeV/c)
+vxd_barrel  = 0.3     15     5
+vxd_endcap  = 0.3     15     5
+it_barrel   = 0.3     15     5
+it_endcap   = 0.3     15     5
+ot_barrel   = 0.3     15     5
+ot_endcap   = 0.3     15     5
 
-[z_axis_intercept_mm]
-# Meridian-plane trajectory extrapolated back to the Z axis (see
-# bib_common.add_incidence_angles). Should sit near the true IP (z=0) for
-# signal. Accept |z_axis_intercept_mm| <= halfwidth.
-halfwidth = 15.0
-enabled = true
-# Half-range (mm) of this variable's ZOOMED histogram (n1_cut_plots.py's
-# z_axis_intercept_per_subsystem_zoom_n1.png). Plot display range only -
-# see the note under t_corrected_ns's zoom_halfwidth above.
-zoom_halfwidth = 100.0
-
-[momentum_gev]
-# Transverse momentum estimated from the hit's own curvature (1/R). NOTE:
-# this is NOT a symmetric window on pT itself - pT = 0.3*B/|1/R| diverges
-# as R -> Infinity (a perfectly straight, best-reconstructed track), so a
-# finite pT window could never include that case. Instead this is applied
-# as a minimum-|pT| cut, done correctly on the curvature 1/R (which is
-# finite and continuous everywhere, with R=Infinity sitting at 1/R=0, the
-# exact center of the accepted region) - see bib_common.apply_cuts. Accept
-# hits whose reconstructed |pT| >= halfwidth (in GeV/c); R = Infinity is
-# always accepted.
-halfwidth = 5.0
-enabled = true
-# Half-range (GeV/c) of this variable's ZOOMED histogram (n1_cut_plots.py's
-# inv_radius_per_subsystem_zoom_n1.png shows |pT| >= zoom_halfwidth GeV/c).
-# Plot display range only - see the note under t_corrected_ns's
-# zoom_halfwidth above.
-zoom_halfwidth = 1.0
+[zoom]
+# Half-range of the zoomed N-1 plots (step4_n1_cuts/*_zoom_n1.png), in the
+# units of the table: +/- time ns, +/- z0 mm, and |pT| >= pT GeV/c.
+# Display only: it does not change the cuts. Widen it if a cut line falls
+# outside the zoomed view.
+time = 2.0
+z0   = 100
+pT   = 1.0
 
 [track]
-# Minimum number of hits (summed across all subsystems, unless
-# exclude_vertex_hits below is set) that must survive the three cuts
-# above for a simulated track (one event/one generated muon) to be
-# counted as "found" - see track_efficiency.py.
+# A signal muon counts as found if at least min_hits_found of its hits pass
+# the cuts (step4_track_efficiency). With exclude_vertex_hits = true, hits
+# in the vertex detector (VXD barrel and endcap) are not counted, even when
+# they pass.
 min_hits_found = 5
-# If true, hits in the vertex detector (VXD barrel/endcap) don't count
-# toward a track's surviving-hit total above, even when they pass the
-# three cuts - i.e. "found" then requires min_hits_found surviving hits
-# OUTSIDE the vertex detector. Default false (vertex hits count same as
-# any other subsystem's).
 exclude_vertex_hits = true

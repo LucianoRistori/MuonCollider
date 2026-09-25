@@ -7,7 +7,7 @@ three editable settings files:
 
 ```
 cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
-# edit __cuts_config.txt (cuts), __smearing_config.txt (resolutions)
+# edit __cuts_config.txt (cuts, per subsystem), __smearing_config.txt (resolutions)
 # and/or __input_files_config.txt (which data and geometry files to use)
 ./run_all
 ```
@@ -23,15 +23,17 @@ automatically when it doesn't - e.g. after new plus/minus/ipp files
 were put in `Data/`.
 
 `./run_all` first checks the settings files (misspelled, unknown or
-missing settings, values that aren't numbers or true/false, negative
-widths/sigmas, duplicates - nothing runs until they are fixed), the
+missing settings or cut-table rows, values that aren't numbers or
+true/false, negative cuts/sigmas, duplicates - nothing runs until they
+are fixed), the
 input ROOT files and the Python packages. It then runs steps 1-4 and
 archives the whole run in `runs/<date>_<time>/`: every plot and table,
-the two settings files exactly as used (copied at the start, so editing
-them during a run has no effect on it), the complete log
+the three settings files exactly as used (copied at the start, so
+editing them during a run has no effect on it), the complete log
 (`run_log.txt`), the code version (`code_version.txt`) and a short
 `summary.txt` (settings + BIB rejection / signal efficiency per
-subsystem). Only when every step succeeds are the `step*` folders next
+subsystem, with each subsystem's cuts next to its results when the cuts
+differ between subsystems). Only when every step succeeds are the `step*` folders next
 to the settings files replaced by that run's results; `latest_run.txt`
 says which run they show. A failed or interrupted run is kept as
 `runs/<date>_<time>_FAILED` (or `_INTERRUPTED`) and leaves the `step*`
@@ -44,6 +46,16 @@ track-finding efficiency vs pT, and the z-intercept, pT and corrected-
 time distributions with the signal overlaid - both without cuts (step
 3, `*_with_signal.png`) and N-1 (step 4, `*_n1.png`), full range and
 zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
+`_highlights/` also holds `highlights_<date>_<time>.pdf`, a landscape
+(16:9) presentation that `make_highlights_pdf.py` makes at the end of
+every successful run: a title page (input files, settings, BIB
+rejection and signal efficiency per subsystem), a page with each
+subsystem's cuts next to its results (only when the cuts differ between
+subsystems), then five of the plots - BIB density before/after the
+cuts, track-finding efficiency, and the three zoomed N-1 plots - one per
+page, each with a caption that quotes that run's own numbers. To make
+it for an earlier run:
+`python3 ~/code/MuonCollider/make_highlights_pdf.py runs/<date>_<time>`.
 
 The code folder (`~/code/MuonCollider`) keeps only templates of the
 settings files (`templates/`); the copies in the Analysis folder are the
@@ -566,53 +578,72 @@ momentum (large/straight for a moderate-to-high-momentum signal muon,
 small for the sharply-curved low-momentum BIB secondaries that dominate
 the background).
 
-**Editable config, not hardcoded values**: cut values live in
-`__cuts_config.txt` (plain INI, stdlib `configparser`), one section per
-cut, each with a `halfwidth` (and `enabled` flag) so a hypothesis can be
-changed and re-run with no code edits:
+**Editable config, not hardcoded values**: the cut values live in
+`__cuts_config.txt`, **set separately for each subsystem** in one table
+(a row per subsystem, a column per cut), so a hypothesis can be changed
+and re-run with no code edits. For example:
 ```ini
-[t_corrected_ns]
-halfwidth = 0.3         # ns
-enabled = true
-zoom_halfwidth = 2.0     # ns - display range of the N-1 zoomed plot only
+[cuts]
+#             time    z0     pT
+#             (ns)    (mm)   (GeV/c)
+vxd_barrel  = 0.3     15     5
+vxd_endcap  = 0.3     15     5
+it_barrel   = 0.3     15     5
+it_endcap   = 0.3     30     5
+ot_barrel   = 0.3     25     5
+ot_endcap   = 0.5     40     off
 
-[z_axis_intercept_mm]
-halfwidth = 15.0         # mm
-enabled = true
-zoom_halfwidth = 100.0   # mm - display range of the N-1 zoomed plot only
-
-[momentum_gev]
-halfwidth = 5.0          # GeV/c (see note below on how this is applied)
-enabled = true
-zoom_halfwidth = 1.0     # GeV/c - display range of the N-1 zoomed plot only
+[zoom]              # display range of the zoomed N-1 plots only
+time = 2.0          # +/- 2 ns
+z0   = 100          # +/- 100 mm
+pT   = 1.0          # |pT| >= 1 GeV/c
 
 [track]
-min_hits_found = 5           # min. surviving hits for a track to count as "found" (step 4 part 2)
-exclude_vertex_hits = false  # if true, vertex-detector hits don't count toward min_hits_found
+min_hits_found = 5          # min. surviving hits for a track to count as "found" (step 4 part 2)
+exclude_vertex_hits = true  # if true, vertex-detector hits don't count toward min_hits_found
 ```
-Loaded/applied by `bib_common.load_cuts(path)` / `bib_common.apply_cuts(hits, cuts)`.
-`t_corrected_ns` and `z_axis_intercept_mm` are simple symmetric windows,
-accept `|value| <= halfwidth`. `momentum_gev` is **not** a symmetric
-window on pT itself - pT = 0.3·B/|1/R| diverges as R → Infinity (a
-perfectly straight, best-reconstructed track), and worse, pT is
-*discontinuous* at 1/R = 0 (it jumps between +Infinity and -Infinity
-depending which side of R = Infinity you approach from), so no finite
-window in pT-space can ever include that case - a real gap the first
-version of this cut had, caught before running it at scale. Instead the
-cut is applied directly on the curvature `inv_radius_per_mm` itself
-(bounded and continuous everywhere): accept
-`|1/R| <= (0.3*B_FIELD_T/1000) / halfwidth_gev`, i.e. "reconstructed
-|pT| >= halfwidth_gev", with R = Infinity always accepted since 1/R = 0
-sits at the exact center of that window. `apply_cuts()` returns both the
-combined accept mask and each cut's own mask (for a cutflow breakdown).
+A hit is kept only if it passes all three cuts of its own subsystem:
+`|t_corrected| <= time`, `|z0| <= z0` and `pT >= pT`. `off` in a cell
+switches that one cut off in that one subsystem. The file is read by
+`cuts_table.py` - used by `bib_common.load_cuts(path)` and by the
+settings check alike, so the check (unknown or missing rows, a cell that
+isn't a number or `off`, a row indented by mistake, ...) and the
+analysis always read it the same way - and applied by
+`bib_common.apply_cuts(hits, cuts)`, each hit with its own subsystem's
+values (`hits["system"]`). Files in the earlier format - one section
+per cut, `[t_corrected_ns]`, `[z_axis_intercept_mm]` and
+`[momentum_gev]`, each with `halfwidth`, `enabled` and `zoom_halfwidth`,
+as in the settings copies of older `runs/` - are still read, each cut
+then applying to every subsystem.
 
-**`zoom_halfwidth`** (per cut) is purely a plot display range - the
-half-width of that variable's zoomed histogram in `n1_cut_plots.py`
-(`bib_common.ZOOM_HALFWIDTH_DEFAULTS` supplies the value above as the
-fallback when a cut's section doesn't set it, so older configs without
-this key still work unchanged). It has no effect on the cut itself; it
-exists so the zoomed view can be widened to keep the cut-threshold line
-visible after loosening that cut's `halfwidth`, without a code change.
+The time and z0 cuts are simple symmetric windows, accept
+`|value| <= limit`. The pT cut is **not** a window on pT itself - pT =
+0.3·B/|1/R| diverges as R → Infinity (a perfectly straight,
+best-reconstructed track), and worse, pT is *discontinuous* at 1/R = 0
+(it jumps between +Infinity and -Infinity depending which side of
+R = Infinity you approach from), so no finite window in pT-space can
+ever include that case - a real gap the first version of this cut had,
+caught before running it at scale. Instead the cut is applied directly
+on the curvature `inv_radius_per_mm` itself (bounded and continuous
+everywhere): accept `|1/R| <= (0.3*B_FIELD_T/1000) / pT_min`, i.e.
+"reconstructed |pT| >= pT_min", with R = Infinity always accepted since
+1/R = 0 sits at the exact center of that window. `apply_cuts()` returns
+both the combined accept mask and each cut's own mask (for a cutflow
+breakdown).
+
+**`[zoom]`** is purely a plot display range - the half-width of each
+variable's zoomed histogram in `n1_cut_plots.py` (defaults 2 ns, 100 mm
+and 1 GeV/c when not set). It has no effect on the cuts; it exists so
+the zoomed view can be widened to keep the cut lines visible after
+loosening a cut, without a code change.
+
+**Where the cuts show up.** The dashed red cut lines on the step-3
+overlay plots and on the step-4 N-1 plots are drawn panel by panel, each
+at its own subsystem's value, which is also given in the panel title.
+When the cuts differ between subsystems, the results summary (end of
+`run_log.txt`, `summary.txt`, `latest_run.txt`) lists each subsystem's
+cuts next to its BIB rejection and signal efficiency, and the PDF in
+`_highlights/` has a page with the same table.
 
 **`exclude_vertex_hits`** (`[track]` section): if true, hits in the
 vertex detector (VXD barrel/endcap) are excluded from the per-track
@@ -664,8 +695,8 @@ sharply-curved secondaries); the time and z-intercept cuts contribute
 less on their own but tighten the combined selection further. Not yet
 iterated on - this is the starting point the user specified;
 `__cuts_config.txt` is designed to make trying other hypotheses
-(tighter/looser windows, disabling one cut) a config edit and a re-run,
-not a code change.
+(tighter/looser windows, different values per subsystem, switching a
+cut off) a config edit and a re-run, not a code change.
 
 **`track_efficiency.py`** (step 4, part 2) measures the quantity that
 actually matters for physics: not just what fraction of signal *hits*
@@ -739,15 +770,15 @@ threshold, a jump to ~22% in the bin just below 5 GeV/c, ~92% in the
 bin just above, and ~100% for pT above that - i.e. the transition is
 now resolved into a few intermediate points rather than the single
 coarse [4.5, 5.6] GeV/c transition bin seen with the original 15-bin
-version. This is an expected consequence of the momentum cut's current
-halfwidth (5 GeV/c, applied as a hard `|pT| >= 5 GeV/c` requirement,
+version. This is an expected consequence of the momentum cut's value at the
+time (5 GeV/c, applied as a hard `|pT| >= 5 GeV/c` requirement,
 see "Selection cuts" above) - a track below threshold has essentially
 none of its hits surviving that one cut, so `min_hits_found` is almost
 never reached, while a track above threshold has essentially all of
 them survive. The efficiency curve is still close to a step function
 rather than a gradual turn-on even at this finer resolution, which is
 worth keeping in mind when choosing whether to loosen the momentum
-halfwidth in a future iteration (see "Next step").
+cut in a future iteration (see "Next step").
 
 **Memory note**: `apply_cuts.py` is the first script to combine
 `add_incidence_angles` + `add_time_of_flight` (many intermediate per-hit
@@ -768,11 +799,12 @@ where signal and BIB actually separate, rather than a view already
 shaped by that same cut. With 3 cuts, N-1 means 2 of the 3 applied at a
 time: the z-axis-intercept plots apply the time and momentum cuts (not
 z); the momentum/curvature plots apply the time and z cuts (not
-momentum); the time plots apply the z and momentum cuts (not time). A
-disabled cut in `__cuts_config.txt` simply drops out of its own N-1
-combinations (`bib_common.apply_cuts()` already returns an all-True
-mask for a disabled cut), so this still does the right thing with
-fewer than 3 cuts turned on.
+momentum); the time plots apply the z and momentum cuts (not time).
+Each panel is one subsystem, so "the other cuts" are that subsystem's
+own. A cut that is `off` in `__cuts_config.txt` (in one subsystem or in
+all) simply drops out of its N-1 combinations there
+(`bib_common.apply_cuts()` returns an all-True mask where a cut is off),
+so this still does the right thing with fewer than 3 cuts turned on.
 ```
 python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir]
 ```
@@ -783,14 +815,14 @@ layout and hits/collision/bin BIB-vs-signal convention (z-axis intercept
 full+zoom, curvature/pT full+zoom, corrected-time full+zoom - see
 "Signal overlay on the incidence-angle/curvature/time plots" above), so
 the N-1 plots read the same way as their unfiltered step-3 counterparts,
-just with the other two cuts applied. Each plot also draws the current
-(enabled) cut's own threshold as a vertical dashed line, so the
-threshold's position relative to the signal/BIB separation can be
-judged directly. Each variable's zoomed plot uses that cut's own
-`zoom_halfwidth` from `__cuts_config.txt` (see "Selection cuts" above) as
-its display range, rather than a fixed value, so the zoomed view can be
-widened alongside a loosened `halfwidth` without the threshold line
-falling outside it. Outputs, in `Analysis/step4_n1_cuts/`:
+just with the other two cuts applied. Each panel also draws its own
+subsystem's cut on the plotted variable as vertical dashed lines (with
+the value in the panel title), so the threshold's position relative to
+the signal/BIB separation can be judged directly. Each variable's
+zoomed plot uses the `[zoom]` section of `__cuts_config.txt` (see
+"Selection cuts" above) as its display range, rather than a fixed value,
+so the zoomed view can be widened alongside a loosened cut without the
+cut lines falling outside it. Outputs, in `Analysis/step4_n1_cuts/`:
 `z_axis_intercept_per_subsystem_n1.png`/`_zoom_n1.png`,
 `inv_radius_per_subsystem_n1.png`/`_zoom_n1.png`,
 `time_corrected_per_subsystem_n1.png`/`_zoom_n1.png`.
@@ -812,9 +844,9 @@ ntuples and gives identical results. Code lives in
   (time-of-flight-corrected hit time, described above; requires
   `add_incidence_angles` to have been called first; also adds the
   signed curvature-derived `pT_curv_gev`), `load_cuts`/`apply_cuts`
-  (selection cuts, described above), `load_track_params` (reads the
-  `[track]` section of `__cuts_config.txt`, currently just
-  `min_hits_found`), `mask_hits` (filter every per-hit
+  (per-subsystem selection cuts, described above), `load_track_params`
+  (the `[track]` section of `__cuts_config.txt`: `min_hits_found` and
+  `exclude_vertex_hits`), `mask_hits` (filter every per-hit
   array field of a hits dict by a boolean mask, keeping metadata
   fields unchanged - used to re-run region_table/add_peak_density on
   only the hits passing cuts), `subsystem_density_table`,
@@ -826,6 +858,12 @@ ntuples and gives identical results. Code lives in
   the smearing functions `load_smearing_config`,
   `apply_position_time_smearing`, `apply_angle_smearing`,
   `describe_smearing`.
+- `cuts_table.py` — reads and checks `__cuts_config.txt` (the
+  per-subsystem cut table, `[zoom]` and `[track]`; also still the older
+  one-section-per-cut format), and describes the cuts in words for the
+  log, summary and PDF. Used by `bib_common.load_cuts`,
+  `check_configs.py` and `make_highlights_pdf.py`, so they all read the
+  file the same way. Standard library only.
 - `geometry.py` — parses the true detector geometry XML to get exact
   sensitive area per region (`build_area_lookup`,
   `annotate_rows_with_geometry_area`).
@@ -864,13 +902,17 @@ ntuples and gives identical results. Code lives in
   the signal sample on the 6 incidence-angle/curvature/time-of-flight
   diagnostic plots (z-axis intercept full+zoom, transverse curvature/pT
   full+zoom, TOF-corrected time full+zoom), in hits/collision/bin,
-  described above.
-- `templates/__cuts_config.txt`, `templates/__smearing_config.txt` —
-  templates of the two settings files; the live, editable copies are in
-  the Analysis folder (see "How to run the analysis" at the top).
-- `check_configs.py` — checks the two settings files before a run and
-  prints a readable summary of them; `./run_all` refuses to start if it
-  finds a problem.
+  described above; each panel shows its own subsystem's cut lines, with
+  the value in the panel title (`draw_symmetric_cut_lines`,
+  `draw_momentum_cut_lines`, `panel_title` - reused by
+  `n1_cut_plots.py`).
+- `templates/__cuts_config.txt`, `templates/__smearing_config.txt`,
+  `templates/__input_files_config.txt` — templates of the three settings
+  files; the live, editable copies are in the Analysis folder (see "How
+  to run the analysis" at the top).
+- `check_configs.py` — checks the three settings files (and that the
+  input files exist) before a run and prints a readable summary of them;
+  `./run_all` refuses to start if it finds a problem.
 - `apply_cuts.py` — step 4 (part 1) script; applies the configured cuts
   to BIB and signal and reports the with-cuts-vs-without-cuts
   comparison (BIB density only - signal density dropped per the user's
@@ -882,6 +924,9 @@ ntuples and gives identical results. Code lives in
   validation plots (each cut variable plotted with the other cuts
   applied, not its own), reusing `signal_overlay_angle_plots.py`'s
   layout/conventions, described above.
+- `make_highlights_pdf.py` — the PDF presentation in `_highlights/`
+  (see "How to run the analysis" at the top); run by `./run_all` at the
+  end of every successful run, or by hand for any run folder.
 - `run_all_steps.sh` — the full pipeline (steps 1-4) behind the
   `./run_all` launcher in the Analysis folder (see "How to run the
   analysis" at the top). Replaces the former `run_step4.sh`.
@@ -898,8 +943,8 @@ run's results go to
 `step2_time_of_flight/`, `step2_time_of_flight_minus/`,
 `step2_time_of_flight_combined/`, `step2_time_of_flight_signal/`,
 `step3_signal_overlay/` (shared by both step-3 scripts), `step4_cuts/`,
-`step4_track_efficiency/`, `step4_n1_cuts/`, plus the two settings
-files, `run_log.txt`, `code_version.txt` and `summary.txt`); the same
+`step4_track_efficiency/`, `step4_n1_cuts/`, `_highlights/`, plus the
+three settings files, `run_log.txt`, `code_version.txt` and `summary.txt`); the same
 `step*` folders (and `_highlights/`) directly in `Analysis/` always hold
 the latest successful run. `runs/` also keeps the older step-4-only archives made before this
 workflow existed (suffix `_step4-only`, each with a `NOTE.txt`).
@@ -912,13 +957,13 @@ track-finding efficiency vs. pT is now measured directly
 ~100% above ~5.6 GeV/c). That result - a near-step-function turn-on
 right at the 5 GeV/c momentum-cut threshold - is itself a candidate
 next topic: it's a direct consequence of how hard the current momentum
-cut is, and loosening its halfwidth would likely trade some BIB
+cut is, and loosening it would likely trade some BIB
 rejection for a smoother, more physically informative efficiency curve
 (worth discussing with the user before changing it). More generally,
 next: iterate on the cut values in `__cuts_config.txt` (tighter/looser
-windows, or disabling individual cuts) - `./run_all` regenerates
-everything that depends on them in one command - to see how the
-BIB-rejection/track-efficiency trade-off moves, and decide with the
+windows, set separately per subsystem, or switched off) - `./run_all`
+regenerates everything that depends on them in one command - to see how
+the BIB-rejection/track-efficiency trade-off moves, and decide with the
 user whether/how to combine the three cuts differently (e.g. an
 optimization rather than three independently-chosen windows). Also
 open: the dip at z=0 in the zoomed z_axis_intercept plots, and the
