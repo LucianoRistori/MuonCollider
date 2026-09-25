@@ -2,7 +2,7 @@
 # file listed here exists before running anything).
 #
 # Give file NAMES only. They are looked up in the simulation folder
-# (MuonColliderSimulation, the folder above results/):
+# (MuonColliderSimulation, the folder above Analysis/):
 #   [data]      ROOT files   in  MuonColliderSimulation/Data/
 #   [geometry]  XML files    in  MuonColliderSimulation/Geometry/
 

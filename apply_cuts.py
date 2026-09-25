@@ -1,5 +1,5 @@
 """
-Step 4: apply the selection cuts defined in cuts_config.txt (time-of-
+Step 4: apply the selection cuts defined in __cuts_config.txt (time-of-
 flight-corrected hit time, z-axis intercept, curvature-based momentum -
 see bib_common.load_cuts / bib_common.apply_cuts) to both the BIB and
 signal samples, and compare - the main point of this script - hit

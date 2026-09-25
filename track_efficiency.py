@@ -2,10 +2,10 @@
 Step 4 (part 2): tracking efficiency vs. generated transverse momentum.
 
 For each simulated muon-gun track (one event = one generated muon), this
-script applies the selection cuts (cuts_config.txt, via
+script applies the selection cuts (__cuts_config.txt, via
 bib_common.load_cuts/apply_cuts) and then counts how many of that
 track's own hits survive the cuts. A track is counted as "found" if that
-count is >= min_hits_found (cuts_config.txt, [track] section, default 5).
+count is >= min_hits_found (__cuts_config.txt, [track] section, default 5).
 
 The available muon-gun sample is not a single fixed pT - it's generated
 FLAT IN 1/pT, spanning pT = 1.5 GeV/c up to a long high-pT tail
@@ -30,7 +30,7 @@ as the binning itself (evenly spaced in 1/pT), while still reading off
 directly in physical pT.
 
 Usage:
-    python3 track_efficiency.py <signal1.root> [signal2.root ...] [--cuts cuts_config.txt] [--out output_dir] [--bins N]
+    python3 track_efficiency.py <signal1.root> [signal2.root ...] [--cuts __cuts_config.txt] [--out output_dir] [--bins N]
 """
 import csv
 import os
@@ -77,7 +77,7 @@ def parse_args(argv):
             i += 1
     if not signal_files:
         print("Usage: python3 track_efficiency.py <signal1.root> [signal2.root ...] "
-              "[--cuts cuts_config.txt] [--out output_dir] [--bins N]")
+              "[--cuts __cuts_config.txt] [--out output_dir] [--bins N]")
         sys.exit(1)
     return signal_files, cuts_config, Path(outdir), n_bins
 

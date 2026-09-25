@@ -167,7 +167,7 @@ def _find_barrel_layers(xml_text, layer_id_re=r'<layer\s+(?:module="[^"]*"\s+)?i
 
 
 # Default names of the 4 geometry files (the file names actually used come
-# from input_files_config.txt under ./run_all - see
+# from __input_files_config.txt under ./run_all - see
 # bib_common.resolve_geometry).
 DEFAULT_FILE_NAMES = {
     "main": "MuSIC_v2.xml",

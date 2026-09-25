@@ -377,7 +377,7 @@ def add_time_of_flight(hits, B_FIELD_T=5.0, mass_gev=MUON_MASS_GEV):
     # pT axis relabeling on inv_radius_per_subsystem.png: "sign of pT
     # follows the sign of the curvature") - this is the "momentum
     # estimated from the transverse angle" quantity used for the
-    # momentum selection cut (see cuts_config.txt / load_cuts /
+    # momentum selection cut (see __cuts_config.txt / load_cuts /
     # apply_cuts below).
     with np.errstate(invalid="ignore"):
         pT_curv_signed = np.sign(inv_radius_per_mm) * pT_curv
@@ -392,7 +392,7 @@ def add_time_of_flight(hits, B_FIELD_T=5.0, mass_gev=MUON_MASS_GEV):
 
 
 # ---------------------------------------------------------------------------
-# Selection cuts: an editable text config (cuts_config.txt) defines a
+# Selection cuts: an editable text config (__cuts_config.txt) defines a
 # symmetric acceptance window around zero for each of three quantities that
 # should be consistent with a genuine signal muon from the IP:
 #   t_corrected_ns      - time-of-flight-corrected hit time (see
@@ -424,7 +424,7 @@ def add_time_of_flight(hits, B_FIELD_T=5.0, mass_gev=MUON_MASS_GEV):
 CUT_NAMES = ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev")
 
 # Default half-range of each cut variable's *zoomed* histogram (same units
-# as that cut's halfwidth), used when cuts_config.txt doesn't set its own
+# as that cut's halfwidth), used when __cuts_config.txt doesn't set its own
 # zoom_halfwidth - see load_cuts(). These match the values the zoomed
 # plots used before zoom_halfwidth became configurable (Z0_ZOOM_RANGE_MM,
 # PT_ZOOM_RANGE_GEV, TC_ZOOM_RANGE_NS in incidence_angle_plots.py /
@@ -446,21 +446,21 @@ VERTEX_SYSTEM_IDS = {1, 2}
 def default_cuts_config():
     """
     Cuts config to use when a script is run by hand without being given
-    one: cuts_config.txt in the CURRENT directory if there is one (i.e.
+    one: __cuts_config.txt in the CURRENT directory if there is one (i.e.
     when run from the working folder of the run_all workflow, where the
     live, editable copy lives), otherwise the template that ships with
-    the code (templates/cuts_config.txt). The run_all workflow itself
+    the code (templates/__cuts_config.txt). The run_all workflow itself
     always passes the config explicitly and never relies on this.
     """
-    here = Path.cwd() / "cuts_config.txt"
+    here = Path.cwd() / "__cuts_config.txt"
     if here.is_file():
         return str(here)
-    return str(Path(__file__).resolve().parent / "templates" / "cuts_config.txt")
+    return str(Path(__file__).resolve().parent / "templates" / "__cuts_config.txt")
 
 
 def load_cuts(path):
     """
-    Load a selection-cuts config file (see cuts_config.txt for the
+    Load a selection-cuts config file (see __cuts_config.txt for the
     canonical example/format). Uses the standard library configparser, so
     the file is plain INI: one section per cut (t_corrected_ns,
     z_axis_intercept_mm, momentum_gev), each with a `halfwidth` and an
@@ -504,7 +504,7 @@ def load_cuts(path):
 def load_track_params(path):
     """
     Load track-level parameters from the same cuts config file (see
-    cuts_config.txt, [track] section) used by load_cuts():
+    __cuts_config.txt, [track] section) used by load_cuts():
       - min_hits_found: the minimum number of hits surviving the
         selection cuts (see apply_cuts()) for a simulated track (all the
         hits from one event/one generated particle, grouped by
@@ -744,7 +744,7 @@ def resolve_geometry(default_dir):
     """
     The 4 detector-geometry XML files to use, as {"main", "vertex",
     "inner_tracker", "outer_tracker"} -> Path. Under ./run_all they come
-    from input_files_config.txt (passed in as BIB_GEOMETRY_FILES). A
+    from __input_files_config.txt (passed in as BIB_GEOMETRY_FILES). A
     script run by hand looks for them, under their default names
     (geometry.DEFAULT_FILE_NAMES), in `default_dir`, then in a Geometry/
     folder next to it - the MuonColliderSimulation layout, with the ROOT
@@ -1036,14 +1036,14 @@ def subsystem_density_table(rows):
 # check_smearing.py), unlike earlier samples which had resolution baked in
 # at generation time. Rather than regenerating ROOT files per hypothesis,
 # smearing here is applied on load, controlled by an editable config (see
-# smearing_config.txt), the same way cuts_config.txt controls the selection
+# __smearing_config.txt), the same way __cuts_config.txt controls the selection
 # cuts - so different error sizes can be scanned with no regeneration.
 SMEARING_SECTIONS = ["position", "time", "angle_u", "angle_v"]
 
 
 def load_smearing_config(path):
     """
-    Load a measurement-smearing config file (see smearing_config.txt for
+    Load a measurement-smearing config file (see __smearing_config.txt for
     the canonical example/format). Plain INI (configparser), one section
     per smeared quantity:
       - [position]: sigma_u_mm, sigma_v_mm - independent Gaussian sigmas

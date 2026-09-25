@@ -1,5 +1,5 @@
 """
-Check cuts_config.txt and smearing_config.txt before a run, and print a
+Check __cuts_config.txt and __smearing_config.txt before a run, and print a
 short, readable summary of the settings they contain.
 
 Why this exists: Python's configparser (used by bib_common's loaders)
@@ -22,8 +22,8 @@ load_track_params and load_smearing_config read - keep them in sync if
 a setting is added there.
 
 Usage:
-    python3 check_configs.py <cuts_config.txt> <smearing_config.txt>
-                             [<input_files_config.txt> --sim-dir <folder>] [--brief]
+    python3 check_configs.py <__cuts_config.txt> <__smearing_config.txt>
+                             [<__input_files_config.txt> --sim-dir <folder>] [--brief]
 Exit code 0 = OK (warnings allowed), 1 = at least one error.
 --brief prints just two summary lines (used for runs/<id>/summary.txt);
 --quiet prints nothing unless there is a problem.
@@ -54,7 +54,7 @@ SMEAR_SPEC = {
     "angle_v": {"sigma_deg": (NUMBER, True), "enabled": (TRUEFALSE, True)},
     "general": {"seed": (WHOLE, True)},
 }
-# input_files_config.txt - same keys as input_files.DATA_KEYS / GEOMETRY_KEYS
+# __input_files_config.txt - same keys as input_files.DATA_KEYS / GEOMETRY_KEYS
 INPUTS_SPEC = {
     "data": {k: (FILENAME, True) for k in
              ("bib_plus", "bib_minus", "bib_ipp", "bib_combined", "signal")},
@@ -227,23 +227,23 @@ def warnings_for(cuts, smear):
             hw = cuts.get((sec, "halfwidth"), 0.0)
             zoom = cuts.get((sec, "zoom_halfwidth"), ZOOM_DEFAULTS[sec])
             if hw == 0:
-                warn.append(f"cuts_config.txt: [{sec}] halfwidth = 0 rejects essentially every hit")
+                warn.append(f"__cuts_config.txt: [{sec}] halfwidth = 0 rejects essentially every hit")
             elif hw > zoom:
-                warn.append(f"cuts_config.txt: {var} cut at +/-{_g(hw)} {unit} lies outside the zoomed "
+                warn.append(f"__cuts_config.txt: {var} cut at +/-{_g(hw)} {unit} lies outside the zoomed "
                             f"plots' range (+/-{_g(zoom)} {unit}) - raise zoom_halfwidth in "
                             f"[{sec}] to see the cut lines there")
     if cuts.get(("momentum_gev", "enabled"), False):
         hw = cuts.get(("momentum_gev", "halfwidth"), 0.0)
         zoom = cuts.get(("momentum_gev", "zoom_halfwidth"), ZOOM_DEFAULTS["momentum_gev"])
         if hw < zoom:
-            warn.append(f"cuts_config.txt: momentum cut at {_g(hw)} GeV/c is below the zoomed plots' "
+            warn.append(f"__cuts_config.txt: momentum cut at {_g(hw)} GeV/c is below the zoomed plots' "
                         f"lower edge ({_g(zoom)} GeV/c) - lower zoom_halfwidth in [momentum_gev] "
                         f"to see the cut lines there")
     for sec, keys in (("position", ("sigma_u_mm", "sigma_v_mm")), ("time", ("sigma_t_ns",)),
                       ("angle_u", ("sigma_deg",)), ("angle_v", ("sigma_deg",))):
         if (sec, "enabled") in smear and not smear[(sec, "enabled")]:
             if any(smear.get((sec, k), 0.0) > 0 for k in keys):
-                warn.append(f"smearing_config.txt: [{sec}] has a nonzero sigma but enabled = false, "
+                warn.append(f"__smearing_config.txt: [{sec}] has a nonzero sigma but enabled = false, "
                             f"so it will NOT be applied")
     return warn
 
@@ -255,7 +255,7 @@ def _tilde(path):
 
 
 def check_input_files(inputs, sim_dir, errors):
-    """Every file named in input_files_config.txt must exist in Data/ or
+    """Every file named in __input_files_config.txt must exist in Data/ or
     Geometry/ under the simulation folder - except the combined BIB file,
     which ./run_all builds when needed."""
     sim_dir = Path(sim_dir)
@@ -264,12 +264,12 @@ def check_input_files(inputs, sim_dir, errors):
         if not name or key == "bib_combined":
             continue
         if not (sim_dir / "Data" / name).is_file():
-            errors.append(f"input_files_config.txt: [data] {key}: file not found: "
+            errors.append(f"__input_files_config.txt: [data] {key}: file not found: "
                           f"{_tilde(sim_dir / 'Data' / name)}")
     for key in INPUTS_SPEC["geometry"]:
         name = inputs.get(("geometry", key), "")
         if name and not (sim_dir / "Geometry" / name).is_file():
-            errors.append(f"input_files_config.txt: [geometry] {key}: file not found: "
+            errors.append(f"__input_files_config.txt: [geometry] {key}: file not found: "
                           f"{_tilde(sim_dir / 'Geometry' / name)}")
 
 

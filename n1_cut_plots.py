@@ -10,7 +10,7 @@ being judged. With our 3 cuts, "N-1" means 2 of the 3 applied at a time:
   - z_axis_intercept plots    -> t_corrected_ns AND momentum cuts applied
   - inv_radius/pT plots       -> t_corrected_ns AND z_axis_intercept cuts applied
   - t_corrected_ns plots      -> z_axis_intercept AND momentum cuts applied
-A disabled cut in cuts_config.txt contributes no restriction either way
+A disabled cut in __cuts_config.txt contributes no restriction either way
 (bib_common.apply_cuts() already returns an all-True mask for it), so
 this naturally reduces to "apply whichever of the other cuts are
 currently enabled" if fewer than 3 are turned on.
@@ -58,7 +58,7 @@ from time_of_flight_plots import TC_RANGE_NS
 from signal_overlay_angle_plots import overlay_hist
 
 # Zoom half-ranges (z_axis_intercept_mm/momentum_gev/t_corrected_ns) come
-# from each cut's own `zoom_halfwidth` in cuts_config.txt (see
+# from each cut's own `zoom_halfwidth` in __cuts_config.txt (see
 # bib_common.load_cuts/ZOOM_HALFWIDTH_DEFAULTS) rather than being fixed
 # here, so the zoom window can be widened/narrowed alongside a cut's
 # halfwidth without a code change (e.g. so the cut-threshold line stays

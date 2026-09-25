@@ -2,19 +2,19 @@
 
 ## How to run the analysis
 
-Everything is run from the results folder in Dropbox, which holds the
+Everything is run from the Analysis folder in Dropbox, which holds the
 three editable settings files:
 
 ```
-cd ~/Dropbox/Documents/MuonColliderSimulation/results
-# edit cuts_config.txt (cuts), smearing_config.txt (resolutions)
-# and/or input_files_config.txt (which data and geometry files to use)
+cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
+# edit __cuts_config.txt (cuts), __smearing_config.txt (resolutions)
+# and/or __input_files_config.txt (which data and geometry files to use)
 ./run_all
 ```
 
 Input files live in two folders of `MuonColliderSimulation`: the ROOT
 files in `Data/`, the detector-geometry XML files in `Geometry/`.
-`input_files_config.txt` just names them (BIB plus, minus, ipp, the
+`__input_files_config.txt` just names them (BIB plus, minus, ipp, the
 combined BIB file, the signal sample, and the 4 geometry files). The
 combined BIB file is derived from plus + minus (+ ipp): before running,
 `./run_all` checks that it contains exactly those files (same entries,
@@ -38,7 +38,7 @@ says which run they show. A failed or interrupted run is kept as
 folders untouched. To compare runs: `cat runs/*/summary.txt`.
 
 The 14 key plots of each run are also gathered in one folder,
-`_highlights/` (in the results folder for the latest run, and in each
+`_highlights/` (in the Analysis folder for the latest run, and in each
 `runs/<date>_<time>/`): the BIB density before/after cuts, the
 track-finding efficiency vs pT, and the z-intercept, pT and corrected-
 time distributions with the signal overlaid - both without cuts (step
@@ -46,11 +46,11 @@ time distributions with the signal overlaid - both without cuts (step
 zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
 
 The code folder (`~/code/MuonCollider`) keeps only templates of the
-settings files (`templates/`); the copies in the results folder are the
+settings files (`templates/`); the copies in the Analysis folder are the
 ones used, and each run keeps a copy of all three. `./run_all` finds the
 code in `~/code/MuonCollider` (or set `MUONCOLLIDER_CODE=/path`), reads
 the input files from `Data/` and `Geometry/` in the folder above the
-results folder (or set `SIM_DIR=/path`), and calls `run_all_steps.sh`
+Analysis folder (or set `SIM_DIR=/path`), and calls `run_all_steps.sh`
 (see `./run_all --help`). Each run's `code_version.txt` also records the
 size and date of every input file used.
 
@@ -179,7 +179,7 @@ doesn't strike every installed module (a big effect for the sparser
 IT/OT barrel layers: mean density there dropped by roughly 40x after
 switching to the geometry-based area). All 4 XML files live in
 `~/Dropbox/Documents/MuonColliderSimulation/Geometry/` (named in
-`input_files_config.txt`) and are parsed by `geometry.py` (`build_area_lookup`), which resolves the XML's
+`__input_files_config.txt`) and are parsed by `geometry.py` (`build_area_lookup`), which resolves the XML's
 symbolic constants and computes exact area for VXD barrel/endcap and
 IT/OT barrel/endcap (41/41 regions matched). Local copies of the
 geometry files are used in preference to fetching from GitHub.
@@ -428,7 +428,7 @@ both the signal file and the merged BIB file):
   the IP region from hits originating further upstream along the
   beamline) - a possible follow-up.
 
-Outputs, in `results/step2_time_of_flight[_minus|_combined|_signal]/`:
+Outputs, in `Analysis/step2_time_of_flight[_minus|_combined|_signal]/`:
 `hit_time_raw_per_subsystem.png` (measured t, unchanged from before),
 `time_corrected_per_subsystem.png` (full ±20ns range),
 `time_corrected_per_subsystem_zoom.png` (±2ns zoom, shows the peak
@@ -470,7 +470,7 @@ python3 signal_overlay_plots.py <bib.root> <signal.root> [output_dir] [geometry_
 ```
 run as `signal_overlay_plots.py ntu_bib_2evt.root
 ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root
-results/step3_signal_overlay`. (An earlier version of this script also
+Analysis/step3_signal_overlay`. (An earlier version of this script also
 drew three "hit density per subsystem/layer/disk" bar charts with a
 signal bar alongside BIB mean/peak — dropped: BIB density already spans
 ~5-9 orders of magnitude on its own, and the per-event signal density
@@ -478,7 +478,7 @@ added another few, stretching the plots without adding information the
 CSV doesn't already carry; the plain BIB-only density plots already
 exist from step 1.)
 
-Outputs, in `results/step3_signal_overlay/`:
+Outputs, in `Analysis/step3_signal_overlay/`:
 - `rz_map_with_signal.png` — the r-z hit map (as in step 1) with BIB hits
   colored by subsystem and signal hits overlaid in black (subsampled,
   60k points). Because the signal sample spans nearly the full polar
@@ -499,7 +499,7 @@ python3 signal_overlay_angle_plots.py <bib.root> <signal.root> [output_dir]
 ```
 run as `signal_overlay_angle_plots.py ntu_bib_2evt.root
 ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root
-results/step3_signal_overlay` (same output folder as
+Analysis/step3_signal_overlay` (same output folder as
 `signal_overlay_plots.py`, so the r-z map/CSV and these 6 plots live
 together; under `./run_all` both scripts simply write into that one
 folder).
@@ -567,7 +567,7 @@ small for the sharply-curved low-momentum BIB secondaries that dominate
 the background).
 
 **Editable config, not hardcoded values**: cut values live in
-`cuts_config.txt` (plain INI, stdlib `configparser`), one section per
+`__cuts_config.txt` (plain INI, stdlib `configparser`), one section per
 cut, each with a `halfwidth` (and `enabled` flag) so a hypothesis can be
 changed and re-run with no code edits:
 ```ini
@@ -625,7 +625,7 @@ other subsystem's).
 **Running step 4.** Step 4 (`apply_cuts.py`, `track_efficiency.py`,
 `n1_cut_plots.py`) runs as part of `./run_all` together with steps 1-3
 (see "How to run the analysis" at the top); every run is archived with
-the exact settings that produced it in `results/runs/<date>_<time>/`.
+the exact settings that produced it in `Analysis/runs/<date>_<time>/`.
 Steps 1-3 are re-run too, since the measurement smearing affects them
 and the step-3 overlay plots draw the current cut thresholds.
 
@@ -636,8 +636,8 @@ of this step:
 python3 apply_cuts.py <bib.root> <signal.root> [cuts_config] [output_dir] [geometry_dir]
 ```
 run as `apply_cuts.py ntu_bib_2evt.root
-ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root cuts_config.txt
-results/step4_cuts`. Outputs, in `results/step4_cuts/`:
+ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root __cuts_config.txt
+Analysis/step4_cuts`. Outputs, in `Analysis/step4_cuts/`:
 - `cutflow_bib.csv` / `cutflow_signal.csv` - per subsystem (and an "ALL"
   row): hit counts passing each individual cut on its own, and all three
   combined, plus the combined pass fraction.
@@ -663,7 +663,7 @@ rejection in every subsystem (BIB is dominated by low-momentum,
 sharply-curved secondaries); the time and z-intercept cuts contribute
 less on their own but tighten the combined selection further. Not yet
 iterated on - this is the starting point the user specified;
-`cuts_config.txt` is designed to make trying other hypotheses
+`__cuts_config.txt` is designed to make trying other hypotheses
 (tighter/looser windows, disabling one cut) a config edit and a re-run,
 not a code change.
 
@@ -673,7 +673,7 @@ survive the cuts, but what fraction of signal *tracks* are still
 reconstructible afterward. Per the user's definition: for each
 simulated muon-gun track (one event = one generated muon), count how
 many of its own hits survive the three cuts; the track counts as
-"found" if that count is >= `min_hits_found` (`cuts_config.txt`,
+"found" if that count is >= `min_hits_found` (`__cuts_config.txt`,
 `[track]` section, default 5). If `[track]`'s `exclude_vertex_hits` is
 true, surviving hits in the vertex detector (VXD barrel/endcap) don't
 count toward that total, so "found" then requires `min_hits_found`+
@@ -681,11 +681,11 @@ surviving hits *outside* the vertex detector - useful for asking
 whether a track is still findable from its outer-tracker hits alone.
 Default false (vertex hits count the same as any other subsystem's).
 ```
-python3 track_efficiency.py <signal1.root> [signal2.root ...] [--cuts cuts_config.txt] [--out output_dir] [--bins N]
+python3 track_efficiency.py <signal1.root> [signal2.root ...] [--cuts __cuts_config.txt] [--out output_dir] [--bins N]
 ```
 run as `track_efficiency.py
 ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root --out
-results/step4_track_efficiency`. Because the sample is generated flat
+Analysis/step4_track_efficiency`. Because the sample is generated flat
 in 1/pT rather than at a fixed pT (see "Signal sample and overlay"
 above), tracks are grouped into bins evenly spaced in **1/pT** (not
 pT) - this keeps roughly equal statistics per bin all the way into the
@@ -694,7 +694,7 @@ tail nearly empty. Efficiency = (# tracks found)/(# tracks examined)
 is computed per bin, each with a binomial uncertainty. Default binning
 is **150 bins** (`N_BINS_DEFAULT`, `--bins` to override) - increased
 from an initial 15 to better resolve the sharp turn-on described below.
-Outputs, in `results/step4_track_efficiency/`:
+Outputs, in `Analysis/step4_track_efficiency/`:
 - `track_efficiency_vs_pt.csv` - per bin: 1/pT range/center, pT
   range/mean, n tracks examined/found, efficiency, uncertainty.
 - `track_efficiency_vs_pt.png` - efficiency (%) vs. 1/pT bin center,
@@ -769,7 +769,7 @@ shaped by that same cut. With 3 cuts, N-1 means 2 of the 3 applied at a
 time: the z-axis-intercept plots apply the time and momentum cuts (not
 z); the momentum/curvature plots apply the time and z cuts (not
 momentum); the time plots apply the z and momentum cuts (not time). A
-disabled cut in `cuts_config.txt` simply drops out of its own N-1
+disabled cut in `__cuts_config.txt` simply drops out of its own N-1
 combinations (`bib_common.apply_cuts()` already returns an all-True
 mask for a disabled cut), so this still does the right thing with
 fewer than 3 cuts turned on.
@@ -777,8 +777,8 @@ fewer than 3 cuts turned on.
 python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir]
 ```
 run as `n1_cut_plots.py ntu_bib_2evt.root
-ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root cuts_config.txt
-results/step4_n1_cuts`. Reuses `signal_overlay_angle_plots.py`'s 6-plot
+ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root __cuts_config.txt
+Analysis/step4_n1_cuts`. Reuses `signal_overlay_angle_plots.py`'s 6-plot
 layout and hits/collision/bin BIB-vs-signal convention (z-axis intercept
 full+zoom, curvature/pT full+zoom, corrected-time full+zoom - see
 "Signal overlay on the incidence-angle/curvature/time plots" above), so
@@ -787,10 +787,10 @@ just with the other two cuts applied. Each plot also draws the current
 (enabled) cut's own threshold as a vertical dashed line, so the
 threshold's position relative to the signal/BIB separation can be
 judged directly. Each variable's zoomed plot uses that cut's own
-`zoom_halfwidth` from `cuts_config.txt` (see "Selection cuts" above) as
+`zoom_halfwidth` from `__cuts_config.txt` (see "Selection cuts" above) as
 its display range, rather than a fixed value, so the zoomed view can be
 widened alongside a loosened `halfwidth` without the threshold line
-falling outside it. Outputs, in `results/step4_n1_cuts/`:
+falling outside it. Outputs, in `Analysis/step4_n1_cuts/`:
 `z_axis_intercept_per_subsystem_n1.png`/`_zoom_n1.png`,
 `inv_radius_per_subsystem_n1.png`/`_zoom_n1.png`,
 `time_corrected_per_subsystem_n1.png`/`_zoom_n1.png`.
@@ -813,7 +813,7 @@ ntuples and gives identical results. Code lives in
   `add_incidence_angles` to have been called first; also adds the
   signed curvature-derived `pT_curv_gev`), `load_cuts`/`apply_cuts`
   (selection cuts, described above), `load_track_params` (reads the
-  `[track]` section of `cuts_config.txt`, currently just
+  `[track]` section of `__cuts_config.txt`, currently just
   `min_hits_found`), `mask_hits` (filter every per-hit
   array field of a hits dict by a boolean mask, keeping metadata
   fields unchanged - used to re-run region_table/add_peak_density on
@@ -822,7 +822,7 @@ ntuples and gives identical results. Code lives in
   archives old results into `OldResults/` instead of overwriting;
   skipped under `./run_all`, which gives every run its own folder),
   `default_cuts_config` (the cuts file a script uses when run by hand
-  without one: `./cuts_config.txt` if present, else the template), and
+  without one: `./__cuts_config.txt` if present, else the template), and
   the smearing functions `load_smearing_config`,
   `apply_position_time_smearing`, `apply_angle_smearing`,
   `describe_smearing`.
@@ -833,7 +833,7 @@ ntuples and gives identical results. Code lives in
   ipp) into one combined file, one entry per input (see "Merged file"
   above); its `merge()` is what `./run_all` uses to (re)build the
   combined file, via `input_files.py`.
-- `input_files.py` — reads `input_files_config.txt` (paths of all input
+- `input_files.py` — reads `__input_files_config.txt` (paths of all input
   files), and checks/rebuilds the combined BIB file
   (`ensure_combined`).
 - `make_basic_plots.py` — step 1 main script; produces per-subsystem/
@@ -865,9 +865,9 @@ ntuples and gives identical results. Code lives in
   diagnostic plots (z-axis intercept full+zoom, transverse curvature/pT
   full+zoom, TOF-corrected time full+zoom), in hits/collision/bin,
   described above.
-- `templates/cuts_config.txt`, `templates/smearing_config.txt` —
+- `templates/__cuts_config.txt`, `templates/__smearing_config.txt` —
   templates of the two settings files; the live, editable copies are in
-  the results folder (see "How to run the analysis" at the top).
+  the Analysis folder (see "How to run the analysis" at the top).
 - `check_configs.py` — checks the two settings files before a run and
   prints a readable summary of them; `./run_all` refuses to start if it
   finds a problem.
@@ -883,7 +883,7 @@ ntuples and gives identical results. Code lives in
   applied, not its own), reusing `signal_overlay_angle_plots.py`'s
   layout/conventions, described above.
 - `run_all_steps.sh` — the full pipeline (steps 1-4) behind the
-  `./run_all` launcher in the results folder (see "How to run the
+  `./run_all` launcher in the Analysis folder (see "How to run the
   analysis" at the top). Replaces the former `run_step4.sh`.
 
 Step 1, step 2 (both the angle and time-of-flight scripts) are run for
@@ -891,7 +891,7 @@ the original plus/minus files AND the merged file on every run, plus
 once on the signal file for the time-of-flight validation; step 3 (both
 scripts) and step 4 use the merged BIB file plus the signal file. Each
 run's results go to
-`~/Dropbox/Documents/MuonColliderSimulation/results/runs/<date>_<time>/`
+`~/Dropbox/Documents/MuonColliderSimulation/Analysis/runs/<date>_<time>/`
 (`step1_basic_plots/`, `step1_basic_plots_minus/`,
 `step1_basic_plots_combined/`, `step2_incidence_angles/`,
 `step2_incidence_angles_minus/`, `step2_incidence_angles_combined/`,
@@ -900,7 +900,7 @@ run's results go to
 `step3_signal_overlay/` (shared by both step-3 scripts), `step4_cuts/`,
 `step4_track_efficiency/`, `step4_n1_cuts/`, plus the two settings
 files, `run_log.txt`, `code_version.txt` and `summary.txt`); the same
-`step*` folders (and `_highlights/`) directly in `results/` always hold
+`step*` folders (and `_highlights/`) directly in `Analysis/` always hold
 the latest successful run. `runs/` also keeps the older step-4-only archives made before this
 workflow existed (suffix `_step4-only`, each with a `NOTE.txt`).
 
@@ -915,7 +915,7 @@ next topic: it's a direct consequence of how hard the current momentum
 cut is, and loosening its halfwidth would likely trade some BIB
 rejection for a smoother, more physically informative efficiency curve
 (worth discussing with the user before changing it). More generally,
-next: iterate on the cut values in `cuts_config.txt` (tighter/looser
+next: iterate on the cut values in `__cuts_config.txt` (tighter/looser
 windows, or disabling individual cuts) - `./run_all` regenerates
 everything that depends on them in one command - to see how the
 BIB-rejection/track-efficiency trade-off moves, and decide with the

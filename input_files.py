@@ -1,6 +1,6 @@
 """
-Input files of the analysis, as listed in input_files_config.txt (kept in
-the working folder, next to cuts_config.txt and smearing_config.txt).
+Input files of the analysis, as listed in __input_files_config.txt (kept in
+the working folder, next to __cuts_config.txt and __smearing_config.txt).
 
 File names in the config are relative to the simulation folder
 (MuonColliderSimulation, the folder above the working folder): ROOT files
@@ -15,10 +15,10 @@ merge_bib_files.merge() when it is missing or doesn't match (e.g. after
 new plus/minus/ipp files were put in place).
 
 Command line (used by run_all_steps.sh):
-    python3 input_files.py shell   <input_files_config.txt> <simulation folder>
+    python3 input_files.py shell   <__input_files_config.txt> <simulation folder>
         print shell assignments PLUS=... MINUS=... IPP=... COMBINED=...
         SIGNAL=... GEOM_MAIN=... GEOM_VERTEX=... GEOM_IT=... GEOM_OT=...
-    python3 input_files.py prepare <input_files_config.txt> <simulation folder>
+    python3 input_files.py prepare <__input_files_config.txt> <simulation folder>
         make sure the combined BIB file matches its parts, building it if needed
 """
 import configparser

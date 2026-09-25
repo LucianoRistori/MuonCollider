@@ -1,8 +1,8 @@
 # Selection cuts for BIB suppression analysis (used by apply_cuts.py, via
 # bib_common.load_cuts / bib_common.apply_cuts).
 #
-# Plain INI format (stdlib configparser) - edit values and re-run
-# apply_cuts.py to test a different hypothesis; no code changes needed.
+# Plain INI format (stdlib configparser) - edit values and run ./run_all
+# to test a different hypothesis; no code changes needed.
 # Lines starting with '#' are comments.
 #
 # Each cut is a symmetric acceptance window around zero for a quantity

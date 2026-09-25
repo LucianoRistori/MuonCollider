@@ -4,8 +4,7 @@
 # check_smearing.py), so with every section below disabled/zero, the
 # analysis sees the exact, unsmeared hits - matching the input files as
 # they are today. Edit sigma values and enabled=true to try a resolution
-# hypothesis, then re-run (e.g. run_all_steps.sh / run_step4.sh) with
-# SMEARING_CONFIG=smearing_config.txt.
+# hypothesis, then run ./run_all.
 #
 # Loaded/applied by bib_common.load_smearing_config() /
 # apply_position_time_smearing() / apply_angle_smearing(). All Gaussian
