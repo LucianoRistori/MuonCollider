@@ -44,6 +44,23 @@ step2_time_of_flight step2_time_of_flight_minus step2_time_of_flight_combined
 step2_time_of_flight_signal step3_signal_overlay
 step4_cuts step4_track_efficiency step4_n1_cuts"
 
+# The key plots, gathered into _highlights/ after every successful run
+# (in the run folder, and in the working folder next to the step folders).
+HIGHLIGHTS="step4_cuts/density_before_after_cuts.png
+step4_track_efficiency/track_efficiency_vs_pt.png
+step3_signal_overlay/inv_radius_per_subsystem_with_signal.png
+step3_signal_overlay/inv_radius_per_subsystem_zoom_with_signal.png
+step3_signal_overlay/time_corrected_per_subsystem_with_signal.png
+step3_signal_overlay/time_corrected_per_subsystem_zoom_with_signal.png
+step3_signal_overlay/z_axis_intercept_per_subsystem_with_signal.png
+step3_signal_overlay/z_axis_intercept_per_subsystem_zoom_with_signal.png
+step4_n1_cuts/inv_radius_per_subsystem_n1.png
+step4_n1_cuts/inv_radius_per_subsystem_zoom_n1.png
+step4_n1_cuts/time_corrected_per_subsystem_n1.png
+step4_n1_cuts/time_corrected_per_subsystem_zoom_n1.png
+step4_n1_cuts/z_axis_intercept_per_subsystem_n1.png
+step4_n1_cuts/z_axis_intercept_per_subsystem_zoom_n1.png"
+
 say() { printf '%s\n' "$*"; }
 stop() { printf '\nERROR: %s\n\n' "$*" >&2; exit 1; }
 
@@ -101,8 +118,7 @@ else
     CFG_DIR="$WORKDIR/runs/$RUN_ID"
 fi
 
-say "Checking settings..."
-"$PYTHON" "$CODE_DIR/check_configs.py" "$CFG_DIR/cuts_config.txt" "$CFG_DIR/smearing_config.txt" \
+"$PYTHON" "$CODE_DIR/check_configs.py" --quiet "$CFG_DIR/cuts_config.txt" "$CFG_DIR/smearing_config.txt" \
     || stop "fix the settings file(s) as listed above, then run again. Nothing was run."
 
 for f in "$PLUS" "$MINUS" "$COMBINED" "$SIGNAL"; do
@@ -276,20 +292,30 @@ fi
     awk '/Summary: BIB rejection vs. signal efficiency/ {print; f=1; next} f && /BIB rejection=/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
 } > "$RUN_DIR/summary.txt"
 
+missing_hl=""
+mkdir -p "$RUN_DIR/_highlights"
+for f in $HIGHLIGHTS; do
+    if [ -f "$RUN_DIR/$f" ]; then
+        cp "$RUN_DIR/$f" "$RUN_DIR/_highlights/"
+    else
+        missing_hl="$missing_hl $f"
+    fi
+done
+
 promote() {
     local d
-    for d in $STEP_DIRS; do
+    for d in $STEP_DIRS _highlights; do
         [ -d "$RUN_DIR/$d" ] || { say "missing output folder: runs/$RUN_ID/$d"; return 1; }
     done
     say "The step folders are being updated from run $RUN_ID - if you can read this, the update did not finish; the complete results are in runs/$RUN_ID/" > "$WORKDIR/latest_run.txt"
-    for d in $STEP_DIRS; do
+    for d in $STEP_DIRS _highlights; do
         rm -rf -- "${WORKDIR:?}/${d:?}" 2>/dev/null
         [ ! -e "$WORKDIR/$d" ] || { say "could not remove the old $d folder"; return 1; }
         cp -R "$RUN_DIR/$d" "$WORKDIR/$d" || return 1
     done
     {
         say "The step folders in this folder show run: $RUN_ID"
-        say "(the complete archive of that run, with its settings and log, is runs/$RUN_ID/)"
+        say "(so does _highlights/; the complete archive of that run, with its settings and log, is runs/$RUN_ID/)"
         say ""
         cat "$RUN_DIR/summary.txt"
     } > "$WORKDIR/latest_run.txt"
@@ -301,12 +327,13 @@ elapsed=$(( $(date +%s) - T_START ))
     say "======================================================================"
     if promote; then
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
-        say " The step folders here now show this run."
+        say " The step folders here now show this run; key plots are in _highlights/."
     else
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
         say " BUT the step folders here could not be updated (see message above);"
         say " the complete results are in runs/$RUN_ID/."
     fi
+    [ -z "$missing_hl" ] || say " WARNING - these plots were not produced, so they are not in _highlights:$missing_hl"
     say ""
     sed 's/^/ /' "$RUN_DIR/summary.txt"
     say "======================================================================"

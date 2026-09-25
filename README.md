@@ -26,6 +26,14 @@ says which run they show. A failed or interrupted run is kept as
 `runs/<date>_<time>_FAILED` (or `_INTERRUPTED`) and leaves the `step*`
 folders untouched. To compare runs: `cat runs/*/summary.txt`.
 
+The 14 key plots of each run are also gathered in one folder,
+`_highlights/` (in the results folder for the latest run, and in each
+`runs/<date>_<time>/`): the BIB density before/after cuts, the
+track-finding efficiency vs pT, and the z-intercept, pT and corrected-
+time distributions with the signal overlaid - both without cuts (step
+3, `*_with_signal.png`) and N-1 (step 4, `*_n1.png`), full range and
+zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
+
 The code folder (`~/code/MuonCollider`) keeps only templates of the
 settings files (`templates/`); the copies in the results folder are the
 ones used. `./run_all` finds the code in `~/code/MuonCollider` (or set
@@ -874,8 +882,8 @@ run's results go to
 `step3_signal_overlay/` (shared by both step-3 scripts), `step4_cuts/`,
 `step4_track_efficiency/`, `step4_n1_cuts/`, plus the two settings
 files, `run_log.txt`, `code_version.txt` and `summary.txt`); the same
-`step*` folders directly in `results/` always hold the latest successful
-run. `runs/` also keeps the older step-4-only archives made before this
+`step*` folders (and `_highlights/`) directly in `results/` always hold
+the latest successful run. `runs/` also keeps the older step-4-only archives made before this
 workflow existed (suffix `_step4-only`, each with a `NOTE.txt`).
 
 ## Next step (in progress)

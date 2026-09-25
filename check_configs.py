@@ -24,7 +24,8 @@ a setting is added there.
 Usage:
     python3 check_configs.py <cuts_config.txt> <smearing_config.txt> [--brief]
 Exit code 0 = OK (warnings allowed), 1 = at least one error.
---brief prints just two summary lines (used for runs/<id>/summary.txt).
+--brief prints just two summary lines (used for runs/<id>/summary.txt);
+--quiet prints nothing unless there is a problem.
 """
 import configparser
 import difflib
@@ -198,7 +199,8 @@ def warnings_for(cuts, smear):
 
 def main(argv):
     brief = "--brief" in argv
-    paths = [a for a in argv if a != "--brief"]
+    quiet = "--quiet" in argv
+    paths = [a for a in argv if a not in ("--brief", "--quiet")]
     if len(paths) != 2:
         print(__doc__.split("Usage:")[1].split("Exit code")[0].strip())
         return 2
@@ -213,6 +215,8 @@ def main(argv):
             print(f"  - {e}")
         return 1
 
+    if quiet:
+        return 0
     cut_lines, smear_lines = describe(cuts, smear)
     if brief:
         print("Cuts:        " + "; ".join(f"{n} {t}" for n, t in cut_lines))
