@@ -100,7 +100,9 @@ represent the BIB background expected in a **single MC collision**
 (see "Signal sample and overlay").
 
 ## Hit branches (per-hit parallel std::vectors)
-`hit_index`, `hit_mcp` (unused, historical), `hit_id0` (cellID, see below),
+`hit_index`, `hit_mcp` (PDG code of the particle the simulation credits
+the hit to: ±13 muon, ±11 electron/positron, ...; see "Signal hits"
+below), `hit_id0` (cellID, see below),
 position `hit_x/y/z` (mm), local coords `hit_u/v` (mm) with resolution
 `hit_du/dv` (mm), local axes `hit_ux/uy/uz`, `hit_vx/vy/vz`, momentum
 `hit_px/py/pz` (GeV), time `hit_t` (ns).
@@ -604,6 +606,9 @@ pT   = 1.0          # |pT| >= 1 GeV/c
 [track]
 min_hits_found = 5          # min. surviving hits for a track to count as "found" (step 4 part 2)
 exclude_vertex_hits = true  # if true, vertex-detector hits don't count toward min_hits_found
+
+[signal]
+muon_hits_only = true       # signal = the muon's own hits only (see "Signal hits" below)
 ```
 A hit is kept only if it passes all three cuts of its own subsystem:
 `|t_corrected| <= time`, `|z0| <= z0` and `pT >= pT`. `off` in a cell
@@ -678,6 +683,26 @@ surviving-hit count that `min_hits_found` is compared against in
 cuts - i.e. "found" then means `min_hits_found`+ surviving hits *outside*
 the vertex detector. Default false (vertex hits count the same as any
 other subsystem's).
+
+**Signal hits** (`[signal]` section, `muon_hits_only`): with `true`,
+the signal sample is the generated muon's own hits only, everywhere it
+is used (step-2 time of flight on the signal, step-3 overlays, step-4
+cuts, track efficiency and N-1 plots); with `false` (or no `[signal]`
+section) every hit of the signal events is used. About 8% of those hits
+are not the muon's: they come from its secondaries - delta rays and the
+like - which almost never pass the cuts, so counting them only lowers
+every signal efficiency. `hit_mcp` turned out to be the PDG code of the
+particle the simulation credits each hit to; the simulation credits the
+hits of low-energy secondaries it does not follow individually to their
+parent, the muon, so a hit counts as the muon's own only if `hit_mcp`
+is the muon's PDG code **and** the hit's momentum is at least 5% of the
+muon's (`bib_common.primary_hit_mask`). On the muon-gun sample: 93.2% of
+the hits carry the muon's PDG code; of those, 1.3% have under 1% of the
+muon's momentum (secondaries) and only 5 hits lie between 1% and 10%,
+so the cut at 5% is unambiguous. It keeps the ~0.7% of hits from the
+lowest-pT muons (1.5-2 GeV/c) that come back into the tracker at
+~0.3-0.7 GeV/c after losing energy outside it - still the muon's own.
+Result: 1,225,132 of the 1,331,666 signal hits.
 
 **Running step 4.** Step 4 (`apply_cuts.py`, `track_efficiency.py`,
 `n1_cut_plots.py`) runs as part of `./run_all` together with steps 1-3

@@ -171,6 +171,7 @@ else
 fi
 
 CUTS="$RUN_DIR/__cuts_config.txt"
+export CUTS_CONFIG="$CUTS"     # also read by scripts not given it as an argument ([signal])
 export SMEARING_CONFIG="$RUN_DIR/__smearing_config.txt"
 export BIB_GEOMETRY_FILES="$GEOM_MAIN:$GEOM_VERTEX:$GEOM_IT:$GEOM_OT"
 export BIB_RUN_ALL=1
@@ -203,7 +204,7 @@ step2() {
     run_py "Step 2: time of flight, BIB plus"       time_of_flight_plots.py  "$PLUS"     "$RUN_DIR/step2_time_of_flight" &&
     run_py "Step 2: time of flight, BIB minus"      time_of_flight_plots.py  "$MINUS"    "$RUN_DIR/step2_time_of_flight_minus" &&
     run_py "Step 2: time of flight, BIB combined"   time_of_flight_plots.py  "$COMBINED" "$RUN_DIR/step2_time_of_flight_combined" &&
-    run_py "Step 2: time of flight, signal"         time_of_flight_plots.py  "$SIGNAL"   "$RUN_DIR/step2_time_of_flight_signal"
+    run_py "Step 2: time of flight, signal"         time_of_flight_plots.py  "$SIGNAL"   "$RUN_DIR/step2_time_of_flight_signal" --signal
 }
 step3() {
     run_py "Step 3: signal overlay - r-z map and densities" \

@@ -150,6 +150,8 @@ def captions(run):
 
     rej_all, eff_all = run["table"][-1][1], run["table"][-1][2]
     trk = run["track"]
+    sig_hits = ("the hits of a signal muon (its own, not its secondaries')"
+                if c["signal"]["muon_hits_only"] else "the hits in a signal event")
     if uniform:
         v = {col: ct.values(c, col)[0] for col in ct.COLUMNS}
         cut_list = [f"|t - t$_{{TOF}}$| ≤ {v['time']:g} ns" if on("time") else None,
@@ -178,7 +180,7 @@ def captions(run):
          f"Mean BIB hit density per subsystem (hits/mm$^2$, log scale) for one collision's worth of "
          f"background{made_of}, before the cuts (light blue) and after all cuts combined (dark blue). "
          f"{cut_sentence} Overall they reduce the BIB hits by a factor {rej_all} (rejection "
-         f"factor), and keep {eff_all:.1f}% of the hits of a signal muon with $p_T$ → ∞."),
+         f"factor), and keep {eff_all:.1f}% of {sig_hits} with $p_T$ → ∞."),
         ("track_efficiency_vs_pt.png",
          "Track-finding efficiency vs. transverse momentum",
          f"Fraction of signal muons counted as found – at least {trk_min} of their hits survive "
@@ -248,10 +250,10 @@ def main(argv):
     run = load_run(run_dir)
     per_system = not ct.is_uniform(run["cuts"])
     brief = [nice(line) for line in cc.brief_lines(run["cuts"], run["smear"])]
-    cuts_brief = ("cuts: set per subsystem (page 2)" if per_system
-                  else brief[0].replace("Cuts:        ", "cuts: "))
-    footer = (f"Muon Collider BIB study  ·  run {run['name']}  ·  {cuts_brief}  ·  "
-              + brief[2].replace("Resolutions: ", "resolutions: "))
+    line = {b.split(":", 1)[0]: b.split(":", 1)[1].strip() for b in brief}
+    cuts_brief = "set per subsystem (page 2)" if per_system else line["Cuts"]
+    footer = (f"Muon Collider BIB study  ·  run {run['name']}  ·  cuts: {cuts_brief}  ·  "
+              f"resolutions: {line['Resolutions']}")
     pages = [p for p in captions(run) if (hl / p[0]).is_file()]
     missing = [p[0] for p in captions(run) if not (hl / p[0]).is_file()]
     n_pages = 1 + per_system + len(pages)
@@ -331,8 +333,10 @@ def main(argv):
                        "|t - t$_{TOF}$| ≤ time, |$z_0$| ≤ $z_0$ and $p_T$ ≥ $p_T$ (off: that cut "
                        "is not applied there). BIB rejection factor: BIB hits before / after all "
                        "cuts, = 1/(1 − R) with R the fraction removed. Signal efficiency: fraction "
-                       "of a signal muon's hits kept, in the limit $p_T$ → ∞ (fit of ε$_∞$ + "
-                       "c/$p_T^2$ to muons well above the $p_T$ cut).")
+                       + ("of the muon's own hits kept (not its secondaries')"
+                          if cuts["signal"]["muon_hits_only"] else "of a signal event's hits kept")
+                       + ", in the limit $p_T$ → ∞ (fit of ε$_∞$ + c/$p_T^2$ to muons well above "
+                       "the $p_T$ cut).")
             fig.text(0.04, 0.172, wrap(caption), fontsize=11.5, color=INK,
                      va="top", linespacing=1.4)
             pdf.savefig(fig)

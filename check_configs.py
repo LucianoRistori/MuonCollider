@@ -155,6 +155,7 @@ def describe(cuts, smear):
                  ("", cells(header))]
     cut_lines += [(r[0], cells(r[1:])) for r in rows]
     cut_lines.append(("track found", track_text(cuts)))
+    cut_lines.append(("signal hits", ct.signal_text(cuts)))
 
     def sig(sec, key, unit):
         if not smear.get((sec, "enabled"), False):
@@ -178,7 +179,7 @@ def describe(cuts, smear):
 
 
 def brief_lines(cuts, smear):
-    """Three short lines summarizing the settings (for summary.txt, where
+    """Four short lines summarizing the settings (for summary.txt, where
     the results table follows - when the cuts differ between subsystems,
     that table lists each subsystem's cuts)."""
     def on(sec):
@@ -197,6 +198,7 @@ def brief_lines(cuts, smear):
         "Cuts:        " + (", ".join(ct.summary(cuts, c) for c in ct.COLUMNS)
                              if ct.is_uniform(cuts) else "set per subsystem - see the table below"),
         "Track found: " + track_text(cuts),
+        "Signal hits: " + ct.signal_text(cuts),
         "Resolutions: " + ", ".join([pos, tim, ang, f"seed {smear.get(('general', 'seed'), '')}"]),
     ]
 

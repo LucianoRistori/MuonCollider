@@ -59,6 +59,7 @@ from bib_common import (
     apply_position_time_smearing,
     apply_angle_smearing,
     pt_inf_fit_min, efficiency_at_infinite_pt, SYSTEM_NAMES,
+    signal_muon_hits_only,
 )
 
 N_BINS_DEFAULT = 150  # evenly spaced in 1/pT; x10 finer than the initial 15
@@ -123,7 +124,7 @@ def _nice_minor_step(gap):
 
 
 def pt_ticks_for_inv_pt_axis(inv_pt_min, inv_pt_max,
-                              major_min_gap_frac=0.07, n_minor_per_gap=5):
+                              major_min_gap_frac=0.07, n_minor_per_gap=5, clear_of_zero=False):
     """Major and minor tick positions (in 1/pT, 1/(GeV/c)) chosen so
     the printed pT labels land on round-ish numbers, rather than being
     evenly spaced in 1/pT (which prints arbitrary values like 6.75,
@@ -149,6 +150,9 @@ def pt_ticks_for_inv_pt_axis(inv_pt_min, inv_pt_max,
     x_range = inv_pt_max - inv_pt_min
 
     major_candidates = {base * 10 ** decade for decade in range(-1, 7) for base in (1, 2, 5)}
+    if clear_of_zero:
+        # keep labels off 1/pT = 0, where the plot puts its own "infinity" tick
+        pt_hi = min(pt_hi, 1.0 / (major_min_gap_frac * x_range))
     major = _thin_round_pt_candidates(major_candidates, pt_lo, pt_hi, x_range, major_min_gap_frac)
     major_ticks = [x for x, c in major]
     major_labels = [f"{c:g}" for x, c in major]
@@ -167,7 +171,7 @@ def pt_ticks_for_inv_pt_axis(inv_pt_min, inv_pt_max,
     return major_ticks, major_labels, minor_ticks
 
 
-def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False,
+def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False, muon_hits_only=False,
                    smear_cfg=None, smear_rng=None):
     """Returns (pT_gen [n_events], found [n_events] bool) for one file's tracks.
 
@@ -176,7 +180,7 @@ def load_one_file(signal_file, cuts, min_hits_found, exclude_vertex_hits=False,
     track's surviving-hit total even when they pass the selection cuts -
     i.e. "found" then requires >=min_hits_found surviving hits *outside*
     the vertex detector."""
-    hits = load_hits(signal_file)
+    hits = load_hits(signal_file, muon_hits_only=muon_hits_only)
     if smear_cfg is not None:
         apply_position_time_smearing(hits, smear_cfg, smear_rng)
     n_events = hits["_n_events"]
@@ -228,6 +232,7 @@ def main():
     pT_all, found_all = [], []
     for f in signal_files:
         pT_gen, found = load_one_file(f, cuts, min_hits_found, exclude_vertex_hits,
+                                       signal_muon_hits_only(cuts_config),
                                        smear_cfg=smear_cfg, smear_rng=smear_rng)
         pT_all.append(pT_gen)
         found_all.append(found)
@@ -319,7 +324,8 @@ def main():
         x_hi = edges_inv[-1]
     x_lo = -1.2 * bin_width_inv     # room for the pT = infinity point at 1/pT = 0
 
-    tick_pos, tick_labels, minor_tick_pos = pt_ticks_for_inv_pt_axis(edges_inv[0], x_hi)
+    tick_pos, tick_labels, minor_tick_pos = pt_ticks_for_inv_pt_axis(edges_inv[0], x_hi,
+                                                                     clear_of_zero=True)
     tick_pos, tick_labels = [0.0] + tick_pos, ["\u221e"] + tick_labels
 
     fig, ax = plt.subplots(figsize=(9, 5.5))

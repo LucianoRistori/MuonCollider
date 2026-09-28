@@ -52,6 +52,7 @@ from bib_common import (
     apply_angle_smearing,
     rejection_factor, format_rejection_factor, pt_inf_fit_min, efficiency_at_infinite_pt,
     PT_INF_FIT_MIN_GEV,
+    signal_muon_hits_only,
 )
 import cuts_table
 import geometry as geom_mod
@@ -179,7 +180,7 @@ def main():
     slim_hits(bib_hits)
     gc.collect()
     print(loaded_line(bib_file, bib_hits, "BIB"))
-    sig_hits = load_hits(signal_file)
+    sig_hits = load_hits(signal_file, muon_hits_only=signal_muon_hits_only(cuts_config))
     if smear_cfg is not None:
         apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
     add_incidence_angles(sig_hits)
@@ -340,7 +341,9 @@ def main():
                    f"{PT_INF_FIT_MIN_GEV:g} GeV/c)")
     print("  Rejection factor: BIB hits before / after the cuts = 1/(1 - R), "
           "R = fraction removed.")
-    print(f"  Efficiency for pT -> inf: fit eff + c/pT^2 to the hits of muons with {window}.")
+    whose = ("the muon's own hits" if "_n_hits_all" in sig_hits
+             else "all hits (secondaries included)")
+    print(f"  Efficiency for pT -> inf: fit eff + c/pT^2 to {whose}, muons with {window}.")
     print()
 
 

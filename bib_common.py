@@ -71,7 +71,48 @@ PRIMARY_BRANCHES = [
 ]
 
 
-def load_hits(root_file, tree_name=None, entry=None):
+# A hit counts as made by the generated particle itself (see primary_hit_mask)
+# only if its momentum is at least this fraction of the particle's: hits the
+# simulation credits to the muon but made by its low-energy secondaries have
+# less than 1% of the muon's momentum, while the muon's own hits have ~100%
+# (down to ~10-50% for the lowest-pT muons re-entering the tracker after
+# losing energy outside it).
+PRIMARY_HIT_MIN_MOMENTUM_FRACTION = 0.05
+
+
+def primary_hit_mask(mcp, px, py, pz, primary, event_id):
+    """
+    True for the hits made by the generated particle itself (the muon, for
+    the muon-gun signal sample), False for those of its secondaries - delta
+    rays and the like. hit_mcp is the PDG code of the particle the
+    simulation credits the hit to (+-13 muon, +-11 electron/positron, ...);
+    the simulation credits the hits of low-energy secondaries it does not
+    keep track of individually to their parent, the muon, so a hit is the
+    muon's own only if hit_mcp is the muon's PDG code AND the hit's
+    momentum is at least PRIMARY_HIT_MIN_MOMENTUM_FRACTION of the muon's.
+    """
+    pdg = np.asarray(primary["pdg"])[event_id]
+    p_primary = np.sqrt(np.asarray(primary["px"], dtype=float) ** 2
+                        + np.asarray(primary["py"], dtype=float) ** 2
+                        + np.asarray(primary["pz"], dtype=float) ** 2)[event_id]
+    p_hit = np.sqrt(np.asarray(px, dtype=float) ** 2 + np.asarray(py, dtype=float) ** 2
+                    + np.asarray(pz, dtype=float) ** 2)
+    return (np.asarray(mcp) == pdg) & (p_hit >= PRIMARY_HIT_MIN_MOMENTUM_FRACTION * p_primary)
+
+
+def signal_muon_hits_only(cuts_config=None):
+    """
+    The [signal] muon_hits_only setting: True if the signal sample is to be
+    the generated muon's own hits only (see primary_hit_mask). Read from
+    `cuts_config`, or else from the file named by the CUTS_CONFIG
+    environment variable (which ./run_all sets), or else from
+    default_cuts_config().
+    """
+    path = cuts_config or os.environ.get("CUTS_CONFIG", "").strip() or default_cuts_config()
+    return cuts_table.load(path)["signal"]["muon_hits_only"]
+
+
+def load_hits(root_file, tree_name=None, entry=None, muon_hits_only=False):
     """
     Load hit-level branches from the HTAtree, flattened across events.
 
@@ -91,6 +132,12 @@ def load_hits(root_file, tree_name=None, entry=None):
     under '_primary' (a dict of scalars if entry was given, or a dict of
     arrays - one value per event - if entry=None) and the number of
     events actually loaded under '_n_events'.
+
+    muon_hits_only=True (for the signal sample, see signal_muon_hits_only)
+    keeps only the hits made by the generated particle itself, dropping
+    those of its secondaries (primary_hit_mask); '_n_hits_all' then holds
+    the number of hits before that selection. Events are all kept, even
+    one left without hits ('_n_events' is unchanged).
     """
     f = uproot.open(root_file)
     if tree_name is None:
@@ -102,17 +149,18 @@ def load_hits(root_file, tree_name=None, entry=None):
         tree_name = candidates[-1]
     tree = f[tree_name]
 
+    branches = HIT_BRANCHES + (["hit_mcp"] if muon_hits_only else [])
     if entry is not None:
         arrs = tree.arrays(library="np")
-        hits = {b[4:]: arrs[b][entry] for b in HIT_BRANCHES}
+        hits = {b[4:]: arrs[b][entry] for b in branches}
         primary = {k[5:] if k.startswith("part_") else k: arrs[k][entry]
                    for k in PRIMARY_BRANCHES}
         n_events = 1
         hits["event_id"] = np.zeros(len(hits["x"]), dtype=np.int64)
     else:
         import awkward as ak
-        ak_hits = tree.arrays(HIT_BRANCHES, library="ak")
-        hits = {b[4:]: ak.to_numpy(ak.flatten(ak_hits[b], axis=1)) for b in HIT_BRANCHES}
+        ak_hits = tree.arrays(branches, library="ak")
+        hits = {b[4:]: ak.to_numpy(ak.flatten(ak_hits[b], axis=1)) for b in branches}
         np_primary = tree.arrays(PRIMARY_BRANCHES, library="np")
         primary = {k[5:] if k.startswith("part_") else k: np_primary[k]
                    for k in PRIMARY_BRANCHES}
@@ -133,6 +181,13 @@ def load_hits(root_file, tree_name=None, entry=None):
     hits["module"] = module
     hits["sensor"] = sensor
     hits["r"] = np.sqrt(hits["x"] ** 2 + hits["y"] ** 2)
+
+    if muon_hits_only:
+        n_all = len(hits["x"])
+        keep = primary_hit_mask(hits.pop("mcp"), hits["px"], hits["py"], hits["pz"],
+                                primary, hits["event_id"])
+        hits = {k: v[keep] for k, v in hits.items()}
+        hits["_n_hits_all"] = n_all
 
     hits["_primary"] = primary
     hits["_tree_name"] = tree_name
@@ -611,6 +666,9 @@ def efficiency_at_infinite_pt(pt, passed, pt_min, groups=None):
     `groups` (e.g. the event number of each hit) makes it robust to
     correlations between trials of the same group - the hits of one
     track are not independent of each other.
+
+    eff_inf is kept within the physical range [0, 1]: close to 100% the
+    extrapolation can land slightly above it (e.g. 100.1 +- 0.1%).
     """
     pt = np.asarray(pt, dtype=float)
     y = np.asarray(passed, dtype=float)
@@ -630,7 +688,7 @@ def efficiency_at_infinite_pt(pt, passed, pt_min, groups=None):
         scores = np.column_stack([np.bincount(g, weights=X[:, j] * resid)
                                   for j in range(X.shape[1])])
     cov = xtx_inv @ (scores.T @ scores) @ xtx_inv
-    return float(beta[0]), float(np.sqrt(cov[0, 0])), n
+    return float(min(max(beta[0], 0.0), 1.0)), float(np.sqrt(cov[0, 0])), n
 
 def mask_hits(hits, mask):
     """
@@ -853,7 +911,10 @@ def loaded_line(path, hits, label=""):
     n_ev = int(hits["_n_events"])
     events = f"{n_ev:,} event" + ("" if n_ev == 1 else "s")
     who = f"Loaded {label} " if label else "Loaded "
-    return f"{who}{Path(path).name}: {events}, {len(hits['x']):,} hits"
+    line = f"{who}{Path(path).name}: {events}, {len(hits['x']):,} hits"
+    if "_n_hits_all" in hits:
+        line += f" (the muon's own; {hits['_n_hits_all']:,} with secondaries)"
+    return line
 
 
 def print_table(title, header, rows, align=None, indent="  ", gap="   "):

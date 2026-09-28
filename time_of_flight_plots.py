@@ -15,8 +15,13 @@ the correction is simply wrong; large excursions there are an expected,
 even informative, consequence, not a bug (see console printout below,
 which reports raw-momentum pT for the outlier tail).
 
+With --signal (as ./run_all runs it on the muon-gun sample), the input
+is the signal sample, and the [signal] muon_hits_only setting of the cuts
+config (bib_common.signal_muon_hits_only) decides whether only the muon's
+own hits are used - they then have no such tail.
+
 Usage:
-    python3 time_of_flight_plots.py <input.root> [output_dir]
+    python3 time_of_flight_plots.py <input.root> [output_dir] [--signal]
 """
 import csv
 import os
@@ -35,6 +40,7 @@ from bib_common import (
     under_run_all, short_path, loaded_line, print_table,
     apply_position_time_smearing,
     apply_angle_smearing,
+    signal_muon_hits_only,
 )
 
 T_RANGE_NS = 40.0          # raw hit-time histogram range
@@ -48,9 +54,11 @@ def panel_grid():
 
 
 def main():
-    root_file = sys.argv[1] if len(sys.argv) > 1 else \
+    is_signal = "--signal" in sys.argv[1:]
+    args = [a for a in sys.argv[1:] if a != "--signal"]
+    root_file = args[0] if len(args) > 0 else \
         "/mnt/user-data/uploads/ntu_bib_plus_1evt.root"
-    outdir = Path(sys.argv[2] if len(sys.argv) > 2 else "../output_time_of_flight")
+    outdir = Path(args[1] if len(args) > 1 else "../output_time_of_flight")
     outdir = prepare_output_dir(outdir)
 
     smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
@@ -63,7 +71,7 @@ def main():
         if not under_run_all():
             print(f"Smearing: {joined}  ({short_path(smearing_config)})")
 
-    hits = load_hits(root_file)
+    hits = load_hits(root_file, muon_hits_only=is_signal and signal_muon_hits_only())
     if smear_cfg is not None:
         apply_position_time_smearing(hits, smear_cfg, smear_rng)
     n_hit = len(hits["x"])

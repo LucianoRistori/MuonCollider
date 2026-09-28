@@ -47,6 +47,7 @@ from bib_common import (
     under_run_all, short_path, loaded_line, print_table, default_cuts_config,
     apply_position_time_smearing,
     apply_angle_smearing,
+    signal_muon_hits_only,
 )
 from incidence_angle_plots import (
     pt_ticks_for_axis, panel_grid,
@@ -150,7 +151,7 @@ def main():
     add_time_of_flight(bib_hits)
     n_bib_hit = len(bib_hits["x"])
     print(loaded_line(bib_file, bib_hits, "BIB"))
-    sig_hits = load_hits(signal_file)
+    sig_hits = load_hits(signal_file, muon_hits_only=signal_muon_hits_only(cuts_config))
     if smear_cfg is not None:
         apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
     add_incidence_angles(sig_hits)

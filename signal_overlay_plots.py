@@ -50,6 +50,7 @@ from bib_common import (
     under_run_all, short_path, loaded_line, print_table, resolve_geometry,
     apply_position_time_smearing,
     apply_angle_smearing,
+    signal_muon_hits_only,
 )
 import geometry as geom_mod
 
@@ -88,7 +89,7 @@ def main():
         apply_position_time_smearing(bib_hits, smear_cfg, smear_rng)
     n_bib_hit = len(bib_hits["x"])
     print(loaded_line(bib_file, bib_hits, "BIB"))
-    sig_hits = load_hits(signal_file)
+    sig_hits = load_hits(signal_file, muon_hits_only=signal_muon_hits_only())
     if smear_cfg is not None:
         apply_position_time_smearing(sig_hits, smear_cfg, smear_rng)
     n_sig_hit = len(sig_hits["x"])

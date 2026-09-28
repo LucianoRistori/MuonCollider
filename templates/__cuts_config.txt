@@ -38,3 +38,9 @@ pT   = 1.0
 # they pass.
 min_hits_found = 5
 exclude_vertex_hits = true
+
+[signal]
+# true: the signal is the muon's own hits only. Hits of its secondaries
+# (delta rays etc.) are left out; they almost never pass the cuts.
+# false: every hit of the signal events is used.
+muon_hits_only = true

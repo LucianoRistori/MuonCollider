@@ -19,10 +19,17 @@ track-finding settings.
     min_hits_found = 5
     exclude_vertex_hits = true
 
+    [signal]
+    muon_hits_only = true
+
 A hit in subsystem S is kept if |t_corrected| <= time(S), |z0| <= z0(S)
 and pT >= pT(S). "off" switches that one cut off in that one subsystem.
 (pT comes from the curvature measured at the hit, so that cut is applied
 as |1/R| <= 0.3*B/pT(S) - see bib_common.apply_cuts.)
+[signal] muon_hits_only = true makes the signal sample the generated
+muon's own hits only, leaving out the hits of secondaries (delta rays
+etc.) - see bib_common.primary_hit_mask. The section is optional; without
+it every hit of the signal events is used, as before it existed.
 
 Files in the format used before the table - one section per cut,
 [t_corrected_ns], [z_axis_intercept_mm] and [momentum_gev], each with a
@@ -83,6 +90,7 @@ def read(path):
         {"cuts":  {"time": {system id: value, or None if off}, "z0": {...}, "pt": {...}},
          "zoom":  {"time": x, "z0": x, "pt": x},
          "track": {"min_hits_found": n, "exclude_vertex_hits": True/False},
+         "signal": {"muon_hits_only": True/False},
          "old_format": True/False}
     """
     label = str(path).split("/")[-1]
@@ -109,6 +117,7 @@ def read(path):
     else:
         settings = _read_old(cp, problem)
     settings["track"] = _read_track(cp, problem)
+    settings["signal"] = _read_signal(cp, problem)
     return (None if problems else settings), problems
 
 
@@ -126,8 +135,8 @@ def _read_table(cp, problem):
             col = OLD_SECTIONS[sec]
             problem(f"[{sec}] is the old way of setting the {TITLES[col]} cut - it now goes in "
                     f"the {TITLES[col]} column of the [cuts] table, so delete [{sec}]")
-        elif sec not in ("cuts", "zoom", "track"):
-            problem(f"unknown section [{sec}]{_suggest(sec, ('cuts', 'zoom', 'track'))}")
+        elif sec not in ("cuts", "zoom", "track", "signal"):
+            problem(f"unknown section [{sec}]{_suggest(sec, ('cuts', 'zoom', 'track', 'signal'))}")
 
     cuts = {c: {} for c in COLUMNS}
     if not cp.has_section("cuts"):
@@ -185,7 +194,7 @@ def _read_table(cp, problem):
 
 def _read_old(cp, problem):
     """The format used before the table: one section per cut, same cut everywhere."""
-    known = list(OLD_SECTIONS) + ["track"]
+    known = list(OLD_SECTIONS) + ["track", "signal"]
     for sec in cp.sections():
         if sec not in known:
             problem(f"unknown section [{sec}]{_suggest(sec, known)}")
@@ -255,6 +264,22 @@ def _read_track(cp, problem):
     return track
 
 
+def _read_signal(cp, problem):
+    signal = {"muon_hits_only": False}
+    if not cp.has_section("signal"):
+        return signal
+    s = cp["signal"]
+    for key in s:
+        if key not in signal:
+            problem(f"unknown setting '{key}' in [signal]{_suggest(key, signal)}")
+    if "muon_hits_only" in s:
+        try:
+            signal["muon_hits_only"] = s.getboolean("muon_hits_only")
+        except ValueError:
+            problem(f"[signal] muon_hits_only = {s['muon_hits_only']!r} is not true or false")
+    return signal
+
+
 # ---------------------------------------------------------------- describing
 def fmt(x):
     """A table cell: the value, or 'off'."""
@@ -317,6 +342,12 @@ def off_in(settings, col):
     """Names of the subsystems where a cut is off (or, for pT, set to 0)."""
     return [NAMES[s] for s, v in zip(SYSTEM_IDS, values(settings, col))
             if not _cuts_something(col, v)]
+
+
+def signal_text(settings):
+    """Which hits of the signal events are the signal, in words."""
+    return ("the muon's own only (secondaries left out)" if settings["signal"]["muon_hits_only"]
+            else "all hits of the signal events (secondaries included)")
 
 
 def table_rows(settings):
