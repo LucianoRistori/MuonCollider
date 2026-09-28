@@ -309,7 +309,13 @@ fi
     "$PYTHON" "$CODE_DIR/check_configs.py" --brief "$RUN_DIR/__cuts_config.txt" "$RUN_DIR/__smearing_config.txt" \
         "$RUN_DIR/__input_files_config.txt" --sim-dir "$SIM_DIR"
     say ""
-    awk '/^Summary: BIB rejection/ {print; f=1; next} f && /^  [^ ]/ {print; next} f {exit}' "$RUN_DIR/run_log.txt"
+    # the results tables printed by apply_cuts.py: the summary, then each cut
+    # alone and on top of the other two
+    awk '/^Summary: BIB rejection/ {f=1}
+         !f {next}
+         /^(Summary: |Each cut )/ || /^  [^ ]/ {printf "%s", gap; gap=""; print; next}
+         /^$/ {gap = gap "\n"; next}
+         {exit}' "$RUN_DIR/run_log.txt"
     trk="$(grep -m1 '^Track-finding efficiency for pT -> inf' "$RUN_DIR/run_log.txt")"
     [ -z "$trk" ] || { say ""; say "$trk"; }
 } > "$RUN_DIR/summary.txt"

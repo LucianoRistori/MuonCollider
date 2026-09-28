@@ -20,7 +20,11 @@ Two kinds of comparison are produced:
      the limit pT -> infinity (bib_common.efficiency_at_infinite_pt -
      not averaged over the sample, which is flat in 1/pT from 1.5
      GeV/c and so mostly made of muons below the pT cut). Also written
-     to summary_by_region.csv.
+     to summary_by_region.csv. Two more tables break this down by cut:
+     each cut alone, and each cut on top of the other two (as in the N-1
+     plots: BIB hits passing the other two / passing all three, and the
+     signal efficiency among the hits passing the other two - dropping
+     that cut divides the combined numbers by these).
   2. A before/after hit-density comparison (mean density, hits/mm^2,
      using the true detector geometry area when available - same
      definition as step 1/3) for BIB only. (Signal hit density isn't
@@ -143,6 +147,61 @@ def print_cutflow(label, rows):
         [[r["system_name"], f"{r['n_total']:,}"]
          + [f"{r[f'n_after_{n}']:,}" for n in CUT_ORDER]
          + [f"{r['n_after_all']:,}", f"{r['frac_after_all']*100:.3f}%"] for r in rows])
+
+
+CUT_SHORT = {"t_corrected_ns": "time", "z_axis_intercept_mm": "z0", "momentum_gev": "pt"}
+CUT_SHORT_TITLE = {"t_corrected_ns": "time", "z_axis_intercept_mm": "z0", "momentum_gev": "pT"}
+
+
+def cut_is_off(cuts, name, s):
+    """True if cut `name` removes nothing in region s (a system id, or "ALL"
+    for all of them): off, or - for pT - a cut at 0."""
+    systems = SYSTEM_NAMES.keys() if s == "ALL" else [s]
+    return all(v is None or (name == "momentum_gev" and v == 0)
+               for v in (cuts[name]["per_system"].get(x) for x in systems))
+
+
+def per_cut_breakdown(cuts, bib_sys, bib_mask, bib_per_cut,
+                      sig_sys, sig_mask, sig_per_cut, sig_pt, sig_event):
+    """
+    For each region (system id, and "ALL") and each cut: what the cut does
+    on its own ("alone": BIB hits before / after it, signal efficiency of
+    it alone) and on top of the other two ("n1": BIB hits passing the other
+    two / passing all three, signal efficiency among the hits passing the
+    other two) - see main(). Returns {region: {cut: {"alone": (rejection
+    factor as text, rejection factor, eff, unc), "n1": (...)} or None}}.
+    """
+    regions = sorted(SYSTEM_NAMES.keys()) + ["ALL"]
+
+    def bib_counts(mask):
+        c = np.bincount(bib_sys[mask], minlength=32)
+        return {**{s: int(c[s]) for s in SYSTEM_NAMES}, "ALL": int(mask.sum())}
+    n_total = bib_counts(np.ones(len(bib_sys), dtype=bool))
+    n_all = bib_counts(bib_mask)
+    results = {s: {} for s in regions}
+    for name in CUT_ORDER:
+        o1, o2 = [o for o in CUT_ORDER if o != name]
+        n_alone = bib_counts(bib_per_cut[name])
+        n_others = bib_counts(bib_per_cut[o1] & bib_per_cut[o2])
+        sig_others = sig_per_cut[o1] & sig_per_cut[o2]
+        for s in regions:
+            if cut_is_off(cuts, name, s):
+                results[s][name] = None
+                continue
+            sel = (sig_sys == s) if s != "ALL" else np.ones(len(sig_sys), dtype=bool)
+            pt_min = pt_inf_fit_min(cuts, None if s == "ALL" else [s])
+            e_alone = efficiency_at_infinite_pt(sig_pt[sel], sig_per_cut[name][sel], pt_min,
+                                                groups=sig_event[sel])
+            sel_n1 = sel & sig_others
+            e_n1 = efficiency_at_infinite_pt(sig_pt[sel_n1], sig_mask[sel_n1], pt_min,
+                                             groups=sig_event[sel_n1])
+            results[s][name] = {
+                "alone": (format_rejection_factor(n_total[s], n_alone[s]),
+                          rejection_factor(n_total[s], n_alone[s]), e_alone[0], e_alone[1]),
+                "n1": (format_rejection_factor(n_others[s], n_all[s]),
+                       rejection_factor(n_others[s], n_all[s]), e_n1[0], e_n1[1]),
+            }
+    return results
 
 
 def main():
@@ -302,6 +361,15 @@ def main():
         eff_inf[s] = efficiency_at_infinite_pt(sig_pt[sel], sig_mask[sel], pt_min,
                                                groups=sig_hits["event_id"][sel]) + (pt_min,)
 
+    # Each cut alone, and each cut on top of the other two (as in the N-1
+    # plots), per subsystem and overall: BIB rejection factor from the hit
+    # counts, signal efficiency for pT -> inf from the same fit as above.
+    # per_cut_results[region][cut] = {"alone": (rejection text, rejection,
+    # eff, unc), "n1": (...)}, or None where that cut is off.
+    per_cut_results = per_cut_breakdown(cuts, bib_hits["system"], bib_mask, bib_per_cut,
+                                        sig_sys, sig_mask, sig_per_cut, sig_pt,
+                                        sig_hits["event_id"])
+
     # When the cuts differ between subsystems, each region's own cut values
     # are shown next to its results.
     per_system = any(len(set(c["per_system"].values())) > 1 for c in cuts.values())
@@ -326,6 +394,15 @@ def main():
             "signal_efficiency_pt_inf": eff, "signal_efficiency_pt_inf_unc": unc,
             "fit_pt_min_gev": pt_min, "fit_n_hits": n_fit,
         })
+        for name in CUT_ORDER:
+            for key in ("alone", "n1"):
+                res = per_cut_results[s][name]
+                tag = f"{CUT_SHORT[name]}_{key}"
+                csv_rows[-1].update({
+                    f"bib_rejection_factor_{tag}": res[key][1] if res else "",
+                    f"signal_efficiency_pt_inf_{tag}": res[key][2] if res else "",
+                    f"signal_efficiency_pt_inf_{tag}_unc": res[key][3] if res else "",
+                })
     with open(outdir / "summary_by_region.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(csv_rows[0].keys()))
         w.writeheader()
@@ -344,6 +421,24 @@ def main():
     whose = ("the muon's own hits" if "_n_hits_all" in sig_hits
              else "all hits (secondaries included)")
     print(f"  Efficiency for pT -> inf: fit eff + c/pT^2 to {whose}, muons with {window}.")
+
+    header = ["region"] + sum(([f"{CUT_SHORT_TITLE[n]}: rej.", "eff."] for n in CUT_ORDER), [])
+    for key, title in (("alone", "Each cut alone - BIB rejection factor and signal efficiency "
+                                 "for pT -> inf:"),
+                       ("n1", "Each cut on top of the other two, as in the N-1 plots:")):
+        rows = []
+        for r_b in bib_cutflow:
+            s = r_b["system"]
+            row = [r_b["system_name"]]
+            for name in CUT_ORDER:
+                res = per_cut_results[s][name]
+                row += ([res[key][0], f"{res[key][2]*100:.1f} +- {res[key][3]*100:.1f}%"] if res
+                        else ["off", ""])
+            rows.append(row)
+        print()
+        print_table(title, header, rows)
+    print("  Dropping a cut divides the combined rejection factor and efficiency by its "
+          "values in this last table.")
     print()
 
 

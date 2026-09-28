@@ -28,7 +28,7 @@ from matplotlib.lines import Line2D
 
 import check_configs as cc
 import cuts_table as ct
-from bib_common import format_rejection_factor
+from bib_common import format_rejection_factor, format_factor
 
 PAGE = (13.333, 7.5)                     # inches, 16:9 landscape
 INK, MUTED, RULE = "#1a1a1a", "#6b6b6b", "#c8c8c8"
@@ -84,6 +84,23 @@ def load_run(run_dir):
               format_rejection_factor(int(r["bib_n_hits"]), int(r["bib_n_hits_after_cuts"])),
               100 * float(r["signal_efficiency_pt_inf"]),
               100 * float(r["signal_efficiency_pt_inf_unc"])) for r in read_csv(by_region)]
+    # per cut: {region: {cut: {"alone": (rejection text, eff %), "n1": (...)} or None}}
+    per_cut = {}
+    for r in read_csv(by_region):
+        per_cut[r["system_name"]] = {}
+        for cut in ("time", "z0", "pt"):
+            if f"bib_rejection_factor_{cut}_alone" not in r:
+                per_cut = None      # made before these columns existed
+                break
+            if r[f"bib_rejection_factor_{cut}_alone"] == "":
+                per_cut[r["system_name"]][cut] = None
+                continue
+            per_cut[r["system_name"]][cut] = {
+                key: (format_factor(float(r[f"bib_rejection_factor_{cut}_{key}"])),
+                      100 * float(r[f"signal_efficiency_pt_inf_{cut}_{key}"]))
+                for key in ("alone", "n1")}
+        if per_cut is None:
+            break
     lim = read_csv(limit)[0]
     track = {"eff": 100 * float(lim["efficiency_pt_inf"]),
              "unc": 100 * float(lim["efficiency_pt_inf_unc"]),
@@ -91,7 +108,7 @@ def load_run(run_dir):
     signal_pt_min = sorted({float(r["fit_pt_min_gev"]) for r in read_csv(by_region)})
 
     return {"name": run_dir.name, "cuts": cuts, "smear": smear, "inputs": inputs,
-            "table": table, "track": track, "signal_pt_min": signal_pt_min}
+            "table": table, "track": track, "signal_pt_min": signal_pt_min, "per_cut": per_cut}
 
 
 def nice(s):
@@ -256,7 +273,8 @@ def main(argv):
               f"resolutions: {line['Resolutions']}")
     pages = [p for p in captions(run) if (hl / p[0]).is_file()]
     missing = [p[0] for p in captions(run) if not (hl / p[0]).is_file()]
-    n_pages = 1 + per_system + len(pages)
+    has_per_cut = run["per_cut"] is not None
+    n_pages = 1 + per_system + has_per_cut + len(pages)
     out = hl / f"highlights_{run['name']}.pdf"
 
     with PdfPages(out) as pdf:
@@ -342,8 +360,36 @@ def main(argv):
             pdf.savefig(fig)
             plt.close(fig)
 
+        # ---- each cut alone and on top of the other two
+        if has_per_cut:
+            fig = plt.figure(figsize=PAGE)
+            page_frame(fig, "Each cut alone and on top of the other two", run, 2 + per_system,
+                       n_pages, footer)
+            cells = []
+            for name, rej, eff, unc in run["table"]:
+                row = [name]
+                for cut in ("time", "z0", "pt"):
+                    res = run["per_cut"][name][cut]
+                    row += ([f"{res[k][0]} / {res[k][1]:.1f}%" for k in ("alone", "n1")] if res
+                            else ["off", "off"])
+                cells.append(row + [f"{rej} / {eff:.1f}%"])
+            ax = fig.add_axes([0.04, 0.26, 0.92, 0.58])
+            draw_table(ax, ["region", "time\nalone", "time\non top", "$z_0$\nalone",
+                            "$z_0$\non top", "$p_T$\nalone", "$p_T$\non top", "all three\ncombined"],
+                       cells, [0.13] + [0.12] * 6 + [0.15], 12.5, 2.1)
+            caption = ("Each cell: BIB rejection factor / signal efficiency for $p_T$ → ∞. Alone: the "
+                       "cut applied by itself. On top: the cut applied to the hits that pass the other "
+                       "two, as in the N-1 plots – dropping that cut divides the combined rejection "
+                       "factor (last column) by this factor, and the combined efficiency by this "
+                       "efficiency. The single-cut numbers do not multiply up to the combined ones, "
+                       "because the cuts are correlated.")
+            fig.text(0.04, 0.172, wrap(caption), fontsize=11.5, color=INK,
+                     va="top", linespacing=1.4)
+            pdf.savefig(fig)
+            plt.close(fig)
+
         # ---- one plot per page
-        for i, (png, title, caption) in enumerate(pages, start=2 + per_system):
+        for i, (png, title, caption) in enumerate(pages, start=2 + per_system + has_per_cut):
             fig = plt.figure(figsize=PAGE)
             page_frame(fig, title, run, i, n_pages, footer)
             ax = fig.add_axes([0.03, 0.195, 0.94, 0.685])

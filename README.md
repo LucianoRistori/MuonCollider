@@ -54,7 +54,9 @@ every successful run: a title page (input files, settings, and the
 results: BIB rejection factor and signal efficiency for pT → ∞ per
 subsystem, track-finding efficiency for pT → ∞), a page with each
 subsystem's cuts next to its results (only when the cuts differ between
-subsystems), then five of the plots - BIB density before/after the
+subsystems), a page with the same results for each cut alone and on top
+of the other two (see "How the results are quoted"), then five of the
+plots - BIB density before/after the
 cuts, track-finding efficiency, and the three zoomed N-1 plots - one per
 page, each with a caption that quotes that run's own numbers. To make
 it for an earlier run:
@@ -675,6 +677,22 @@ PDF in `_highlights/` has a page with the same table.
   the fraction of a signal muon's hits kept, per subsystem
   (`apply_cuts.py`), and for the track-finding efficiency
   (`track_efficiency.py`).
+- **Each cut separately**, per subsystem, two ways (two more tables after
+  the summary, the same columns in `summary_by_region.csv`, and a page
+  of the PDF):
+  - *alone*: the cut applied by itself - rejection factor = BIB hits /
+    BIB hits passing it; efficiency = the fraction of signal hits
+    passing it (for pT → ∞, as above);
+  - *on top of the other two*, as in the N-1 plots: rejection factor =
+    BIB hits passing the other two / BIB hits passing all three;
+    efficiency = the fraction of the signal hits passing the other two
+    that also pass this one. Dropping that cut divides the combined
+    rejection factor by this factor and the combined efficiency by this
+    efficiency - the numbers to look at when deciding which cut to
+    loosen.
+  The single-cut numbers do not multiply up to the combined ones,
+  because the cuts are correlated (a BIB hit that fails one cut often
+  fails another too).
 
 **`exclude_vertex_hits`** (`[track]` section): if true, hits in the
 vertex detector (VXD barrel/endcap) are excluded from the per-track
@@ -726,8 +744,10 @@ Analysis/step4_cuts`. Outputs, in `Analysis/step4_cuts/`:
 - `summary_by_region.csv` - per subsystem (and "ALL"): its cuts, BIB
   hits before/after the cuts, the BIB rejection factor, and the signal
   hit efficiency for pT → ∞ with its uncertainty and fit range - the
-  numbers of the run's summary table (see "How the results are quoted"
-  above).
+  numbers of the run's summary table - plus, for each cut (`time`, `z0`,
+  `pt`), its rejection factor and efficiency alone (`_alone`) and on top
+  of the other two (`_n1`); empty where the cut is off (see "How the
+  results are quoted" above).
 - `density_before_after_cuts.csv` - per subsystem: **BIB only** n_hits/
   mean density/peak density, before and after cuts, plus the BIB
   rejection factor (using the true geometry area, same as step 1/3). Signal hit

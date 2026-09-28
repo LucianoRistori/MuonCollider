@@ -622,17 +622,23 @@ def rejection_factor(n_before, n_after):
     return n_before / n_after if n_after else float("inf")
 
 
-def format_rejection_factor(n_before, n_after):
-    """The rejection factor to about 3 significant figures, e.g. '588',
-    '42.6', '1.85'; '>N' (N = n_before) when no hit survives."""
-    if not n_after:
-        return f">{n_before:,}"
-    x = n_before / n_after
+def format_factor(x):
+    """A rejection factor to about 3 significant figures: '588', '42.6', '1.85'."""
+    if not np.isfinite(x):
+        return "inf"
     if x >= 100:
         return f"{x:,.0f}"
     if x >= 10:
         return f"{x:.1f}"
     return f"{x:.2f}"
+
+
+def format_rejection_factor(n_before, n_after):
+    """The rejection factor to about 3 significant figures, e.g. '588',
+    '42.6', '1.85'; '>N' (N = n_before) when no hit survives."""
+    if not n_after:
+        return f">{n_before:,}"
+    return format_factor(n_before / n_after)
 
 
 def pt_inf_fit_min(cuts, systems=None):
