@@ -28,8 +28,9 @@ Two kinds of comparison are produced:
   2. A before/after hit-density comparison (mean density, hits/mm^2,
      using the true detector geometry area when available - same
      definition as step 1/3) for BIB only: per subsystem
-     (density_before_after_cuts.csv / .png), and per layer or disk
-     (density_per_layer_before_after_cuts.csv and a table in the log:
+     (density_before_after_cuts.csv / .png), and per barrel layer or
+     endcap disk pair (the -z and +z disks of a layer together;
+     density_per_layer_before_after_cuts.csv and a table in the log:
      mean and peak density before and after the cuts, and the layer's
      rejection factor). (Signal hit density isn't
      computed here - it isn't a meaningful quantity for a single-track
@@ -101,20 +102,63 @@ def slim_hits(hits, keep=()):
     return hits
 
 
+def merge_disk_pairs(rows):
+    """
+    region_table() rows -> one row per barrel layer (as it is) and one per
+    endcap disk pair: the -z and +z disks of a layer (same |z|, same
+    geometry, and the same BIB density within statistics) together, with
+    hits and areas summed, so the mean density is the pair's; "sides"
+    lists the disks merged, for add_peak_density(). Every row gets
+    "part" ("barrel" or "endcap"); the pairs also "mean_abs_z"
+    (hit-weighted, like "mean_r").
+    """
+    out, pairs = [], {}
+    for r in rows:
+        if r["side"] == 0:
+            out.append(dict(r, part="barrel"))
+            continue
+        m = pairs.get((r["system"], r["layer"]))
+        if m is None:
+            m = pairs[(r["system"], r["layer"])] = {
+                "system": r["system"], "system_name": r["system_name"], "part": "endcap",
+                "layer": r["layer"], "sides": (), "n_hits": 0, "area_mm2": 0.0,
+                "mean_r": 0.0, "mean_abs_z": 0.0}
+            out.append(m)
+        m["sides"] += (r["side"],)
+        m["n_hits"] += r["n_hits"]
+        m["area_mm2"] += r["area_mm2"]
+        m["mean_r"] += r["mean_r"] * r["n_hits"]          # divided by n_hits below
+        m["mean_abs_z"] += abs(r["mean_z"]) * r["n_hits"]
+    for m in pairs.values():
+        m["mean_r"] /= m["n_hits"]
+        m["mean_abs_z"] /= m["n_hits"]
+        m["density_hits_per_mm2"] = (m["n_hits"] / m["area_mm2"] if m["area_mm2"] > 0
+                                     else float("nan"))
+    return out
+
+
 def density_table(hits, area_lookup, with_peak):
-    """Returns (one row per layer/disk, one row per subsystem)."""
+    """
+    Returns (one row per barrel layer or endcap disk pair - see
+    merge_disk_pairs, one row per subsystem). The subsystem rows are made
+    from the separate disks, as in step 1 (their peak is that of the
+    hottest single layer or disk).
+    """
     rows = region_table(hits)
     if area_lookup is not None:
         geom_mod.annotate_rows_with_geometry_area(rows, area_lookup)
+    peak = dict(bin_size_mm=None, percentile=PEAK_PERCENTILE,
+                target_hits_per_bin=PEAK_TARGET_HITS_PER_BIN)
     if with_peak:
-        add_peak_density(hits, rows, bin_size_mm=None, percentile=PEAK_PERCENTILE,
-                          target_hits_per_bin=PEAK_TARGET_HITS_PER_BIN)
-    return rows, subsystem_density_table(rows)
+        add_peak_density(hits, rows, **peak)
+    layers = merge_disk_pairs(rows)
+    if with_peak:        # a pair's peak: over the bins of both disks together
+        add_peak_density(hits, [r for r in layers if r["part"] == "endcap"], **peak)
+    return layers, subsystem_density_table(rows)
 
 
-SIDE_TAG = {0: "", 1: " +z", 3: " -z"}
 LAYER_CSV_FIELDS = [
-    "system", "system_name", "side", "layer", "label", "mean_r_mm", "mean_z_mm", "area_mm2",
+    "system", "system_name", "part", "layer", "label", "mean_r_mm", "mean_abs_z_mm", "area_mm2",
     "bib_n_hits_before", "bib_mean_density_before", f"bib_{PEAK_KEY}_before",
     "bib_n_hits_after", "bib_mean_density_after", f"bib_{PEAK_KEY}_after",
     "bib_rejection_factor"]
@@ -122,25 +166,27 @@ LAYER_CSV_FIELDS = [
 
 def density_per_layer(before_rows, after_rows):
     """
-    One row per layer (barrel) or disk (endcap: +z and -z listed
-    separately, -z first), in the order barrel layers by radius, disks by
-    |z|: BIB hits, mean density (hits/mm^2 over the layer's sensitive
-    area, from the geometry) and peak density (PEAK_PERCENTILE-th
-    percentile over bins of ~PEAK_TARGET_HITS_PER_BIN hits, as in step 1)
-    before and after all cuts. The density after the cuts uses the same
-    area as before, so before/after is exactly the layer's rejection
-    factor.
+    One row per barrel layer and per endcap disk pair (the -z and +z disks
+    of a layer together, see merge_disk_pairs), barrel layers by radius,
+    disk pairs by |z|: BIB hits, mean density (hits/mm^2 over the
+    sensitive area, from the geometry - both disks' area for a pair) and
+    peak density (PEAK_PERCENTILE-th percentile over bins of
+    ~PEAK_TARGET_HITS_PER_BIN hits, as in step 1 - over the bins of both
+    disks for a pair) before and after all cuts. The density after the
+    cuts uses the same area as before, so before/after is exactly the
+    layer's rejection factor.
     """
-    after = {(r["system"], r["side"], r["layer"]): r for r in after_rows}
+    after = {(r["system"], r["layer"]): r for r in after_rows}
     rows = []
-    for b in sorted(before_rows, key=lambda r: (r["system"], r["layer"], r["side"] != 3)):
-        a = after.get((b["system"], b["side"], b["layer"]))
+    for b in sorted(before_rows, key=lambda r: (r["system"], r["layer"])):
+        a = after.get((b["system"], b["layer"]))
         n_after = a["n_hits"] if a else 0
         area = b["area_mm2"]
         rows.append({
-            "system": b["system"], "system_name": b["system_name"], "side": b["side"],
-            "layer": b["layer"], "label": f"L{b['layer']}{SIDE_TAG.get(b['side'], '')}",
-            "mean_r_mm": b["mean_r"], "mean_z_mm": b["mean_z"], "area_mm2": area,
+            "system": b["system"], "system_name": b["system_name"], "part": b["part"],
+            "layer": b["layer"], "label": f"L{b['layer']}",
+            "mean_r_mm": b["mean_r"], "mean_abs_z_mm": b.get("mean_abs_z", ""),
+            "area_mm2": area,
             "bib_n_hits_before": b["n_hits"],
             "bib_mean_density_before": b["density_hits_per_mm2"],
             f"bib_{PEAK_KEY}_before": b.get(PEAK_KEY, float("nan")),
@@ -157,15 +203,16 @@ def print_density_per_layer(rows):
         return f"{x:.3g}" if x == x else "-"          # x == x: not NaN
     table, last = [], None
     for r in rows:
-        barrel = r["side"] == 0
+        barrel = r["part"] == "barrel"
         table.append([r["system_name"] if r["system_name"] != last else "", r["label"],
-                      f"r {r['mean_r_mm']:.0f} mm" if barrel else f"z {r['mean_z_mm']:+.0f} mm",
+                      f"r {r['mean_r_mm']:.0f} mm" if barrel else f"|z| {r['mean_abs_z_mm']:.0f} mm",
                       g(r["bib_mean_density_before"]), g(r["bib_mean_density_after"]),
                       g(r[f"bib_{PEAK_KEY}_before"]), g(r[f"bib_{PEAK_KEY}_after"]),
                       format_rejection_factor(r["bib_n_hits_before"], r["bib_n_hits_after"])])
         last = r["system_name"]
     print()
     print_table(f"BIB hit density per layer, before and after all cuts (hits/mm^2 per collision; "
+                f"endcaps: the -z and +z disks together; "
                 f"peak = p{PEAK_PERCENTILE:.0f} over bins of ~{PEAK_TARGET_HITS_PER_BIN:.0f} hits):",
                 ["subsystem", "layer", "position", "mean before", "mean after", "peak before",
                  "peak after", "rejection factor"], table, align="lllrrrrr")

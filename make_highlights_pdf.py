@@ -267,13 +267,17 @@ def layer_page(pdf, title, rows, run, page_no, n_pages, footer):
         return f"{x:.3g}" if x == x else "–"
     fig = plt.figure(figsize=PAGE)
     page_frame(fig, title, run, page_no, n_pages, footer)
+    pairs = "mean_abs_z_mm" in rows[0]        # older runs: -z and +z disks separately
     cells, last = [], None
     for r in rows:
-        barrel = r["side"] == "0"
+        if r.get("part", "barrel" if r.get("side") == "0" else "endcap") == "barrel":
+            position = f"r = {float(r['mean_r_mm']):.0f} mm"
+        elif pairs:
+            position = f"z = ±{float(r['mean_abs_z_mm']):.0f} mm"
+        else:
+            position = f"z = {float(r['mean_z_mm']):+.0f} mm".replace("-", "−")
         cells.append([r["system_name"] if r["system_name"] != last else "",
-                      r["label"].replace("-z", "−z"),
-                      (f"r = {float(r['mean_r_mm']):.0f} mm" if barrel
-                       else f"z = {float(r['mean_z_mm']):+.0f} mm".replace("-", "−")),
+                      r["label"].replace("-z", "−z"), position,
                       g(r["bib_mean_density_before"]), g(r["bib_mean_density_after"]),
                       g(r["bib_peak_density_p99_hits_per_mm2_before"]),
                       g(r["bib_peak_density_p99_hits_per_mm2_after"]),
@@ -296,11 +300,20 @@ def layer_page(pdf, title, rows, run, page_no, n_pages, footer):
     if height > top - bottom:
         for cell in tab.get_celld().values():
             cell.set_height(cell.get_height() * (top - bottom) / height)
-    caption = ("BIB hits per mm$^2$ per collision in each barrel layer and endcap disk (−z and +z "
-               "disks separately), before and after all cuts. Mean: hits / sensitive area of the "
-               "layer, from the detector geometry. Peak: 99th percentile of the local density over "
-               "bins of about 20 hits, as in step 1. Rejection factor: the layer's BIB hits before / "
-               "after the cuts.")
+    if pairs:
+        caption = ("BIB hits per mm$^2$ per collision in each barrel layer and each pair of endcap "
+                   "disks (the −z and +z disks of a layer together, as they agree within "
+                   "statistics), before and after all cuts. Mean: hits / sensitive area (of both "
+                   "disks, for a pair), from the detector geometry. Peak: 99th percentile of the "
+                   "local density over bins of about 20 hits, as in step 1 (over the bins of both "
+                   "disks, for a pair). Rejection factor: the layer's BIB hits before / after the "
+                   "cuts.")
+    else:
+        caption = ("BIB hits per mm$^2$ per collision in each barrel layer and endcap disk (−z and "
+                   "+z disks separately), before and after all cuts. Mean: hits / sensitive area "
+                   "of the layer, from the detector geometry. Peak: 99th percentile of the local "
+                   "density over bins of about 20 hits, as in step 1. Rejection factor: the "
+                   "layer's BIB hits before / after the cuts.")
     fig.text(0.04, 0.172, wrap(caption), fontsize=11.5, color=INK, va="top", linespacing=1.4)
     pdf.savefig(fig)
     plt.close(fig)
@@ -322,10 +335,13 @@ def main(argv):
     pages = [p for p in captions(run) if (hl / p[0]).is_file()]
     missing = [p[0] for p in captions(run) if not (hl / p[0]).is_file()]
     has_per_cut = run["per_cut"] is not None
-    # BIB density per layer: two pages (VXD + IT barrel, then IT endcap + OT),
-    # right after the page with the density plot
+    # BIB density per layer: one page, right after the page with the density
+    # plot (two pages for older runs, which list the -z and +z disks
+    # separately: VXD + IT barrel, then IT endcap + OT)
     layer_pages = []
-    if run["layers"]:
+    if run["layers"] and len(run["layers"]) <= 30:
+        layer_pages.append(("BIB hit density per layer", run["layers"]))
+    elif run["layers"]:
         for part, systems in ((1, ("1", "2", "3")), (2, ("4", "5", "6"))):
             rows = [r for r in run["layers"] if r["system"] in systems]
             if rows:

@@ -814,6 +814,12 @@ def add_peak_density(hits, rows, bin_size_mm=None, percentile=99.0,
     to force the old fixed-bin-size behavior instead (e.g. for a direct
     side-by-side comparison across regions at one physical scale).
 
+    A row may name several sides instead of one, as "sides": (1, 3) for
+    the +z and -z disks of an endcap layer taken together: then the hits
+    of both disks are used, each disk binned on its own (x, y) grid, and
+    the percentile is taken over the bins of both (pooled) - the peak
+    density of the pair, not an average of two peaks.
+
     Mutates and returns `rows`.
     """
     system, side, layer = hits["system"], hits["side"], hits["layer"]
@@ -821,10 +827,12 @@ def add_peak_density(hits, rows, bin_size_mm=None, percentile=99.0,
     phi = np.arctan2(y, x)
 
     for row in rows:
-        mask = (
-            (system == row["system"]) & (side == row["side"]) & (layer == row["layer"])
-        )
-        if row["side"] == 0:  # barrel: unroll to (arc length, z)
+        sides = tuple(row.get("sides", (row.get("side"),)))
+        in_sides = side == sides[0]
+        for s in sides[1:]:
+            in_sides |= side == s
+        mask = (system == row["system"]) & in_sides & (layer == row["layer"])
+        if sides == (0,):  # barrel: unroll to (arc length, z)
             coord1 = row["mean_r"] * phi[mask]
             coord2 = z[mask]
         else:  # endcap: flat disk, use (x, y) directly
@@ -845,7 +853,10 @@ def add_peak_density(hits, rows, bin_size_mm=None, percentile=99.0,
 
         b1 = np.floor(coord1 / row_bin_mm).astype(np.int64)
         b2 = np.floor(coord2 / row_bin_mm).astype(np.int64)
-        _, counts = np.unique(np.stack([b1, b2], axis=1), axis=0, return_counts=True)
+        keys = [b1, b2]
+        if len(sides) > 1:  # keep the disks' bins apart (they overlap in x, y)
+            keys.append(side[mask].astype(np.int64))
+        _, counts = np.unique(np.stack(keys, axis=1), axis=0, return_counts=True)
         bin_densities = counts / bin_area
 
         row["peak_bin_size_mm"] = row_bin_mm
