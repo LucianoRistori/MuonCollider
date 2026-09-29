@@ -534,9 +534,25 @@ above, both curves are put on the same, addable footing:
 (An earlier version of this script instead normalized each histogram to
 unit area, i.e. a pure shape comparison discarding both samples' actual
 scale — replaced, since what's wanted is how the two actually add up
-per collision, not just where each one's shape peaks.) Produces, one
-panel per subsystem, BIB (blue) and signal (green) step outlines
-overlaid, y-axis "hits / collision / bin", log scale:
+per collision, not just where each one's shape peaks.)
+
+**Display: signal × 10ⁿ.** The signal is 4-7 orders of magnitude below
+BIB, so on one common axis it sat far below the BIB curve. In each panel
+it is therefore drawn multiplied by a power of ten, 10ⁿ, that brings the
+two curves to the same height on the log scale (`signal_scale()`): each
+histogram's range runs from its smallest to its largest non-empty bin,
+and 10ⁿ moves the middle of the signal range (on the log scale) onto
+the middle of the BIB range, rounded to the nearest power of ten. The y
+axis covers both ranges - the larger of the two spans, plus up to half a
+decade from the rounding, and at least half a decade - with 5% of the
+span left free above and below. The left axis is in BIB units, the
+right axis in the signal's own, unscaled units (both hits / collision /
+bin), and "Signal × 10ⁿ" heads the legend box, which goes wherever it
+covers the least of the curves. Minor ticks are labelled when an axis
+spans less than 2 decades.
+
+Produces, one panel per subsystem, BIB (blue) and signal (green) step
+outlines overlaid, log scale:
 - `z_axis_intercept_per_subsystem_with_signal.png` (full ±3000mm range)
 - `z_axis_intercept_per_subsystem_zoom_with_signal.png` (±100mm zoom)
 - `inv_radius_per_subsystem_with_signal.png` (full range, pT-relabeled)
@@ -910,7 +926,8 @@ python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir]
 run as `n1_cut_plots.py ntu_bib_2evt.root
 ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root __cuts_config.txt
 Analysis/step4_n1_cuts`. Reuses `signal_overlay_angle_plots.py`'s 6-plot
-layout and hits/collision/bin BIB-vs-signal convention (z-axis intercept
+layout and hits/collision/bin BIB-vs-signal convention, with the signal
+× 10ⁿ in each panel (z-axis intercept
 full+zoom, curvature/pT full+zoom, corrected-time full+zoom - see
 "Signal overlay on the incidence-angle/curvature/time plots" above), so
 the N-1 plots read the same way as their unfiltered step-3 counterparts,
@@ -1002,10 +1019,11 @@ ntuples and gives identical results. Code lives in
 - `signal_overlay_angle_plots.py` — step 3 companion script; overlays
   the signal sample on the 6 incidence-angle/curvature/time-of-flight
   diagnostic plots (z-axis intercept full+zoom, transverse curvature/pT
-  full+zoom, TOF-corrected time full+zoom), in hits/collision/bin,
+  full+zoom, TOF-corrected time full+zoom), in hits/collision/bin with
+  the signal × 10ⁿ in each panel (`overlay_hist`, `signal_scale`),
   described above; each panel shows its own subsystem's cut lines, with
   the value in the panel title (`draw_symmetric_cut_lines`,
-  `draw_momentum_cut_lines`, `panel_title` - reused by
+  `draw_momentum_cut_lines`, `panel_title` - all reused by
   `n1_cut_plots.py`).
 - `templates/__cuts_config.txt`, `templates/__smearing_config.txt`,
   `templates/__input_files_config.txt` — templates of the three settings

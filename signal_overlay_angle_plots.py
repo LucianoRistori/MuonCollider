@@ -28,6 +28,13 @@ signal density per event, per mm^2 - both are about spatial density, not
 about "how would BIB and signal add up in one collision" the way these
 angle/curvature/time histograms now are.
 
+Display: the signal is typically several orders of magnitude below BIB,
+so in each panel it is drawn multiplied by a power of ten that brings
+the two distributions to the same height on the log scale (see
+signal_scale()), shown in the legend box ("Signal x 10^n"). The left
+axis is in BIB units, the right axis in the signal's own, unscaled
+units - both hits / collision / bin.
+
 Usage:
     python3 signal_overlay_angle_plots.py <bib.root> <signal.root> [output_dir]
 """
@@ -39,6 +46,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import LogFormatterSciNotation
 
 from bib_common import (
     load_hits, add_incidence_angles, add_time_of_flight,
@@ -103,18 +111,94 @@ def panel_title(cuts, name, system):
     return f"{SYSTEM_NAMES[system]}   ({cut})"
 
 
+Y_MARGIN = 0.05            # of the y span, left free above and below the histograms
+# The y axis spans at least this many decades, so that it always shows at
+# least two labelled ticks (minor ticks are labelled below 2 decades):
+MIN_SPAN_DECADES = 0.5
+# for the figure titles:
+SCALE_NOTE = " (signal $\\times$ 10$^n$ as marked; right axis unscaled)"
+
+
+def signal_scale(bib_counts, sig_counts, margin=Y_MARGIN):
+    """
+    For one panel: the power of ten n such that the signal, multiplied
+    by 10**n, sits at the same height as BIB on the log scale, and the
+    y-axis limits (in BIB units). Each histogram's range runs from its
+    smallest to its largest non-empty bin; 10**n brings the middle of the
+    signal range (on the log scale) to the middle of the BIB range,
+    rounded to the nearest power of ten. The axis covers both ranges -
+    the larger of the two spans, plus up to half a decade from the
+    rounding - with `margin` of the span left free above and below (and
+    at least MIN_SPAN_DECADES). n = 0 if either histogram is empty.
+    Returns (n, (ymin, ymax)), or (0, None) if both are empty.
+    """
+    b = np.log10(bib_counts[bib_counts > 0])
+    s = np.log10(sig_counts[sig_counts > 0])
+    n = 0
+    if b.size and s.size:
+        n = int(np.round((b.min() + b.max()) / 2 - (s.min() + s.max()) / 2))
+    shown = np.concatenate([b, s + n])
+    if not shown.size:
+        return 0, None
+    lo, hi = shown.min(), shown.max()
+    span = max(hi - lo, MIN_SPAN_DECADES)
+    mid = (lo + hi) / 2
+    half = (0.5 + margin) * span
+    return n, (10.0 ** (mid - half), 10.0 ** (mid + half))
+
+
+def times_power_of_ten(n):
+    """'1', '10', or '10$^{n}$' (mathtext)."""
+    return "1" if n == 0 else "10" if n == 1 else f"10$^{{{n}}}$"
+
+
 def overlay_hist(ax, bib_v, sig_v, bins, n_sig_events):
-    """BIB drawn as raw hit counts per bin (the merged plus+minus file is
-    taken to be one collision's full background); signal drawn as hit
-    counts per bin divided by the number of signal events, i.e. the
-    average contribution of the one signal muon per collision. Both are
-    then in the same "hits / collision / bin" units - see module
-    docstring."""
-    ax.hist(bib_v, bins=bins, histtype="step", color=BIB_COLOR,
-            linewidth=1.4, label="BIB (per collision)")
-    sig_weights = np.full(len(sig_v), 1.0 / n_sig_events)
-    ax.hist(sig_v, bins=bins, weights=sig_weights, histtype="step", color=SIG_COLOR,
-            linewidth=1.4, label="signal (per collision, avg. over events)")
+    """
+    One panel: BIB and signal histograms, both in hits / collision / bin -
+    BIB as raw hit counts per bin (the merged plus+minus file is taken to
+    be one collision's full background), signal as hit counts per bin
+    divided by the number of signal events, i.e. the average
+    contribution of the one signal muon per collision (see module
+    docstring). Log y scale. The signal is drawn multiplied by 10**n from
+    signal_scale(), with "Signal x 10^n" at the top of the legend box; the
+    left axis is in BIB units, the right one in the signal's own, unscaled
+    units. Returns n.
+    """
+    edges = np.asarray(bins, dtype=float)
+    bib_counts = np.histogram(bib_v, bins=edges)[0].astype(float)
+    sig_counts = np.histogram(sig_v, bins=edges)[0] / n_sig_events
+    n, ylim = signal_scale(bib_counts, sig_counts)
+    k = 10.0 ** n
+    # (hist() of the bin edges, weighted by the contents: a step outline
+    # of already-filled histograms)
+    ax.hist(edges[:-1], bins=edges, weights=bib_counts, histtype="step",
+            color=BIB_COLOR, linewidth=1.4, label="BIB (left scale)")
+    ax.hist(edges[:-1], bins=edges, weights=sig_counts * k, histtype="step",
+            color=SIG_COLOR, linewidth=1.4, label="signal (right scale)")
+    ax.set_yscale("log")
+    right = ax.twinx()
+    right.set_yscale("log")
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+        right.set_ylim(ylim[0] / k, ylim[1] / k)
+    ax.set_ylabel("BIB hits / collision / bin", color=BIB_COLOR)
+    ax.tick_params(axis="y", which="both", labelcolor=BIB_COLOR)
+    right.set_ylabel("signal hits / collision / bin", color=SIG_COLOR)
+    right.tick_params(axis="y", which="both", labelcolor=SIG_COLOR)
+    for a in (ax, right):   # label minor ticks (2, 3, 4, 6 x 10^n) below 2 decades
+        a.yaxis.set_minor_formatter(
+            LogFormatterSciNotation(labelOnlyBase=False, minor_thresholds=(2, 0.5)))
+    if not sig_counts.any():
+        label = "no signal hits"
+    else:
+        label = f"Signal \u00d7 {times_power_of_ten(n)}"
+        if not bib_counts.any():
+            label += "  (no BIB hits)"
+    # the factor heads the legend box, which goes where it covers the least
+    # of the histograms (the curves can reach any corner)
+    legend = ax.legend(fontsize=7, loc="best", title=label, title_fontsize=10)
+    legend.get_title().set_color(SIG_COLOR)
+    return n
 
 
 def main():
@@ -178,14 +262,10 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_RANGE_MM, Z0_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_RANGE_MM)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
-    plt.suptitle("Z-axis intercept: BIB vs. signal, both in hits/collision/bin "
-                 "(BIB = merged plus+minus file = one collision's background; "
-                 "signal = per-event average, see docstring)", fontsize=10)
+    plt.suptitle("Z-axis intercept: BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE,
+                 fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_with_signal.png", dpi=130)
     plt.close(fig)
@@ -202,20 +282,17 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_ZOOM_RANGE_MM, Z0_ZOOM_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_ZOOM_RANGE_MM)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(f"Z-axis intercept, zoomed to +/-{Z0_ZOOM_RANGE_MM:.0f}mm: "
-                 "BIB vs. signal, both in hits/collision/bin", fontsize=10)
+                 "BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_zoom_with_signal.png", dpi=130)
     plt.close(fig)
 
     # ---- 3. inv_radius_per_mm, full range, relabeled in pT GeV/c ---------
     INV_R_MAX = 80.0
-    pt_ticks, pt_labels = pt_ticks_for_axis(INV_R_MAX, step=20.0)
+    pt_ticks, pt_labels = pt_ticks_for_axis(INV_R_MAX, step=40.0)   # (labels are long)
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
         bv = bib_hits["inv_radius_per_mm"][bib_sys == s] * 1000.0
@@ -223,17 +300,14 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_MAX, INV_R_MAX, 161),
                      n_sig_events=n_sig_events)
         draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_MAX)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_ticks)
         ax.set_xticklabels(pt_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(
         f"Transverse momentum p$_T$ = 0.3 B R (B={B_FIELD_T:.0f}T): BIB vs. signal, "
-        "both in hits/collision/bin (same nonlinear pT relabeling as the "
-        "BIB-only plot)", fontsize=10,
+        "both in hits/collision/bin" + SCALE_NOTE + "; same nonlinear pT relabeling as the "
+        "BIB-only plot", fontsize=10,
     )
     plt.tight_layout()
     plt.savefig(outdir / "inv_radius_per_subsystem_with_signal.png", dpi=130)
@@ -242,7 +316,7 @@ def main():
     # ---- 4. inv_radius_per_mm, ZOOMED to |pT| >= PT_ZOOM_RANGE_GEV -------
     INV_R_ZOOM_MAX = GEV_PER_INV_M / PT_ZOOM_RANGE_GEV
     pt_zoom_ticks, pt_zoom_labels = pt_ticks_for_axis(
-        INV_R_ZOOM_MAX, step=INV_R_ZOOM_MAX / 5.0)
+        INV_R_ZOOM_MAX, step=INV_R_ZOOM_MAX / 4.0)
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
         bx = bib_hits["inv_radius_per_mm"][bib_sys == s] * 1000.0
@@ -252,16 +326,13 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_ZOOM_MAX, INV_R_ZOOM_MAX, 121),
                      n_sig_events=n_sig_events)
         draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_ZOOM_MAX)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_zoom_ticks)
         ax.set_xticklabels(pt_zoom_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(
         f"Transverse momentum, zoomed to |p$_T$| >= {PT_ZOOM_RANGE_GEV:.0f} GeV/c: "
-        "BIB vs. signal, both in hits/collision/bin", fontsize=10,
+        "BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE, fontsize=10,
     )
     plt.tight_layout()
     plt.savefig(outdir / "inv_radius_per_subsystem_zoom_with_signal.png", dpi=130)
@@ -277,13 +348,10 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_RANGE_NS, TC_RANGE_NS, 161),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_RANGE_NS)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle("Time-of-flight-corrected hit time: BIB vs. signal, both in "
-                 "hits/collision/bin", fontsize=10)
+                 "hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "time_corrected_per_subsystem_with_signal.png", dpi=130)
     plt.close(fig)
@@ -300,13 +368,10 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_ZOOM_RANGE_NS, TC_ZOOM_RANGE_NS, 121),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_ZOOM_RANGE_NS)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(f"Time-of-flight-corrected hit time, zoomed to +/-{TC_ZOOM_RANGE_NS:.0f}ns: "
-                 "BIB vs. signal, both in hits/collision/bin", fontsize=10)
+                 "BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom_with_signal.png", dpi=130)
     plt.close(fig)

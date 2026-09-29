@@ -18,10 +18,12 @@ naturally reduces to "apply whichever of the other cuts are on".
 
 Produces the same 6 plots (full range + zoom, each) as
 signal_overlay_angle_plots.py, in the same hits/collision/bin BIB-vs-
-signal convention, plus vertical dashed lines marking the cut threshold
-for the variable being plotted - each panel its own subsystem's, with
-the value in the panel title - so the current cut can be judged by eye
-against the N-1 distribution:
+signal convention (the signal drawn x a power of ten per panel, right
+axis unscaled - see signal_overlay_angle_plots.overlay_hist), plus
+vertical dashed lines marking the cut threshold for the variable being
+plotted - each panel its own subsystem's, with the value in the panel
+title - so the current cut can be judged by eye against the N-1
+distribution:
   - z_axis_intercept_per_subsystem_n1.png       (full range, +/-3000mm)
   - z_axis_intercept_per_subsystem_zoom_n1.png  (+/- z0 of [zoom], mm)
   - inv_radius_per_subsystem_n1.png             (full range, pT-relabeled)
@@ -56,7 +58,7 @@ from incidence_angle_plots import (
 )
 from time_of_flight_plots import TC_RANGE_NS
 from signal_overlay_angle_plots import (
-    overlay_hist, draw_symmetric_cut_lines, draw_momentum_cut_lines, panel_title,
+    overlay_hist, draw_symmetric_cut_lines, draw_momentum_cut_lines, panel_title, SCALE_NOTE,
 )
 
 # Zoom half-ranges (z_axis_intercept_mm/momentum_gev/t_corrected_ns) come
@@ -166,14 +168,11 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_RANGE_MM, Z0_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_RANGE_MM)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle("Z-axis intercept, N-1 (time + momentum cuts applied, not this one): "
-                 "BIB vs. signal, hits/collision/bin; dashed line = this cut's threshold",
-                 fontsize=10)
+                 "BIB vs. signal, hits/collision/bin" + SCALE_NOTE
+                 + "; dashed line = this cut's threshold", fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_n1.png", dpi=130)
     plt.close(fig)
@@ -192,13 +191,10 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_ZOOM_RANGE_MM, Z0_ZOOM_RANGE_MM, 121),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_ZOOM_RANGE_MM)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(f"Z-axis intercept, zoomed to +/-{Z0_ZOOM_RANGE_MM:.0f}mm, N-1 "
-                 "(time + momentum cuts applied): BIB vs. signal, hits/collision/bin",
+                 "(time + momentum cuts applied): BIB vs. signal, hits/collision/bin" + SCALE_NOTE,
                  fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_zoom_n1.png", dpi=130)
@@ -206,7 +202,7 @@ def main():
 
     # ---- 3. inv_radius_per_mm, full range, N-1 (time + z applied) ----------
     INV_R_MAX = 80.0
-    pt_ticks, pt_labels = pt_ticks_for_axis(INV_R_MAX, step=20.0)
+    pt_ticks, pt_labels = pt_ticks_for_axis(INV_R_MAX, step=40.0)   # (labels are long)
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
         bsel = (bib_sys == s) & bib_n1_p
@@ -216,16 +212,13 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_MAX, INV_R_MAX, 161),
                      n_sig_events=n_sig_events)
         draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_MAX)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_ticks)
         ax.set_xticklabels(pt_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(
         f"Transverse momentum p$_T$ = 0.3 B R (B={B_FIELD_T:.0f}T), N-1 (time + z-intercept "
-        "cuts applied, not this one): BIB vs. signal, hits/collision/bin; "
+        "cuts applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE + "; "
         "dashed lines = this cut's threshold", fontsize=10,
     )
     plt.tight_layout()
@@ -235,7 +228,7 @@ def main():
     # ---- 4. inv_radius_per_mm, ZOOMED, N-1 ----------------------------------
     INV_R_ZOOM_MAX = GEV_PER_INV_M / PT_ZOOM_RANGE_GEV
     pt_zoom_ticks, pt_zoom_labels = pt_ticks_for_axis(
-        INV_R_ZOOM_MAX, step=INV_R_ZOOM_MAX / 5.0)
+        INV_R_ZOOM_MAX, step=INV_R_ZOOM_MAX / 4.0)
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
         bsel = (bib_sys == s) & bib_n1_p
@@ -247,16 +240,14 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_ZOOM_MAX, INV_R_ZOOM_MAX, 121),
                      n_sig_events=n_sig_events)
         draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_ZOOM_MAX)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_zoom_ticks)
         ax.set_xticklabels(pt_zoom_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(
         f"Transverse momentum, zoomed to |p$_T$| >= {PT_ZOOM_RANGE_GEV:.0f} GeV/c, N-1 "
-        "(time + z-intercept cuts applied): BIB vs. signal, hits/collision/bin", fontsize=10,
+        "(time + z-intercept cuts applied): BIB vs. signal, hits/collision/bin" + SCALE_NOTE,
+        fontsize=10,
     )
     plt.tight_layout()
     plt.savefig(outdir / "inv_radius_per_subsystem_zoom_n1.png", dpi=130)
@@ -274,13 +265,10 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_RANGE_NS, TC_RANGE_NS, 161),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_RANGE_NS)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle("Time-of-flight-corrected hit time, N-1 (z-intercept + momentum cuts "
-                 "applied, not this one): BIB vs. signal, hits/collision/bin; "
+                 "applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE + "; "
                  "dashed line = this cut's threshold", fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "time_corrected_per_subsystem_n1.png", dpi=130)
@@ -300,14 +288,11 @@ def main():
         overlay_hist(ax, bv, sv, bins=np.linspace(-TC_ZOOM_RANGE_NS, TC_ZOOM_RANGE_NS, 121),
                      n_sig_events=n_sig_events)
         draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_ZOOM_RANGE_NS)
-        ax.set_yscale("log")
         ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
-        ax.set_ylabel("hits / collision / bin")
-        ax.legend(fontsize=7)
     plt.suptitle(f"Time-of-flight-corrected hit time, zoomed to +/-{TC_ZOOM_RANGE_NS:.0f}ns, "
                  "N-1 (z-intercept + momentum cuts applied): BIB vs. signal, "
-                 "hits/collision/bin", fontsize=10)
+                 "hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom_n1.png", dpi=130)
     plt.close(fig)

@@ -185,6 +185,8 @@ def captions(run):
     t_res = (f"the {s[('time', 'sigma_t_ns')]:g} ns time smearing"
              if s.get(("time", "enabled")) and s.get(("time", "sigma_t_ns"), 0) > 0 else "no time smearing")
 
+    scale = ("The signal is multiplied by the power of ten in each panel's legend, to bring it to "
+             "the height of the BIB; the right axis gives its actual value.")
     if not on("pt"):
         pt_tail = ""
     elif ct.is_uniform(c, "pt"):
@@ -211,19 +213,19 @@ def captions(run):
          "$z$-axis intercept $z_0$ (N-1)",
          f"Where each hit's direction, extrapolated in the $r$-$z$ plane, crosses the beam line, for "
          f"BIB (blue) and signal (green) in the six subsystems, zoomed to ±{zoom['z0']:g} mm, in hits "
-         f"per collision per bin. {others('z0')} " + lines_note("z0")),
+         f"per collision per bin. {scale} {others('z0')} " + lines_note("z0")),
         ("inv_radius_per_subsystem_zoom_n1.png",
          "Transverse momentum from the hit curvature (N-1)",
          f"$p_T$ estimated from each hit alone: the circle through the beam line tangent to the hit's "
          f"direction (B = {B_FIELD_T:g} T). The axis is linear in the curvature 1/R, labelled in $p_T$ "
          f"(±∞ = straight track, at the center), for |$p_T$| ≥ {zoom['pt']:g} GeV/c; BIB (blue) vs. "
-         f"signal (green), per collision. {others('pt')} " + lines_note("pt")),
+         f"signal (green), per collision. {scale} {others('pt')} " + lines_note("pt")),
         ("time_corrected_per_subsystem_zoom_n1.png",
          "Corrected hit time (N-1)",
          f"Hit time minus the time of flight expected for a particle coming from the interaction "
          f"point, for BIB (blue) and signal (green) in the six subsystems, zoomed to ±"
          f"{zoom['time']:g} ns, in hits per collision per bin; hit times include {t_res}. "
-         f"{others('time')} " + lines_note("time")),
+         f"{scale} {others('time')} " + lines_note("time")),
     ]
 
 
@@ -467,10 +469,14 @@ def main(argv):
         for png, title, caption in pages:
             fig = plt.figure(figsize=PAGE)
             page_frame(fig, title, run, page_no, n_pages, footer)
-            ax = fig.add_axes([0.03, 0.195, 0.94, 0.685])
+            text = wrap(caption)
+            # room for the caption above the footer: 4 lines fit under the
+            # plot as it is; a longer caption pushes the plot up a little
+            cap_top = max(0.172, 0.052 + 0.030 * (text.count("\n") + 1))
+            ax = fig.add_axes([0.03, cap_top + 0.023, 0.94, 0.857 - cap_top])
             ax.imshow(plt.imread(hl / png), interpolation="none")
             ax.set_axis_off()
-            fig.text(0.04, 0.172, wrap(caption), fontsize=11.5, color=INK,
+            fig.text(0.04, cap_top, text, fontsize=11.5, color=INK,
                      va="top", linespacing=1.4)
             pdf.savefig(fig)
             plt.close(fig)
