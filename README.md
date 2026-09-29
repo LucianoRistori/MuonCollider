@@ -57,8 +57,10 @@ subsystem's cuts next to its results (only when the cuts differ between
 subsystems), a page with the same results for each cut alone and on top
 of the other two (see "How the results are quoted"), then five of the
 plots - BIB density before/after the
-cuts, track-finding efficiency, and the three zoomed N-1 plots - one per
-page, each with a caption that quotes that run's own numbers. To make
+cuts (followed by two pages with the BIB hit density of every layer and
+disk, before and after the cuts), track-finding efficiency, and the
+three zoomed N-1 plots - one per page, each with a caption that quotes
+that run's own numbers. To make
 it for an earlier run:
 `python3 ~/code/MuonCollider/make_highlights_pdf.py runs/<date>_<time>`.
 
@@ -758,6 +760,15 @@ Analysis/step4_cuts`. Outputs, in `Analysis/step4_cuts/`:
   signal hit counts/pass fractions.
 - `density_before_after_cuts.png` - single panel (BIB mean density with
   vs. without cuts), log-scale bar chart per subsystem.
+- `density_per_layer_before_after_cuts.csv` - the same per layer (barrel)
+  and disk (endcaps, -z and +z separately): position, sensitive area,
+  BIB hits, mean and peak density before and after all cuts, and the
+  layer's rejection factor. Also printed as a table in the run log (not
+  in `summary.txt`, to keep that short), and on two pages of the PDF.
+  The density after the cuts uses the same (geometry) area as before, so
+  mean before / mean after is exactly the layer's rejection factor; the
+  peak density is the 99th percentile over bins of ~20 hits, as in step
+  1.
 
 **Result, starting hypothesis** (±0.3ns, ±15mm, |pT|>=5 GeV/c, all three
 combined): BIB is suppressed by 99.3-99.98% depending on subsystem

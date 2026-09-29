@@ -27,7 +27,11 @@ Two kinds of comparison are produced:
      that cut divides the combined numbers by these).
   2. A before/after hit-density comparison (mean density, hits/mm^2,
      using the true detector geometry area when available - same
-     definition as step 1/3) for BIB only. (Signal hit density isn't
+     definition as step 1/3) for BIB only: per subsystem
+     (density_before_after_cuts.csv / .png), and per layer or disk
+     (density_per_layer_before_after_cuts.csv and a table in the log:
+     mean and peak density before and after the cuts, and the layer's
+     rejection factor). (Signal hit density isn't
      computed here - it isn't a meaningful quantity for a single-track
      sample; see track_efficiency.py instead for the signal-side
      question this cut set is meant to answer: what fraction of muon
@@ -98,13 +102,73 @@ def slim_hits(hits, keep=()):
 
 
 def density_table(hits, area_lookup, with_peak):
+    """Returns (one row per layer/disk, one row per subsystem)."""
     rows = region_table(hits)
     if area_lookup is not None:
         geom_mod.annotate_rows_with_geometry_area(rows, area_lookup)
     if with_peak:
         add_peak_density(hits, rows, bin_size_mm=None, percentile=PEAK_PERCENTILE,
                           target_hits_per_bin=PEAK_TARGET_HITS_PER_BIN)
-    return subsystem_density_table(rows)
+    return rows, subsystem_density_table(rows)
+
+
+SIDE_TAG = {0: "", 1: " +z", 3: " -z"}
+LAYER_CSV_FIELDS = [
+    "system", "system_name", "side", "layer", "label", "mean_r_mm", "mean_z_mm", "area_mm2",
+    "bib_n_hits_before", "bib_mean_density_before", f"bib_{PEAK_KEY}_before",
+    "bib_n_hits_after", "bib_mean_density_after", f"bib_{PEAK_KEY}_after",
+    "bib_rejection_factor"]
+
+
+def density_per_layer(before_rows, after_rows):
+    """
+    One row per layer (barrel) or disk (endcap: +z and -z listed
+    separately, -z first), in the order barrel layers by radius, disks by
+    |z|: BIB hits, mean density (hits/mm^2 over the layer's sensitive
+    area, from the geometry) and peak density (PEAK_PERCENTILE-th
+    percentile over bins of ~PEAK_TARGET_HITS_PER_BIN hits, as in step 1)
+    before and after all cuts. The density after the cuts uses the same
+    area as before, so before/after is exactly the layer's rejection
+    factor.
+    """
+    after = {(r["system"], r["side"], r["layer"]): r for r in after_rows}
+    rows = []
+    for b in sorted(before_rows, key=lambda r: (r["system"], r["layer"], r["side"] != 3)):
+        a = after.get((b["system"], b["side"], b["layer"]))
+        n_after = a["n_hits"] if a else 0
+        area = b["area_mm2"]
+        rows.append({
+            "system": b["system"], "system_name": b["system_name"], "side": b["side"],
+            "layer": b["layer"], "label": f"L{b['layer']}{SIDE_TAG.get(b['side'], '')}",
+            "mean_r_mm": b["mean_r"], "mean_z_mm": b["mean_z"], "area_mm2": area,
+            "bib_n_hits_before": b["n_hits"],
+            "bib_mean_density_before": b["density_hits_per_mm2"],
+            f"bib_{PEAK_KEY}_before": b.get(PEAK_KEY, float("nan")),
+            "bib_n_hits_after": n_after,
+            "bib_mean_density_after": n_after / area if area > 0 else float("nan"),
+            f"bib_{PEAK_KEY}_after": a.get(PEAK_KEY, float("nan")) if a else float("nan"),
+            "bib_rejection_factor": rejection_factor(b["n_hits"], n_after),
+        })
+    return rows
+
+
+def print_density_per_layer(rows):
+    def g(x):
+        return f"{x:.3g}" if x == x else "-"          # x == x: not NaN
+    table, last = [], None
+    for r in rows:
+        barrel = r["side"] == 0
+        table.append([r["system_name"] if r["system_name"] != last else "", r["label"],
+                      f"r {r['mean_r_mm']:.0f} mm" if barrel else f"z {r['mean_z_mm']:+.0f} mm",
+                      g(r["bib_mean_density_before"]), g(r["bib_mean_density_after"]),
+                      g(r[f"bib_{PEAK_KEY}_before"]), g(r[f"bib_{PEAK_KEY}_after"]),
+                      format_rejection_factor(r["bib_n_hits_before"], r["bib_n_hits_after"])])
+        last = r["system_name"]
+    print()
+    print_table(f"BIB hit density per layer, before and after all cuts (hits/mm^2 per collision; "
+                f"peak = p{PEAK_PERCENTILE:.0f} over bins of ~{PEAK_TARGET_HITS_PER_BIN:.0f} hits):",
+                ["subsystem", "layer", "position", "mean before", "mean after", "peak before",
+                 "peak after", "rejection factor"], table, align="lllrrrrr")
 
 
 def cutflow_rows(hits, combined_mask, per_cut_masks):
@@ -289,8 +353,9 @@ def main():
               f"using hit-inferred area.")
 
     # ---- BIB density before/after cuts -------------------------------------
-    bib_before = density_table(bib_hits, area_lookup, with_peak=True)
-    bib_after = density_table(mask_hits(bib_hits, bib_mask), area_lookup, with_peak=True)
+    bib_before_layers, bib_before = density_table(bib_hits, area_lookup, with_peak=True)
+    bib_after_layers, bib_after = density_table(mask_hits(bib_hits, bib_mask), area_lookup,
+                                                with_peak=True)
 
     bib_before_by_sys = {r["system"]: r for r in bib_before}
     bib_after_by_sys = {r["system"]: r for r in bib_after}
@@ -320,6 +385,13 @@ def main():
                 if bib_n_before else "",
             })
 
+    # ---- BIB density per layer, before/after cuts --------------------------
+    layer_rows = density_per_layer(bib_before_layers, bib_after_layers)
+    with open(outdir / "density_per_layer_before_after_cuts.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=LAYER_CSV_FIELDS)
+        w.writeheader()
+        w.writerows(layer_rows)
+
     # ---- plot: BIB density before/after ------------------------------------
     labels = [SYSTEM_NAMES[s] for s in sys_ids]
     x = np.arange(len(sys_ids))
@@ -346,8 +418,9 @@ def main():
     plt.savefig(outdir / "density_before_after_cuts.png", dpi=140)
     plt.close(fig)
 
-    print(f"Wrote cutflow_bib.csv, cutflow_signal.csv, density_before_after_cuts.csv "
-          f"and .png, summary_by_region.csv to {short_path(outdir)}/")
+    print(f"Wrote cutflow_bib.csv, cutflow_signal.csv, density_before_after_cuts.csv and .png, "
+          f"density_per_layer_before_after_cuts.csv, summary_by_region.csv to {short_path(outdir)}/")
+    print_density_per_layer(layer_rows)
 
     # Signal hit efficiency for pT -> infinity, per subsystem and overall:
     # each hit gets the generated pT of its event's muon.

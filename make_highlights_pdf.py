@@ -74,6 +74,7 @@ def load_run(run_dir):
         with open(path) as f:
             return list(csv.DictReader(f))
     by_region = run_dir / "step4_cuts" / "summary_by_region.csv"
+    layers = run_dir / "step4_cuts" / "density_per_layer_before_after_cuts.csv"
     limit = run_dir / "step4_track_efficiency" / "track_efficiency_limit.csv"
     if not (by_region.is_file() and limit.is_file()):
         sys.exit(f"Run {run_dir.name} was made before the results were quoted as a rejection "
@@ -108,7 +109,8 @@ def load_run(run_dir):
     signal_pt_min = sorted({float(r["fit_pt_min_gev"]) for r in read_csv(by_region)})
 
     return {"name": run_dir.name, "cuts": cuts, "smear": smear, "inputs": inputs,
-            "table": table, "track": track, "signal_pt_min": signal_pt_min, "per_cut": per_cut}
+            "table": table, "track": track, "signal_pt_min": signal_pt_min, "per_cut": per_cut,
+            "layers": read_csv(layers) if layers.is_file() else None}
 
 
 def nice(s):
@@ -258,6 +260,52 @@ def draw_table(ax, header, cells, col_widths, fontsize, row_scale):
     return tab
 
 
+def layer_page(pdf, title, rows, run, page_no, n_pages, footer):
+    """One page of the BIB hit density per layer, before and after the cuts."""
+    def g(x):
+        x = float(x)
+        return f"{x:.3g}" if x == x else "–"
+    fig = plt.figure(figsize=PAGE)
+    page_frame(fig, title, run, page_no, n_pages, footer)
+    cells, last = [], None
+    for r in rows:
+        barrel = r["side"] == "0"
+        cells.append([r["system_name"] if r["system_name"] != last else "",
+                      r["label"].replace("-z", "−z"),
+                      (f"r = {float(r['mean_r_mm']):.0f} mm" if barrel
+                       else f"z = {float(r['mean_z_mm']):+.0f} mm".replace("-", "−")),
+                      g(r["bib_mean_density_before"]), g(r["bib_mean_density_after"]),
+                      g(r["bib_peak_density_p99_hits_per_mm2_before"]),
+                      g(r["bib_peak_density_p99_hits_per_mm2_after"]),
+                      format_rejection_factor(int(r["bib_n_hits_before"]),
+                                              int(r["bib_n_hits_after"]))])
+        last = r["system_name"]
+    top, bottom = 0.87, 0.205                         # table area, above the caption
+    ax = fig.add_axes([0.07, bottom, 0.86, top - bottom])
+    tab = draw_table(ax, ["subsystem", "layer", "position", "mean\nbefore", "mean\nafter",
+                          "peak\nbefore", "peak\nafter", "rejection\nfactor"],
+                     cells, [0.15, 0.1, 0.16, 0.11, 0.11, 0.11, 0.11, 0.15],
+                     11 if len(cells) <= 18 else 10, 1.8)
+    for (r_, c_), cell in tab.get_celld().items():
+        if c_ in (1, 2):
+            cell.set_text_props(ha="left")
+    # shrink the rows if the table would run into the caption
+    fig.canvas.draw()
+    height = tab.get_window_extent(fig.canvas.get_renderer()).transformed(
+        fig.transFigure.inverted()).height
+    if height > top - bottom:
+        for cell in tab.get_celld().values():
+            cell.set_height(cell.get_height() * (top - bottom) / height)
+    caption = ("BIB hits per mm$^2$ per collision in each barrel layer and endcap disk (−z and +z "
+               "disks separately), before and after all cuts. Mean: hits / sensitive area of the "
+               "layer, from the detector geometry. Peak: 99th percentile of the local density over "
+               "bins of about 20 hits, as in step 1. Rejection factor: the layer's BIB hits before / "
+               "after the cuts.")
+    fig.text(0.04, 0.172, wrap(caption), fontsize=11.5, color=INK, va="top", linespacing=1.4)
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
 def main(argv):
     if len(argv) != 1:
         print(__doc__.split("Usage:")[1].strip())
@@ -274,7 +322,15 @@ def main(argv):
     pages = [p for p in captions(run) if (hl / p[0]).is_file()]
     missing = [p[0] for p in captions(run) if not (hl / p[0]).is_file()]
     has_per_cut = run["per_cut"] is not None
-    n_pages = 1 + per_system + has_per_cut + len(pages)
+    # BIB density per layer: two pages (VXD + IT barrel, then IT endcap + OT),
+    # right after the page with the density plot
+    layer_pages = []
+    if run["layers"]:
+        for part, systems in ((1, ("1", "2", "3")), (2, ("4", "5", "6"))):
+            rows = [r for r in run["layers"] if r["system"] in systems]
+            if rows:
+                layer_pages.append((f"BIB hit density per layer ({part}/2)", rows))
+    n_pages = 1 + per_system + has_per_cut + len(pages) + len(layer_pages)
     out = hl / f"highlights_{run['name']}.pdf"
 
     with PdfPages(out) as pdf:
@@ -388,10 +444,13 @@ def main(argv):
             pdf.savefig(fig)
             plt.close(fig)
 
-        # ---- one plot per page
-        for i, (png, title, caption) in enumerate(pages, start=2 + per_system + has_per_cut):
+        # ---- one plot per page (and the per-layer density tables after the
+        # density plot)
+        page_no = 2 + per_system + has_per_cut
+        todo_layers = list(layer_pages)
+        for png, title, caption in pages:
             fig = plt.figure(figsize=PAGE)
-            page_frame(fig, title, run, i, n_pages, footer)
+            page_frame(fig, title, run, page_no, n_pages, footer)
             ax = fig.add_axes([0.03, 0.195, 0.94, 0.685])
             ax.imshow(plt.imread(hl / png), interpolation="none")
             ax.set_axis_off()
@@ -399,6 +458,15 @@ def main(argv):
                      va="top", linespacing=1.4)
             pdf.savefig(fig)
             plt.close(fig)
+            page_no += 1
+            if png == "density_before_after_cuts.png":
+                for lt, rows in todo_layers:
+                    layer_page(pdf, lt, rows, run, page_no, n_pages, footer)
+                    page_no += 1
+                todo_layers = []
+        for lt, rows in todo_layers:          # (only if the density plot was missing)
+            layer_page(pdf, lt, rows, run, page_no, n_pages, footer)
+            page_no += 1
 
         info = pdf.infodict()
         info["Title"] = f"Muon Collider BIB study - highlights of run {run['name']}"
