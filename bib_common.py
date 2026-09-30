@@ -30,10 +30,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import uproot
 
 import cuts_table
+
+# All the plots: no margin on the horizontal axis, which spans exactly the
+# plotted range (a histogram's bins, the data) - empty space at the ends
+# would read as a range with no entries. The vertical axis keeps
+# matplotlib's usual 5% margin.
+matplotlib.rcParams["axes.xmargin"] = 0
 
 SYSTEM_NAMES = {
     1: "VXD barrel",

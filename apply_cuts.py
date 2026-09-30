@@ -461,6 +461,7 @@ def main():
     ax1.set_yscale("log")
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, rotation=20)
+    ax1.set_xlim(-0.5, len(x) - 0.5)        # categories: half a slot either side
     ax1.set_ylabel("mean hit density (hits/mm$^2$)")
     ax1.set_title("BIB hit density: with vs. without cuts")
     ax1.legend()

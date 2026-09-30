@@ -134,14 +134,16 @@ def main():
         idx = np.where(mask)[0]
         if len(idx) > 40000:
             idx = rng.choice(idx, 40000, replace=False)
+        # (not clipped: the outermost disks sit on the edge of the plot,
+        # which has no horizontal margin)
         ax.scatter(bib_hits["z"][idx], bib_hits["r"][idx], s=0.5,
-                   color=colors[s], label=f"BIB {SYSTEM_NAMES[s]}", alpha=0.5)
+                   color=colors[s], label=f"BIB {SYSTEM_NAMES[s]}", alpha=0.5, clip_on=False)
     # signal hits on top, subsampled, distinct marker
     n_sig_plot = min(len(sig_hits["x"]), 60000)
     sig_idx = rng.choice(len(sig_hits["x"]), n_sig_plot, replace=False) \
         if len(sig_hits["x"]) > n_sig_plot else np.arange(len(sig_hits["x"]))
     ax.scatter(sig_hits["z"][sig_idx], sig_hits["r"][sig_idx], s=1.5,
-               color="black", label="signal hits", alpha=0.6, marker=".")
+               color="black", label="signal hits", alpha=0.6, marker=".", clip_on=False)
     ax.set_xlabel("z (mm)")
     ax.set_ylabel("r (mm)")
     ax.set_title("Hit map (r vs z): BIB (colored by subsystem, subsampled) + "

@@ -313,16 +313,17 @@ def main():
     # decreasing pT) runs from the high-efficiency plateau down through
     # the turn-on to the long near-zero tail below threshold. That tail
     # carries no information (efficiency is consistent with 0 all the
-    # way down to pT=1.5 GeV/c), so the range is cut just past the last
-    # bin (in increasing 1/pT / decreasing pT) with efficiency > 1%,
-    # with one bin's margin so that point and its error bar stay clear
-    # of the axis edge.
+    # way down to pT=1.5 GeV/c), so the range ends at the upper edge of
+    # the last bin (in increasing 1/pT / decreasing pT) with efficiency
+    # > 1%. It starts at 1/pT = 0 (pT = infinity), where the pT -> inf
+    # point sits on the axis edge - no margin on either side, as in all
+    # the plots.
     above_1pct = np.where(eff_arr > 1.0)[0]
     if len(above_1pct) > 0:
-        x_hi = inv_pT_center[above_1pct[-1]] + 1.5 * bin_width_inv
+        x_hi = inv_pT_center[above_1pct[-1]] + 0.5 * bin_width_inv
     else:
         x_hi = edges_inv[-1]
-    x_lo = -1.2 * bin_width_inv     # room for the pT = infinity point at 1/pT = 0
+    x_lo = 0.0
 
     tick_pos, tick_labels, minor_tick_pos = pt_ticks_for_inv_pt_axis(edges_inv[0], x_hi,
                                                                      clear_of_zero=True)
@@ -337,7 +338,7 @@ def main():
         ax.plot(xf, 100 * (eff_inf + fit_c * xf ** 2), "--", color="#a83232", linewidth=1.4,
                 label=f"fit $\\epsilon_\\infty$ + c/p$_T^2$, p$_T$ > {fit_pt_min:g} GeV/c")
         ax.errorbar([0.0], [100 * eff_inf], yerr=[100 * eff_inf_unc], fmt="D", markersize=6,
-                    capsize=3, color="#a83232", zorder=5,
+                    capsize=3, color="#a83232", zorder=5, clip_on=False,   # (on the edge)
                     label=f"p$_T$ \u2192 \u221e: {100 * eff_inf:.1f} \u00b1 "
                           f"{100 * eff_inf_unc:.1f}%")
         ax.legend(loc="upper right", fontsize=9)

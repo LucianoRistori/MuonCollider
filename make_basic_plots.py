@@ -117,6 +117,7 @@ def main():
     ax.set_title(f"Hit density per subsystem: mean vs. peak ({n_hit:,} hits total)")
     ax.set_xticks(xpos)
     ax.set_xticklabels(labels, rotation=30)
+    ax.set_xlim(-0.5, len(xpos) - 0.5)      # categories: half a slot either side
     ax.legend()
     for bars in (b1, b2):
         for b in bars:
@@ -138,6 +139,7 @@ def main():
               label="peak", color="#e05252")
         ax.set_xticks(xp)
         ax.set_xticklabels(x)
+        ax.set_xlim(-0.5, len(xp) - 0.5)
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_ylabel(r"hits / mm$^2$")
         ax.set_yscale("log")
@@ -160,6 +162,7 @@ def main():
               label="peak", color="#e05252")
         ax.set_xticks(xp)
         ax.set_xticklabels(x, rotation=45)
+        ax.set_xlim(-0.5, len(xp) - 0.5)
         ax.set_title(SYSTEM_NAMES[s])
         ax.set_ylabel(r"hits / mm$^2$")
         ax.set_yscale("log")
@@ -192,8 +195,10 @@ def main():
         idx = np.where(mask)[0]
         if len(idx) > 40000:
             idx = rng.choice(idx, 40000, replace=False)
+        # (not clipped: the outermost disks sit on the edge of the plot,
+        # which has no horizontal margin)
         ax.scatter(hits["z"][idx], hits["r"][idx], s=0.5,
-                   color=colors[s], label=SYSTEM_NAMES[s])
+                   color=colors[s], label=SYSTEM_NAMES[s], clip_on=False)
     ax.set_xlabel("z (mm)")
     ax.set_ylabel("r (mm)")
     ax.set_title("Hit map (r vs z), colored by subsystem (subsampled, spatial reference only)")
