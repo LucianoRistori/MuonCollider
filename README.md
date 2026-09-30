@@ -53,7 +53,9 @@ track-finding efficiency vs pT, and the z-intercept, pT and corrected-
 time distributions with the signal overlaid - both without cuts (step
 3, `*_with_signal.png`) and N-1 (step 4, `*_n1.png`), full range and
 zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
-`_highlights/` also holds `highlights_<date>_<time>.pdf`, a landscape
+`_highlights/` also holds `highlights_<date>_<time>.pdf` (the latest
+run's is also copied to the Analysis folder itself as
+`_highlights_<date>_<time>.pdf`, which sorts next to `_highlights/`), a landscape
 (16:9) presentation that `make_highlights_pdf.py` makes at the end of
 every successful run: a title page (input files, settings, and the
 results: BIB rejection factor and signal hit efficiency for pT → ∞ per

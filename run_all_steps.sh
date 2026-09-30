@@ -32,7 +32,9 @@
 #      rejection factor and signal hit efficiency for pT -> infinity per
 #      subsystem, track-finding efficiency for pT -> infinity), gathers
 #      the key plots in _highlights/ together with a PDF presentation of
-#      the main ones (highlights_<date>_<time>.pdf), and replaces the
+#      the main ones (highlights_<date>_<time>.pdf, also copied to the
+#      working folder as _highlights_<date>_<time>.pdf, next to
+#      _highlights/), and replaces the
 #      step* folders in the working folder with this run's, so they
 #      always show the latest SUCCESSFUL run, full or not (latest_run.txt
 #      says which one; after a PDF-only run there are no step 1-3
@@ -390,6 +392,7 @@ for f in $HIGHLIGHTS; do
     fi
 done
 PDF="_highlights/highlights_${RUN_ID%_pdf}.pdf"     # (named like any run's)
+TOP_PDF="_${PDF#_highlights/}"   # its copy at the top of the working folder
 pdf_failed=0
 pdf_msg="$("$PYTHON" "$CODE_DIR/make_highlights_pdf.py" "$RUN_DIR" 2>&1)" || pdf_failed=1
 
@@ -413,6 +416,9 @@ promote() {
         [ ! -e "$WORKDIR/$d" ] || { say "could not remove the old $d folder"; return 1; }
         [ ! -d "$RUN_DIR/$d" ] || cp -R "$RUN_DIR/$d" "$WORKDIR/$d" || return 1
     done
+    # a copy of the PDF at the top too, next to _highlights/ (the old one goes)
+    rm -f -- "$WORKDIR"/_highlights_*.pdf 2>/dev/null
+    [ ! -f "$RUN_DIR/$PDF" ] || cp "$RUN_DIR/$PDF" "$WORKDIR/$TOP_PDF" || return 1
     {
         say "The step folders in this folder show run: $RUN_ID"
         say "(so does _highlights/; the complete archive of that run, with its settings and log, is runs/$RUN_ID/)"
@@ -438,7 +444,7 @@ elapsed=$(( $(date +%s) - T_START ))
             say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
             say " The step folders here now show this run; key plots are in _highlights/."
         fi
-        [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: $PDF"
+        [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: $TOP_PDF"
     else
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
         say " BUT the step folders here could not be updated (see message above);"
