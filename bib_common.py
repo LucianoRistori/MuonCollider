@@ -563,7 +563,7 @@ def default_cuts_config():
 def load_cuts(path):
     """
     Load the selection cuts from a cuts config file - a [cuts] table with
-    one row per subsystem and one column per cut, plus a [zoom] section;
+    one row per subsystem, a column per cut and a column per zoom range;
     see templates/__cuts_config.txt, and cuts_table.py, which reads it.
     Raises ValueError listing the problems if the file has any (an unknown
     row, a value that isn't a number, ...), rather than quietly falling
@@ -572,7 +572,8 @@ def load_cuts(path):
     Returns {cut name (see CUT_NAMES): {
         "per_system": {system id: limit, or None if the cut is off there},
         "enabled": True if the cut is on in at least one subsystem,
-        "zoom_halfwidth": half-range of that variable's zoomed N-1 plot}}.
+        "zoom_per_system": {system id: that subsystem's range in the
+                            variable's zoomed N-1 plot}}.
     Limits are in ns (t_corrected_ns), mm (z_axis_intercept_mm) and, for
     momentum_gev, the minimum pT in GeV/c.
     """
@@ -583,7 +584,7 @@ def load_cuts(path):
         cuts[cuts_table.CUT_NAMES[col]] = {
             "per_system": per_system,
             "enabled": any(v is not None for v in per_system.values()),
-            "zoom_halfwidth": settings["zoom"][col],
+            "zoom_per_system": dict(settings["zoom"][col]),
         }
     return cuts
 

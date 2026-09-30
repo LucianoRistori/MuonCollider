@@ -151,7 +151,8 @@ def describe(cuts, smear):
 
     def cells(r):
         return "   ".join(c.rjust(w) for c, w in zip(r, widths))
-    cut_lines = [("hits kept if", "|t_corrected| <= time, |z0| <= z0 and pT >= pT, per subsystem:"),
+    cut_lines = [("hits kept if", "|t_corrected| <= time, |z0| <= z0 and pT >= pT, per subsystem"),
+                 ("", "(zoom: its range in the zoomed N-1 plots, +/- time, +/- z0, |pT| >= pT):"),
                  ("", cells(header))]
     cut_lines += [(r[0], cells(r[1:])) for r in rows]
     cut_lines.append(("track found", track_text(cuts)))
@@ -213,27 +214,26 @@ def warnings_for(cuts, smear):
 
     def zoom_setting(col):
         return (f"zoom_halfwidth in [{ct.CUT_NAMES[col]}]" if cuts["old_format"]
-                else f"{ct.TITLES[col]} in [zoom]")
+                else f"the zoom {ct.TITLES[col]} there")
     for col in ("time", "z0"):
         vals, zoom = cuts["cuts"][col], cuts["zoom"][col]
         zero = [s for s, v in vals.items() if v == 0]
-        wide = [s for s, v in vals.items() if v is not None and v > zoom]
+        wide = [s for s, v in vals.items() if v is not None and v > zoom[s]]
         if zero:
             warn.append(f"__cuts_config.txt: {ct.TITLES[col]} = 0 rejects essentially every hit "
                         f"({where(zero)})")
         if wide:
             warn.append(f"__cuts_config.txt: the {ct.TITLES[col]} cut lies outside the zoomed N-1 "
-                        f"plots' range (+/-{_g(zoom)} {ct.UNITS[col]}) in {where(wide)} - raise "
-                        f"{zoom_setting(col)} to see the cut lines there")
+                        f"plot's range in {where(wide)} - raise {zoom_setting(col)} to see the "
+                        f"cut lines")
     vals, zoom = cuts["cuts"]["pt"], cuts["zoom"]["pt"]
     zero = [s for s, v in vals.items() if v == 0]
-    low = [s for s, v in vals.items() if v is not None and 0 < v < zoom]
+    low = [s for s, v in vals.items() if v is not None and 0 < v < zoom[s]]
     if zero:
         warn.append(f"__cuts_config.txt: pT = 0 keeps every hit, the same as off ({where(zero)})")
     if low:
-        warn.append(f"__cuts_config.txt: the pT cut is below the zoomed N-1 plots' lower edge "
-                    f"({_g(zoom)} GeV/c) in {where(low)} - lower {zoom_setting('pt')} to see the "
-                    f"cut lines there")
+        warn.append(f"__cuts_config.txt: the pT cut is below the zoomed N-1 plot's lower edge in "
+                    f"{where(low)} - lower {zoom_setting('pt')} to see the cut lines")
     for sec, keys in (("position", ("sigma_u_mm", "sigma_v_mm")), ("time", ("sigma_t_ns",)),
                       ("angle_u", ("sigma_deg",)), ("angle_v", ("sigma_deg",))):
         if (sec, "enabled") in smear and not smear[(sec, "enabled")]:

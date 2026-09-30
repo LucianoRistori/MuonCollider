@@ -145,7 +145,14 @@ def captions(run):
     c, s = run["cuts"], run["smear"]
     uniform = ct.is_uniform(c)
     on = lambda col: ct.is_on(c, col)
-    zoom = c["zoom"]
+    def zoomed(col):
+        lo, hi = ct.zoom_span(c, col)
+        unit = ct.UNITS[col]
+        return (f"zoomed to ±{lo:g} {unit}" if lo == hi
+                else f"zoomed to ±{lo:g} to ±{hi:g} {unit} (each subsystem its own range)")
+    pt_lo, pt_hi = ct.zoom_span(c, "pt")
+    pt_zoom = (f"for |$p_T$| ≥ {pt_lo:g} GeV/c" if pt_lo == pt_hi
+               else f"for |$p_T$| above {pt_lo:g} to {pt_hi:g} GeV/c (each subsystem its own range)")
     names = {"time": "time", "z0": "$z_0$", "pt": "momentum"}
 
     def others(skip):
@@ -216,19 +223,19 @@ def captions(run):
         ("z_axis_intercept_per_subsystem_zoom_n1.png",
          "$z$-axis intercept $z_0$ (N-1)",
          f"Where each hit's direction, extrapolated in the $r$-$z$ plane, crosses the beam line, for "
-         f"BIB (blue) and signal (green) in the six subsystems, zoomed to ±{zoom['z0']:g} mm, in hits "
+         f"BIB (blue) and signal (green) in the six subsystems, {zoomed('z0')}, in hits "
          f"per collision per bin. {scale} {others('z0')} " + lines_note("z0")),
         ("inv_radius_per_subsystem_zoom_n1.png",
          "Transverse momentum from the hit curvature (N-1)",
          f"$p_T$ estimated from each hit alone: the circle through the beam line tangent to the hit's "
          f"direction (B = {B_FIELD_T:g} T). The axis is linear in the curvature 1/R, labelled in $p_T$ "
-         f"(±∞ = straight track, at the center), for |$p_T$| ≥ {zoom['pt']:g} GeV/c; BIB (blue) vs. "
+         f"(±∞ = straight track, at the center), {pt_zoom}; BIB (blue) vs. "
          f"signal (green), per collision. {scale} {others('pt')} " + lines_note("pt")),
         ("time_corrected_per_subsystem_zoom_n1.png",
          "Corrected hit time (N-1)",
          f"Hit time minus the time of flight expected for a particle coming from the interaction "
-         f"point, for BIB (blue) and signal (green) in the six subsystems, zoomed to ±"
-         f"{zoom['time']:g} ns, in hits per collision per bin; hit times include {t_res}. "
+         f"point, for BIB (blue) and signal (green) in the six subsystems, "
+         f"{zoomed('time')}, in hits per collision per bin; hit times include {t_res}. "
          f"{scale} {others('time')} " + lines_note("time")),
     ]
 

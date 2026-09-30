@@ -627,23 +627,20 @@ the background).
 
 **Editable config, not hardcoded values**: the cut values live in
 `__cuts_config.txt`, **set separately for each subsystem** in one table
-(a row per subsystem, a column per cut), so a hypothesis can be changed
-and re-run with no code edits. For example:
+(a row per subsystem: its three cuts, then the range of its three zoomed
+N-1 plots), so a hypothesis can be changed and re-run with no code
+edits. For example:
 ```ini
 [cuts]
-#             time    z0     pT
-#             (ns)    (mm)   (GeV/c)
-vxd_barrel  = 0.3     15     5
-vxd_endcap  = 0.3     15     5
-it_barrel   = 0.3     15     5
-it_endcap   = 0.3     30     5
-ot_barrel   = 0.3     25     5
-ot_endcap   = 0.5     40     off
-
-[zoom]              # display range of the zoomed N-1 plots only
-time = 2.0          # +/- 2 ns
-z0   = 100          # +/- 100 mm
-pT   = 1.0          # |pT| >= 1 GeV/c
+#             -------- cuts --------     -------- zoom --------
+#             time    z0     pT          time    z0     pT
+#             (ns)    (mm)   (GeV/c)     (ns)    (mm)   (GeV/c)
+vxd_barrel  = 0.3     15     5           2.0     100    1.0
+vxd_endcap  = 0.3     15     5           2.0     100    1.0
+it_barrel   = 0.3     15     5           2.0     100    1.0
+it_endcap   = 0.3     30     5           2.0     100    1.0
+ot_barrel   = 0.3     25     5           2.0     100    1.0
+ot_endcap   = 0.5     40     off         2.0     200    1.0
 
 [track]
 min_hits_found = 5          # min. surviving hits for a track to count as "found" (step 4 part 2)
@@ -660,11 +657,15 @@ settings check alike, so the check (unknown or missing rows, a cell that
 isn't a number or `off`, a row indented by mistake, ...) and the
 analysis always read it the same way - and applied by
 `bib_common.apply_cuts(hits, cuts)`, each hit with its own subsystem's
-values (`hits["system"]`). Files in the earlier format - one section
-per cut, `[t_corrected_ns]`, `[z_axis_intercept_mm]` and
-`[momentum_gev]`, each with `halfwidth`, `enabled` and `zoom_halfwidth`,
-as in the settings copies of older `runs/` - are still read, each cut
-then applying to every subsystem.
+values (`hits["system"]`). Files in the two earlier formats, as in the
+settings copies of older `runs/`, are still read: a `[cuts]` table with
+only the three cut columns and the zoom ranges in a separate `[zoom]`
+section (`time`, `z0`, `pT`, the same for every subsystem; 2 ns, 100 mm
+and 1 GeV/c when not set), and, before that, one section per cut,
+`[t_corrected_ns]`, `[z_axis_intercept_mm]` and `[momentum_gev]`, each
+with `halfwidth`, `enabled` and `zoom_halfwidth`, each cut then applying
+to every subsystem. A table with all six columns needs no `[zoom]`; the
+check flags a leftover one.
 
 The time and z0 cuts are simple symmetric windows, accept
 `|value| <= limit`. The pT cut is **not** a window on pT itself - pT =
@@ -681,11 +682,16 @@ everywhere): accept `|1/R| <= (0.3*B_FIELD_T/1000) / pT_min`, i.e.
 both the combined accept mask and each cut's own mask (for a cutflow
 breakdown).
 
-**`[zoom]`** is purely a plot display range - the half-width of each
-variable's zoomed histogram in `n1_cut_plots.py` (defaults 2 ns, 100 mm
-and 1 GeV/c when not set). It has no effect on the cuts; it exists so
-the zoomed view can be widened to keep the cut lines visible after
-loosening a cut, without a code change.
+**The zoom columns** (the last three of the table) are purely a plot
+display range - for each subsystem, the half-width of its panel in each
+variable's zoomed N-1 histogram in `n1_cut_plots.py` (+/- time, +/- z0,
+and |pT| >= pT, the pT axis running from -pT through +/-Infinity to +pT).
+They have no effect on the cuts; they exist so a panel's view can be
+widened to keep its cut lines visible after loosening a cut (the check
+warns when a cut line falls outside it), or narrowed to look at a
+subsystem's peak, without a code change. When the ranges differ between
+subsystems, the plot titles say "zoomed per subsystem" and the PDF
+captions give the span of the ranges.
 
 **Where the cuts show up.** The dashed red cut lines on the step-3
 overlay plots and on the step-4 N-1 plots are drawn panel by panel, each
@@ -967,11 +973,12 @@ the N-1 plots read the same way as their unfiltered step-3 counterparts,
 just with the other two cuts applied. Each panel also draws its own
 subsystem's cut on the plotted variable as vertical dashed lines (with
 the value in the panel title), so the threshold's position relative to
-the signal/BIB separation can be judged directly. Each variable's
-zoomed plot uses the `[zoom]` section of `__cuts_config.txt` (see
-"Selection cuts" above) as its display range, rather than a fixed value,
-so the zoomed view can be widened alongside a loosened cut without the
-cut lines falling outside it. Outputs, in `Analysis/step4_n1_cuts/`:
+the signal/BIB separation can be judged directly. Each panel of the
+zoomed plots uses its own subsystem's zoom range, from the last three
+columns of the `[cuts]` table of `__cuts_config.txt` (see "Selection
+cuts" above), rather than a fixed value, so a panel's view can be
+widened alongside a loosened cut without the cut lines falling outside
+it. Outputs, in `Analysis/step4_n1_cuts/`:
 `z_axis_intercept_per_subsystem_n1.png`/`_zoom_n1.png`,
 `inv_radius_per_subsystem_n1.png`/`_zoom_n1.png`,
 `time_corrected_per_subsystem_n1.png`/`_zoom_n1.png`.
@@ -1016,8 +1023,9 @@ ntuples and gives identical results. Code lives in
   `apply_position_time_smearing`, `apply_angle_smearing`,
   `describe_smearing`.
 - `cuts_table.py` — reads and checks `__cuts_config.txt` (the
-  per-subsystem cut table, `[zoom]` and `[track]`; also still the older
-  one-section-per-cut format), and describes the cuts in words for the
+  per-subsystem table of cuts and zoom ranges, `[track]` and `[signal]`;
+  also still the two older formats, the `[zoom]` section and the
+  one-section-per-cut one), and describes the cuts in words for the
   log, summary and PDF. Used by `bib_common.load_cuts`,
   `check_configs.py` and `make_highlights_pdf.py`, so they all read the
   file the same way. Standard library only.

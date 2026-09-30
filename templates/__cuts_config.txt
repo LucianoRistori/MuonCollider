@@ -1,5 +1,6 @@
-# Selection cuts for the BIB-suppression analysis, one row per detector
-# subsystem. Edit the numbers, then run ./run_all.
+# Selection cuts for the BIB-suppression analysis, and the range of the
+# zoomed N-1 plots, one row per detector subsystem. Edit the numbers, then
+# run ./run_all.
 # Lines starting with # are comments.
 #
 # A hit is kept only if it passes all three cuts of its own subsystem:
@@ -11,25 +12,22 @@
 #         measured position and direction (the circle through the beam line
 #         tangent to it); a straight track (infinite pT) always passes
 # Write off instead of a number to switch one cut off in one subsystem.
+#
+# zoom: the subsystem's range in the zoomed N-1 plots (the ones in the
+# PDF): +/- time ns, +/- z0 mm, and |pT| >= pT GeV/c. Display only: it
+# does not change the cuts. Widen it if a cut line falls outside the
+# zoomed view.
 
 [cuts]
-#             time    z0     pT
-#             (ns)    (mm)   (GeV/c)
-vxd_barrel  = 0.3     15     5
-vxd_endcap  = 0.3     15     5
-it_barrel   = 0.3     15     5
-it_endcap   = 0.3     15     5
-ot_barrel   = 0.3     15     5
-ot_endcap   = 0.3     15     5
-
-[zoom]
-# Half-range of the zoomed N-1 plots (step4_n1_cuts/*_zoom_n1.png), in the
-# units of the table: +/- time ns, +/- z0 mm, and |pT| >= pT GeV/c.
-# Display only: it does not change the cuts. Widen it if a cut line falls
-# outside the zoomed view.
-time = 2.0
-z0   = 100
-pT   = 1.0
+#             -------- cuts --------     -------- zoom --------
+#             time    z0     pT          time    z0     pT
+#             (ns)    (mm)   (GeV/c)     (ns)    (mm)   (GeV/c)
+vxd_barrel  = 0.3     15     5           2.0     100    1.0
+vxd_endcap  = 0.3     15     5           2.0     100    1.0
+it_barrel   = 0.3     15     5           2.0     100    1.0
+it_endcap   = 0.3     15     5           2.0     100    1.0
+ot_barrel   = 0.3     15     5           2.0     100    1.0
+ot_endcap   = 0.3     15     5           2.0     100    1.0
 
 [track]
 # A signal muon counts as found if at least min_hits_found of its hits pass

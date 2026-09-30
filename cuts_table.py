@@ -1,19 +1,15 @@
 """
-Read and check __cuts_config.txt: the selection cuts, one row per detector
-subsystem, plus the display range of the zoomed N-1 plots and the
+Read and check __cuts_config.txt: the selection cuts and the display range
+of the zoomed N-1 plots, one row per detector subsystem, and the
 track-finding settings.
 
     [cuts]
-    #             time   z0     pT
-    #             (ns)   (mm)   (GeV/c)
-    vxd_barrel  = 0.3    15     5
+    #             ------- cuts -------     -- zoomed N-1 plots --
+    #             time   z0     pT         time   z0     pT
+    #             (ns)   (mm)   (GeV/c)    (ns)   (mm)   (GeV/c)
+    vxd_barrel  = 0.3    15     5          2      100    1
     ...
-    ot_endcap   = 0.5    40     off
-
-    [zoom]
-    time = 2.0
-    z0   = 100
-    pT   = 1.0
+    ot_endcap   = 0.5    40     off        2      100    1
 
     [track]
     min_hits_found = 5
@@ -26,6 +22,12 @@ A hit in subsystem S is kept if |t_corrected| <= time(S), |z0| <= z0(S)
 and pT >= pT(S). "off" switches that one cut off in that one subsystem.
 (pT comes from the curvature measured at the hit, so that cut is applied
 as |1/R| <= 0.3*B/pT(S) - see bib_common.apply_cuts.)
+The last three columns are subsystem S's range in the zoomed N-1 plots:
++/- time ns, +/- z0 mm and |pT| >= pT GeV/c (display only). A row with
+only the three cuts - the format before the zoom moved into the table,
+as in the settings copies of older runs/ - takes its zoom from a [zoom]
+section (time, z0 and pT, the same for every subsystem), or from
+ZOOM_DEFAULTS.
 [signal] muon_hits_only = true makes the signal sample the generated
 muon's own hits only, leaving out the hits of secondaries (delta rays
 etc.) - see bib_common.primary_hit_mask. The section is optional; without
@@ -88,7 +90,7 @@ def read(path):
     is a list of messages, empty if the file is fine; `settings` is None
     if there are problems, otherwise
         {"cuts":  {"time": {system id: value, or None if off}, "z0": {...}, "pt": {...}},
-         "zoom":  {"time": x, "z0": x, "pt": x},
+         "zoom":  {"time": {system id: x}, "z0": {...}, "pt": {...}},
          "track": {"min_hits_found": n, "exclude_vertex_hits": True/False},
          "signal": {"muon_hits_only": True/False},
          "old_format": True/False}
@@ -138,7 +140,23 @@ def _read_table(cp, problem):
         elif sec not in ("cuts", "zoom", "track", "signal"):
             problem(f"unknown section [{sec}]{_suggest(sec, ('cuts', 'zoom', 'track', 'signal'))}")
 
+    # the zoom of rows that have only the three cuts: [zoom], or the defaults
+    zoom_default = dict(ZOOM_DEFAULTS)
+    if cp.has_section("zoom"):
+        for key, raw in cp["zoom"].items():
+            if key not in ZOOM_DEFAULTS:
+                problem(f"unknown setting '{key}' in [zoom]{_suggest(key, ZOOM_DEFAULTS, TITLES)} "
+                        f"(the settings are time, z0 and pT)")
+                continue
+            x = _number(raw)
+            if x is None or x <= 0:
+                problem(f"[zoom] {TITLES[key]} = {raw!r} must be a number above zero")
+            else:
+                zoom_default[key] = x
+
     cuts = {c: {} for c in COLUMNS}
+    zoom = {c: {} for c in COLUMNS}
+    rows_without_zoom = 0
     if not cp.has_section("cuts"):
         problem("missing section [cuts] (the table of cuts, one row per subsystem)")
     else:
@@ -157,11 +175,24 @@ def _read_table(cp, problem):
                         f"part of the {row} row - remove the spaces at the start of that line")
                 continue
             cells = raw.replace(",", " ").split()
-            if len(cells) != len(COLUMNS):
-                problem(f"[cuts] {row} = {raw.strip()!r}: expected 3 values - time, z0, pT "
-                        f"(each a number, or off) - but found {len(cells)}")
+            if len(cells) not in (len(COLUMNS), 2 * len(COLUMNS)):
+                problem(f"[cuts] {row} = {raw.strip()!r}: expected 6 values - the time, z0 and "
+                        f"pT cuts (each a number, or off), then the time, z0 and pT ranges of the "
+                        f"zoomed N-1 plots (each a number above zero) - but found {len(cells)}")
                 continue
-            for col, cell in zip(COLUMNS, cells):
+            if len(cells) == len(COLUMNS):          # no zoom columns: [zoom] or the defaults
+                rows_without_zoom += 1
+                for col in COLUMNS:
+                    zoom[col][ROWS[row]] = zoom_default[col]
+            else:
+                for col, cell in zip(COLUMNS, cells[len(COLUMNS):]):
+                    x = _number(cell)
+                    if x is None or x <= 0:
+                        problem(f"[cuts] {row}: zoom {TITLES[col]} = {cell!r} must be a number "
+                                f"above zero")
+                    else:
+                        zoom[col][ROWS[row]] = x
+            for col, cell in zip(COLUMNS, cells[:len(COLUMNS)]):
                 if cell.lower() == "off":
                     cuts[col][ROWS[row]] = None
                     continue
@@ -177,18 +208,9 @@ def _read_table(cp, problem):
             problem(f"[cuts] has no row for {', '.join(missing)} - every subsystem needs "
                     f"one (write off for a cut that should not apply there)")
 
-    zoom = dict(ZOOM_DEFAULTS)
-    if cp.has_section("zoom"):
-        for key, raw in cp["zoom"].items():
-            if key not in ZOOM_DEFAULTS:
-                problem(f"unknown setting '{key}' in [zoom]{_suggest(key, ZOOM_DEFAULTS, TITLES)} "
-                        f"(the settings are time, z0 and pT)")
-                continue
-            x = _number(raw)
-            if x is None or x <= 0:
-                problem(f"[zoom] {TITLES[key]} = {raw!r} must be a number above zero")
-            else:
-                zoom[key] = x
+    if cp.has_section("zoom") and cp.has_section("cuts") and rows_without_zoom == 0:
+        problem("[zoom] is not used: the zoom ranges are now the last three columns of the "
+                "[cuts] table - delete [zoom]")
     return {"cuts": cuts, "zoom": zoom, "old_format": False}
 
 
@@ -230,6 +252,7 @@ def _read_old(cp, problem):
                         f"above zero")
             else:
                 zoom[col] = z
+    zoom = {c: {s: zoom[c] for s in SYSTEM_IDS} for c in COLUMNS}
     return {"cuts": cuts, "zoom": zoom, "old_format": True}
 
 
@@ -300,6 +323,12 @@ def values(settings, col):
     return [settings["cuts"][col][s] for s in SYSTEM_IDS]
 
 
+def zoom_span(settings, col):
+    """(smallest, largest) zoom range of one variable over the six subsystems."""
+    z = [settings["zoom"][col][s] for s in SYSTEM_IDS]
+    return min(z), max(z)
+
+
 def is_uniform(settings, col=None):
     """True if the cut (or, with col=None, every cut) is the same in all six subsystems."""
     return all(len(set(values(settings, c))) == 1 for c in ([col] if col else COLUMNS))
@@ -351,7 +380,10 @@ def signal_text(settings):
 
 
 def table_rows(settings):
-    """Header and rows of the cut table, as strings: subsystem, time, z0, pT."""
-    header = [f"{TITLES[c]} ({UNITS[c]})" for c in COLUMNS]
-    rows = [[NAMES[s]] + [fmt(settings["cuts"][c][s]) for c in COLUMNS] for s in SYSTEM_IDS]
+    """Header and rows of the table, as strings: subsystem, the time, z0 and
+    pT cuts, then their zoom ranges."""
+    header = ([f"{TITLES[c]} ({UNITS[c]})" for c in COLUMNS]
+              + [f"zoom {TITLES[c]}" for c in COLUMNS])
+    rows = [[NAMES[s]] + [fmt(settings["cuts"][c][s]) for c in COLUMNS]
+            + [f"{settings['zoom'][c][s]:g}" for c in COLUMNS] for s in SYSTEM_IDS]
     return header, rows

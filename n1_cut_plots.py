@@ -25,11 +25,11 @@ plotted - each panel its own subsystem's, with the value in the panel
 title - so the current cut can be judged by eye against the N-1
 distribution:
   - z_axis_intercept_per_subsystem_n1.png       (full range, +/-3000mm)
-  - z_axis_intercept_per_subsystem_zoom_n1.png  (+/- z0 of [zoom], mm)
+  - z_axis_intercept_per_subsystem_zoom_n1.png  (+/- each subsystem's zoom z0, mm)
   - inv_radius_per_subsystem_n1.png             (full range, pT-relabeled)
-  - inv_radius_per_subsystem_zoom_n1.png        (|pT| >= pT of [zoom], GeV/c)
+  - inv_radius_per_subsystem_zoom_n1.png        (|pT| >= its zoom pT, GeV/c)
   - time_corrected_per_subsystem_n1.png         (full +/-20ns range)
-  - time_corrected_per_subsystem_zoom_n1.png    (+/- time of [zoom], ns)
+  - time_corrected_per_subsystem_zoom_n1.png    (+/- its zoom time, ns)
 
 Usage:
     python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir] [--zoom-only]
@@ -65,10 +65,18 @@ from signal_overlay_angle_plots import (
 )
 
 # Zoom half-ranges (z_axis_intercept_mm/momentum_gev/t_corrected_ns) come
-# from the [zoom] section of __cuts_config.txt (see cuts_table.py) rather
-# than being fixed here, so the zoom window can be widened/narrowed
-# alongside the cuts without a code change (e.g. so the cut-threshold
-# lines stay inside the visible plot when a cut is loosened).
+# from the last three columns of the [cuts] table of __cuts_config.txt,
+# one per subsystem (see cuts_table.py), rather than being fixed here, so
+# each panel's window can be widened/narrowed alongside its cuts without a
+# code change (e.g. so the cut-threshold lines stay inside the visible
+# plot when a cut is loosened).
+
+
+def zoom_words(per_system, one):
+    """'zoomed to <one(value)>' if every subsystem has the same zoom range,
+    else 'zoomed per subsystem' (each panel its own range)."""
+    vals = set(per_system.values())
+    return f"zoomed to {one(vals.pop())}" if len(vals) == 1 else "zoomed per subsystem"
 
 
 def n1_mask(per_cut_masks, skip_name):
@@ -129,9 +137,10 @@ def main():
     if not under_run_all():
         print(f"Cuts: {short_path(cuts_config)}")
 
-    Z0_ZOOM_RANGE_MM = cuts["z_axis_intercept_mm"]["zoom_halfwidth"]
-    PT_ZOOM_RANGE_GEV = cuts["momentum_gev"]["zoom_halfwidth"]
-    TC_ZOOM_RANGE_NS = cuts["t_corrected_ns"]["zoom_halfwidth"]
+    # each subsystem's range in the zoomed plots: {system id: half-range}
+    Z0_ZOOM = cuts["z_axis_intercept_mm"]["zoom_per_system"]      # mm
+    PT_ZOOM = cuts["momentum_gev"]["zoom_per_system"]             # lowest |pT|, GeV/c
+    TC_ZOOM = cuts["t_corrected_ns"]["zoom_per_system"]           # ns
 
     _, bib_per_cut = apply_cuts(bib_hits, cuts)
     _, sig_per_cut = apply_cuts(sig_hits, cuts)
@@ -187,20 +196,22 @@ def main():
     # ---- 2. z_axis_intercept_mm, ZOOMED, N-1 --------------------------------
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
+        zoom = Z0_ZOOM[s]
         bsel = (bib_sys == s) & bib_n1_z
         ssel = (sig_sys == s) & sig_n1_z
         bv = bib_hits["z_axis_intercept_mm"][bsel]
         bv = bv[np.isfinite(bv)]
-        bv = bv[np.abs(bv) <= Z0_ZOOM_RANGE_MM]
+        bv = bv[np.abs(bv) <= zoom]
         sv = sig_hits["z_axis_intercept_mm"][ssel]
         sv = sv[np.isfinite(sv)]
-        sv = sv[np.abs(sv) <= Z0_ZOOM_RANGE_MM]
-        overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_ZOOM_RANGE_MM, Z0_ZOOM_RANGE_MM, 121),
+        sv = sv[np.abs(sv) <= zoom]
+        overlay_hist(ax, bv, sv, bins=np.linspace(-zoom, zoom, 121),
                      n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_ZOOM_RANGE_MM)
+        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=zoom)
         ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
         ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
-    plt.suptitle(f"Z-axis intercept, zoomed to +/-{Z0_ZOOM_RANGE_MM:.0f}mm, N-1 "
+    z0_zoom_text = zoom_words(Z0_ZOOM, lambda v: "+/-%gmm" % v)
+    plt.suptitle(f"Z-axis intercept, {z0_zoom_text}, N-1 "
                  "(time + momentum cuts applied): BIB vs. signal, hits/collision/bin" + SCALE_NOTE,
                  fontsize=10)
     plt.tight_layout()
@@ -236,26 +247,26 @@ def main():
         plt.close(fig)
 
     # ---- 4. inv_radius_per_mm, ZOOMED, N-1 ----------------------------------
-    INV_R_ZOOM_MAX = GEV_PER_INV_M / PT_ZOOM_RANGE_GEV
-    pt_zoom_ticks, pt_zoom_labels = pt_ticks_for_axis(
-        INV_R_ZOOM_MAX, step=INV_R_ZOOM_MAX / 4.0)
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
+        inv_r_max = GEV_PER_INV_M / PT_ZOOM[s]           # |pT| >= its zoom pT
+        pt_zoom_ticks, pt_zoom_labels = pt_ticks_for_axis(inv_r_max, step=inv_r_max / 4.0)
         bsel = (bib_sys == s) & bib_n1_p
         ssel = (sig_sys == s) & sig_n1_p
         bx = bib_hits["inv_radius_per_mm"][bsel] * 1000.0
-        bv = bx[np.abs(bx) <= INV_R_ZOOM_MAX]
+        bv = bx[np.abs(bx) <= inv_r_max]
         sx = sig_hits["inv_radius_per_mm"][ssel] * 1000.0
-        sv = sx[np.abs(sx) <= INV_R_ZOOM_MAX]
-        overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_ZOOM_MAX, INV_R_ZOOM_MAX, 121),
+        sv = sx[np.abs(sx) <= inv_r_max]
+        overlay_hist(ax, bv, sv, bins=np.linspace(-inv_r_max, inv_r_max, 121),
                      n_sig_events=n_sig_events)
-        draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_ZOOM_MAX)
+        draw_momentum_cut_lines(ax, cuts, s, xmax=inv_r_max)
         ax.set_title(panel_title(cuts, "momentum_gev", s))
         ax.set_xticks(pt_zoom_ticks)
         ax.set_xticklabels(pt_zoom_labels)
         ax.set_xlabel("p$_T$ (GeV/c)")
+    pt_zoom_text = zoom_words(PT_ZOOM, lambda v: "|p$_T$| >= %g GeV/c" % v)
     plt.suptitle(
-        f"Transverse momentum, zoomed to |p$_T$| >= {PT_ZOOM_RANGE_GEV:.0f} GeV/c, N-1 "
+        f"Transverse momentum, {pt_zoom_text}, N-1 "
         "(time + z-intercept cuts applied): BIB vs. signal, hits/collision/bin" + SCALE_NOTE,
         fontsize=10,
     )
@@ -290,20 +301,22 @@ def main():
     # ---- 6. t_corrected_ns, ZOOMED, N-1 -------------------------------------
     fig, axes = panel_grid()
     for ax, s in zip(axes, sys_ids):
+        zoom = TC_ZOOM[s]
         bsel = (bib_sys == s) & bib_n1_time
         ssel = (sig_sys == s) & sig_n1_time
         bv = bib_hits["t_corrected_ns"][bsel]
         bv = bv[np.isfinite(bv)]
-        bv = bv[np.abs(bv) <= TC_ZOOM_RANGE_NS]
+        bv = bv[np.abs(bv) <= zoom]
         sv = sig_hits["t_corrected_ns"][ssel]
         sv = sv[np.isfinite(sv)]
-        sv = sv[np.abs(sv) <= TC_ZOOM_RANGE_NS]
-        overlay_hist(ax, bv, sv, bins=np.linspace(-TC_ZOOM_RANGE_NS, TC_ZOOM_RANGE_NS, 121),
+        sv = sv[np.abs(sv) <= zoom]
+        overlay_hist(ax, bv, sv, bins=np.linspace(-zoom, zoom, 121),
                      n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_ZOOM_RANGE_NS)
+        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=zoom)
         ax.set_title(panel_title(cuts, "t_corrected_ns", s))
         ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
-    plt.suptitle(f"Time-of-flight-corrected hit time, zoomed to +/-{TC_ZOOM_RANGE_NS:.0f}ns, "
+    tc_zoom_text = zoom_words(TC_ZOOM, lambda v: "+/-%gns" % v)
+    plt.suptitle(f"Time-of-flight-corrected hit time, {tc_zoom_text}, "
                  "N-1 (z-intercept + momentum cuts applied): BIB vs. signal, "
                  "hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
