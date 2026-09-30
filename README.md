@@ -9,7 +9,8 @@ three editable settings files:
 cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
 # edit __cuts_config.txt (cuts, per subsystem), __smearing_config.txt (resolutions)
 # and/or __input_files_config.txt (which data and geometry files to use)
-./run_all
+./run_all            # only what the highlights PDF needs: step 4 (about 1 1/4 min)
+./run_all --full     # the whole analysis: steps 1-4 (about 6 min)
 ```
 
 Input files live in two folders of `MuonColliderSimulation`: the ROOT
@@ -26,8 +27,9 @@ were put in `Data/`.
 missing settings or cut-table rows, values that aren't numbers or
 true/false, negative cuts/sigmas, duplicates - nothing runs until they
 are fixed), the
-input ROOT files and the Python packages. It then runs steps 1-4 and
-archives the whole run in `runs/<date>_<time>/`: every plot and table,
+input ROOT files and the Python packages. It then runs step 4 (with
+`--full`, steps 1-4 - see "The default run" below) and archives the
+whole run in `runs/<date>_<time>/`: every plot and table,
 the three settings files exactly as used (copied at the start, so
 editing them during a run has no effect on it), the complete log
 (`run_log.txt`), the code version (`code_version.txt`) and a short
@@ -36,12 +38,15 @@ and the signal hit efficiency for pT → ∞ (with each subsystem's cuts
 next to its results when the cuts differ between subsystems); and the
 track-finding efficiency for pT → ∞ - see "How the results are quoted"
 below. Only when every step succeeds are the `step*` folders next
-to the settings files replaced by that run's results; `latest_run.txt`
-says which run they show. A failed or interrupted run is kept as
+to the settings files replaced by that run's results, so they always
+show the latest successful run, full or not; `latest_run.txt` says
+which run they show (after a PDF-only run there are no step 1-3
+folders, and it names the last full run). A failed or interrupted run is kept as
 `runs/<date>_<time>_FAILED` (or `_INTERRUPTED`) and leaves the `step*`
 folders untouched. To compare runs: `cat runs/*/summary.txt`.
 
-The 14 key plots of each run are also gathered in one folder,
+The 14 key plots of each full run (only the five in the PDF, for a
+PDF-only run) are also gathered in one folder,
 `_highlights/` (in the Analysis folder for the latest run, and in each
 `runs/<date>_<time>/`): the BIB density before/after cuts, the
 track-finding efficiency vs pT, and the z-intercept, pT and corrected-
@@ -64,16 +69,17 @@ that run's own numbers. To make
 it for an earlier run:
 `python3 ~/code/MuonCollider/make_highlights_pdf.py runs/<date>_<time>`.
 
-**Only the PDF: `./run_all --pdf-only`.** Everything in the PDF comes
-from step 4, so for scans of cuts or resolutions `./run_all --pdf-only`
-runs step 4 alone - the cuts and their results, the track-finding
-efficiency, and only the three zoomed N-1 plots - then writes
-`summary.txt` and the PDF, all in `runs/<date>_<time>_pdf/` (the PDF in
-its `_highlights/`). It takes about a quarter of the time of a full run
-(1 min 17 s against about 6 min in a test) and gives the same numbers
-and plots as a full run with the same settings. The `step*` folders,
-`_highlights/` and `latest_run.txt` in the Analysis folder are not
-touched: they keep showing the last full run.
+**The default run: only what the PDF needs.** Everything in the PDF
+comes from step 4, so `./run_all` runs step 4 alone - the cuts and their
+results, the track-finding efficiency, and only the three zoomed N-1
+plots - then writes `summary.txt` and the PDF, like any run. It takes
+about a quarter of the time of a full run (1 min 17 s against about
+6 min in a test) and gives the same numbers and plots as a full run
+with the same settings: good for scans of cuts and resolutions. Its
+run folder, PDF name and place in the Analysis folder are those of any
+run (`code_version.txt` says `Mode: PDF only (step 4)`). `./run_all
+--full` runs all of steps 1-4 (`--pdf-only` asks for the default
+explicitly).
 
 The code folder (`~/code/MuonCollider`) keeps only templates of the
 settings files (`templates/`); the copies in the Analysis folder are the

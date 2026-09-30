@@ -1,12 +1,20 @@
 #!/bin/bash
 # =====================================================================
-# Full BIB analysis, steps 1-4, run from a WORKING FOLDER that holds the
-# three editable settings files. Normally started with the ./run_all
-# launcher that lives in that folder:
+# BIB analysis, run from a WORKING FOLDER that holds the three editable
+# settings files. Normally started with the ./run_all launcher that
+# lives in that folder:
 #
 #     cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
 #     (edit __cuts_config.txt, __smearing_config.txt, __input_files_config.txt)
-#     ./run_all
+#     ./run_all            only what the highlights PDF needs: step 4
+#     ./run_all --full     the whole analysis: steps 1-4
+#
+# Everything in the highlights PDF comes from step 4 - the cuts and their
+# results, the track-finding efficiency and the zoomed N-1 plots - so by
+# default a run does step 4 alone (and only the three zoomed N-1 plots):
+# about a quarter of the time of a full run, with the same numbers and
+# plots - good for scans of cuts and resolutions. (--pdf-only asks for
+# the default explicitly.)
 #
 # What one run does:
 #   1. Checks everything first - settings files (typos, bad values),
@@ -16,16 +24,18 @@
 #      settings files into it at the START, so the archive records
 #      exactly what was used (editing the files during a run has no
 #      effect on that run).
-#   3. Runs steps 1-4, writing every plot and table into that run folder,
-#      and saves everything printed to runs/<date>_<time>/run_log.txt.
-#   4. Only if ALL steps succeed: writes summary.txt (settings, BIB
+#   3. Runs step 4 (with --full: steps 1-4), writing every plot and table
+#      into that run folder, and saves everything printed to
+#      runs/<date>_<time>/run_log.txt.
+#   4. Only if ALL its steps succeed: writes summary.txt (settings, BIB
 #      rejection factor and signal hit efficiency for pT -> infinity per
 #      subsystem, track-finding efficiency for pT -> infinity), gathers
-#      the key plots in
-#      _highlights/ together with a PDF presentation of the main ones
-#      (highlights_<date>_<time>.pdf), and replaces the step* folders in
-#      the working folder with this run's copy, so they always show the
-#      latest SUCCESSFUL run (latest_run.txt says which one).
+#      the key plots in _highlights/ together with a PDF presentation of
+#      the main ones (highlights_<date>_<time>.pdf), and replaces the
+#      step* folders in the working folder with this run's, so they
+#      always show the latest SUCCESSFUL run, full or not (latest_run.txt
+#      says which one; after a PDF-only run there are no step 1-3
+#      folders, and it names the last full run instead).
 #      If anything fails, the run folder is renamed <date>_<time>_FAILED
 #      and the step* folders are left as they were.
 #
@@ -35,18 +45,10 @@
 # is missing, or doesn't contain exactly the plus/minus/ipp files listed,
 # it is (re)built first. Python is python3 (override: PYTHON=...).
 #
-# Splitting a run into pieces (only needed under a time limit):
-#   ./run_all --steps 1,2                   start a run with steps 1-2
+# Splitting a full run into pieces (only needed under a time limit):
+#   ./run_all --full --steps 1,2                start a full run with steps 1-2
 #   ./run_all --run <date>_<time> --steps 3,4   add steps 3-4 to it
 # The run is completed automatically once all four steps are done.
-#
-# Only what the highlights PDF needs (for scans of cuts and resolutions):
-#   ./run_all --pdf-only
-# runs step 4 alone - the cuts and their results, the track-finding
-# efficiency, and only the three zoomed N-1 plots - then writes
-# summary.txt and the PDF, all in runs/<date>_<time>_pdf/. The step
-# folders, _highlights/ and latest_run.txt here are not touched: they
-# keep showing the last full run.
 # =====================================================================
 set -u
 set -o pipefail
@@ -91,15 +93,17 @@ stop() { printf '\nERROR: %s\n\n' "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------- arguments
 WORKDIR=""
-STEPS="1 2 3 4"
-STEPS_GIVEN=0
+STEPS=""
 RUN_ID=""
-PDF_ONLY=0
+MODE=""            # pdf (the default: step 4 only) or full (steps 1-4)
 while [ $# -gt 0 ]; do
     case "$1" in
         --steps) [ $# -ge 2 ] || stop "--steps needs a value, e.g. --steps 1,2"
-                 STEPS="$(printf '%s' "$2" | tr ',' ' ')"; STEPS_GIVEN=1; shift 2 ;;
-        --pdf-only) PDF_ONLY=1; shift ;;
+                 STEPS="$(printf '%s' "$2" | tr ',' ' ')"; shift 2 ;;
+        --full)     [ "$MODE" != pdf ] || stop "--full and --pdf-only can't be combined"
+                    MODE=full; shift ;;
+        --pdf-only) [ "$MODE" != full ] || stop "--full and --pdf-only can't be combined"
+                    MODE=pdf; shift ;;
         --run)   [ $# -ge 2 ] || stop "--run needs a run name (a folder name under runs/)"
                  RUN_ID="$2"; shift 2 ;;
         -h|--help) sed -n '2,/^# =====/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -108,17 +112,27 @@ while [ $# -gt 0 ]; do
             WORKDIR="$1"; shift ;;
     esac
 done
+if [ -n "$RUN_ID" ]; then              # adding steps to a full run (checked below)
+    [ "$MODE" != pdf ] || stop "--pdf-only makes a new run; it can't be combined with --run"
+    MODE=full
+elif [ -n "$STEPS" ]; then
+    [ "$MODE" = full ] || stop "--steps splits a full run into pieces: start it with
+       ./run_all --full --steps 1,2   and add the rest with   ./run_all --run <run> --steps 3,4"
+fi
+[ -n "$MODE" ] || MODE=pdf
+if [ "$MODE" = full ]; then
+    [ -n "$STEPS" ] || STEPS="1 2 3 4"
+    REQUIRED="1 2 3 4"               # the steps a run needs to be complete
+    RUN_STEP_DIRS="$STEP_DIRS"       # ... and the folders it makes
+else
+    STEPS="4"
+    REQUIRED="4"
+    RUN_STEP_DIRS="step4_cuts step4_track_efficiency step4_n1_cuts"
+    HIGHLIGHTS="$PDF_PLOTS"
+fi
 for s in $STEPS; do
     case "$s" in 1|2|3|4) ;; *) stop "--steps: '$s' is not a step number (1 to 4)" ;; esac
 done
-REQUIRED="1 2 3 4"            # the steps a run needs to be complete
-if [ "$PDF_ONLY" = 1 ]; then
-    [ -z "$RUN_ID" ] || stop "--pdf-only makes a new run; it can't be combined with --run"
-    [ "$STEPS_GIVEN" = 0 ] || stop "--pdf-only runs step 4 only; it can't be combined with --steps"
-    STEPS="4"
-    REQUIRED="4"
-    HIGHLIGHTS="$PDF_PLOTS"
-fi
 [ -n "$WORKDIR" ] || WORKDIR="$PWD"
 [ -d "$WORKDIR" ] || stop "working folder not found: $WORKDIR"
 WORKDIR="$(cd "$WORKDIR" && pwd -P)"
@@ -144,10 +158,11 @@ if [ -z "$RUN_ID" ]; then
 else
     case "$RUN_ID" in
         *_FAILED|*_INTERRUPTED) stop "run $RUN_ID did not complete - start a new run instead" ;;
-        *_pdf) stop "run $RUN_ID was a --pdf-only run - start a new run instead" ;;
     esac
     [ -d "$WORKDIR/runs/$RUN_ID" ] || stop "no run named $RUN_ID in $WORKDIR/runs/"
     [ ! -f "$WORKDIR/runs/$RUN_ID/summary.txt" ] || stop "run $RUN_ID is already complete"
+    ! grep -q '^Mode: *PDF only' "$WORKDIR/runs/$RUN_ID/code_version.txt" 2>/dev/null \
+        || stop "run $RUN_ID was a PDF-only run (step 4 only) - start a new run instead"
     CFG_DIR="$WORKDIR/runs/$RUN_ID"
 fi
 
@@ -168,11 +183,9 @@ done
 
 # ---------------------------------------------------------------- run folder
 if [ -z "$RUN_ID" ]; then
-    suffix=""
-    [ "$PDF_ONLY" = 1 ] && suffix="_pdf"
-    RUN_ID="$(date +%Y-%m-%d_%H%M%S)$suffix"
+    RUN_ID="$(date +%Y-%m-%d_%H%M%S)"
     while [ -e "$WORKDIR/runs/$RUN_ID" ] || [ -e "$WORKDIR/runs/${RUN_ID}_FAILED" ]; do
-        sleep 1; RUN_ID="$(date +%Y-%m-%d_%H%M%S)$suffix"
+        sleep 1; RUN_ID="$(date +%Y-%m-%d_%H%M%S)"
     done
     RUN_DIR="$WORKDIR/runs/$RUN_ID"
     mkdir -p "$RUN_DIR" || stop "cannot create $RUN_DIR"
@@ -180,6 +193,11 @@ if [ -z "$RUN_ID" ]; then
         || stop "cannot copy the settings files into $RUN_DIR"
     {
         say "Run:            $RUN_ID"
+        if [ "$MODE" = pdf ]; then
+            say "Mode:           PDF only (step 4)"
+        else
+            say "Mode:           full (steps 1-4)"
+        fi
         say "Started:        $(date)"
         say "Working folder: $WORKDIR"
         say "Code:           $CODE_DIR"
@@ -246,7 +264,7 @@ step4() {
         apply_cuts.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_cuts" &&
     run_py "Step 4: track-finding efficiency vs pT" \
         track_efficiency.py "$SIGNAL" --cuts "$CUTS" --out "$RUN_DIR/step4_track_efficiency" &&
-    if [ "$PDF_ONLY" = 1 ]; then
+    if [ "$MODE" = pdf ]; then
         run_py "Step 4: N-1 cut plots (only the zoomed ones, for the PDF)" \
             n1_cut_plots.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_n1_cuts" --zoom-only
     else
@@ -257,8 +275,8 @@ step4() {
 
 main() {
     say "======================================================================"
-    if [ "$PDF_ONLY" = 1 ]; then
-        say " BIB analysis run $RUN_ID   (--pdf-only: step 4, then the PDF)"
+    if [ "$MODE" = pdf ]; then
+        say " BIB analysis run $RUN_ID   (only what the PDF needs: step 4 - ./run_all --full for steps 1-4)"
     else
         say " BIB analysis run $RUN_ID   (steps: $STEPS)"
     fi
@@ -371,20 +389,33 @@ PDF="_highlights/highlights_$RUN_ID.pdf"
 pdf_failed=0
 pdf_msg="$("$PYTHON" "$CODE_DIR/make_highlights_pdf.py" "$RUN_DIR" 2>&1)" || pdf_failed=1
 
+# the latest complete full run, named in latest_run.txt after a PDF-only run
+LAST_FULL=""
+for d in "$WORKDIR"/runs/*/; do
+    d="${d%/}"
+    if [ -f "$d/summary.txt" ] && [ -d "$d/step1_basic_plots" ]; then LAST_FULL="${d##*/}"; fi
+done
+
 promote() {
     local d
-    for d in $STEP_DIRS _highlights; do
+    for d in $RUN_STEP_DIRS _highlights; do
         [ -d "$RUN_DIR/$d" ] || { say "missing output folder: runs/$RUN_ID/$d"; return 1; }
     done
     say "The step folders are being updated from run $RUN_ID - if you can read this, the update did not finish; the complete results are in runs/$RUN_ID/" > "$WORKDIR/latest_run.txt"
+    # all the old step folders go, so the working folder shows exactly this
+    # run (a PDF-only run makes only the step 4 ones)
     for d in $STEP_DIRS _highlights; do
         rm -rf -- "${WORKDIR:?}/${d:?}" 2>/dev/null
         [ ! -e "$WORKDIR/$d" ] || { say "could not remove the old $d folder"; return 1; }
-        cp -R "$RUN_DIR/$d" "$WORKDIR/$d" || return 1
+        [ ! -d "$RUN_DIR/$d" ] || cp -R "$RUN_DIR/$d" "$WORKDIR/$d" || return 1
     done
     {
         say "The step folders in this folder show run: $RUN_ID"
         say "(so does _highlights/; the complete archive of that run, with its settings and log, is runs/$RUN_ID/)"
+        if [ "$MODE" = pdf ]; then
+            say "It was a PDF-only run (step 4), so there are no step 1-3 folders here."
+            [ -z "$LAST_FULL" ] || say "The last full run (steps 1-4) is runs/$LAST_FULL/"
+        fi
         say ""
         cat "$RUN_DIR/summary.txt"
     } > "$WORKDIR/latest_run.txt"
@@ -394,13 +425,15 @@ elapsed=$(( $(date +%s) - T_START ))
 {
     say ""
     say "======================================================================"
-    if [ "$PDF_ONLY" = 1 ]; then
-        say " RUN COMPLETE (--pdf-only): runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
-        [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: runs/$RUN_ID/$PDF"
-        say " The step folders, _highlights/ and latest_run.txt here were not changed."
-    elif promote; then
-        say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
-        say " The step folders here now show this run; key plots are in _highlights/."
+    if promote; then
+        if [ "$MODE" = pdf ]; then
+            say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s, PDF only: step 4)"
+            say " The step folders here now show this run (step 4 only); key plots are in _highlights/."
+            [ -z "$LAST_FULL" ] || say " The last full run (steps 1-4) is runs/$LAST_FULL/"
+        else
+            say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
+            say " The step folders here now show this run; key plots are in _highlights/."
+        fi
         [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: $PDF"
     else
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
