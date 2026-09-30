@@ -51,7 +51,7 @@ zoomed. The list is `HIGHLIGHTS` at the top of `run_all_steps.sh`.
 `_highlights/` also holds `highlights_<date>_<time>.pdf`, a landscape
 (16:9) presentation that `make_highlights_pdf.py` makes at the end of
 every successful run: a title page (input files, settings, and the
-results: BIB rejection factor and signal efficiency for pT → ∞ per
+results: BIB rejection factor and signal hit efficiency for pT → ∞ per
 subsystem, track-finding efficiency for pT → ∞), a page with each
 subsystem's cuts next to its results (only when the cuts differ between
 subsystems), a page with the same results for each cut alone and on top
@@ -670,7 +670,7 @@ overlay plots and on the step-4 N-1 plots are drawn panel by panel, each
 at its own subsystem's value, which is also given in the panel title.
 When the cuts differ between subsystems, the results summary (end of
 `run_log.txt`, `summary.txt`, `latest_run.txt`) lists each subsystem's
-cuts next to its BIB rejection factor and signal efficiency, and the
+cuts next to its BIB rejection factor and signal hit efficiency, and the
 PDF in `_highlights/` has a page with the same table.
 
 **How the results are quoted.**
@@ -680,7 +680,14 @@ PDF in `_highlights/` has a page with the same table.
   for the vertex detector (`VXD`: barrel + endcap), for all the rest
   (`IT + OT`) and for everything (`ALL`) - the totals come after the
   subsystems in every table, and the efficiencies too.
-- **Signal efficiencies for pT → ∞**, not averaged over the sample: the
+- **Signal hit efficiency** = the fraction of the signal muon's own hits
+  in a subsystem (or in the VXD, IT + OT or ALL totals) that pass the
+  cuts of their subsystem. It is per hit, not per track: the only
+  per-track number is the track-finding efficiency. Hits are sorted by
+  the generated pT of their muon (`part_px`, `part_py`: Monte Carlo
+  truth, the same for all the hits of one muon); the cuts themselves use
+  only the measured, smeared hit quantities.
+- **Efficiencies for pT → ∞**, not averaged over the sample: the
   muon-gun sample is flat in 1/pT from 1.5 GeV/c up, so most of its
   muons lie below the pT cut, and an average over it mostly measures
   that. The limit pT → ∞ is obtained by fitting eff(pT) = eff_inf +
@@ -730,7 +737,7 @@ cuts, track efficiency and N-1 plots); with `false` (or no `[signal]`
 section) every hit of the signal events is used. About 8% of those hits
 are not the muon's: they come from its secondaries - delta rays and the
 like - which almost never pass the cuts, so counting them only lowers
-every signal efficiency. `hit_mcp` turned out to be the PDG code of the
+every signal hit efficiency. `hit_mcp` turned out to be the PDG code of the
 particle the simulation credits each hit to; the simulation credits the
 hits of low-energy secondaries it does not follow individually to their
 parent, the muon, so a hit counts as the muon's own only if `hit_mcp`

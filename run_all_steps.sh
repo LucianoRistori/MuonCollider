@@ -19,7 +19,7 @@
 #   3. Runs steps 1-4, writing every plot and table into that run folder,
 #      and saves everything printed to runs/<date>_<time>/run_log.txt.
 #   4. Only if ALL steps succeed: writes summary.txt (settings, BIB
-#      rejection factor and signal efficiency for pT -> infinity per
+#      rejection factor and signal hit efficiency for pT -> infinity per
 #      subsystem, track-finding efficiency for pT -> infinity), gathers
 #      the key plots in
 #      _highlights/ together with a PDF presentation of the main ones
@@ -213,7 +213,7 @@ step3() {
         signal_overlay_angle_plots.py "$COMBINED" "$SIGNAL" "$RUN_DIR/step3_signal_overlay" "$CUTS"
 }
 step4() {
-    run_py "Step 4: cuts - BIB rejection and signal efficiency" \
+    run_py "Step 4: cuts - BIB rejection and signal hit efficiency" \
         apply_cuts.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_cuts" &&
     run_py "Step 4: track-finding efficiency vs pT" \
         track_efficiency.py "$SIGNAL" --cuts "$CUTS" --out "$RUN_DIR/step4_track_efficiency" &&

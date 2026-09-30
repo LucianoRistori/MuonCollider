@@ -1,6 +1,6 @@
 """
 Build a landscape (16:9) PDF presentation of a run's key plots: a title
-page (input files, settings, BIB rejection factor and signal efficiency
+page (input files, settings, BIB rejection factor and signal hit efficiency
 for pT -> infinity, track-finding efficiency for pT -> infinity), a page
 with the cuts and results per subsystem when the cuts differ between
 subsystems, then one plot per page with a short caption underneath.
@@ -80,7 +80,7 @@ def load_run(run_dir):
         sys.exit(f"Run {run_dir.name} was made before the results were quoted as a rejection "
                  f"factor and as efficiencies for pT -> infinity (it has no {by_region.name}); "
                  f"run ./run_all again to get a PDF.")
-    # (region, BIB rejection factor as text, signal efficiency for pT -> inf, its uncertainty)
+    # (region, BIB rejection factor as text, signal hit efficiency for pT -> inf, its uncertainty)
     table = [(r["system_name"],
               format_rejection_factor(int(r["bib_n_hits"]), int(r["bib_n_hits_after_cuts"])),
               100 * float(r["signal_efficiency_pt_inf"]),
@@ -388,11 +388,11 @@ def main(argv):
                     y -= 0.045
             y -= 0.04
         ax = fig.add_axes([0.6, 0.22, 0.34, 0.45])
-        ax.set_title("BIB rejection and signal efficiency\n(all cuts combined)", fontsize=12,
+        ax.set_title("BIB rejection and signal hit efficiency\n(all cuts combined)", fontsize=12,
                      weight="bold", color=INK, loc="left")
-        tab = draw_table(ax, ["region", "BIB rejection\nfactor", "signal efficiency\n($p_T$ → ∞)"],
+        tab = draw_table(ax, ["region", "BIB rejection\nfactor", "signal hit efficiency\n($p_T$ → ∞)"],
                          [[name, rej, f"{eff:.1f} ± {unc:.1f}%"] for name, rej, eff, unc in run["table"]],
-                         [0.32, 0.3, 0.38], 11, 1.55)
+                         [0.27, 0.27, 0.46], 11, 1.55)
         fig.canvas.draw()
         box = tab.get_window_extent(fig.canvas.get_renderer()).transformed(fig.transFigure.inverted())
         trk = run["track"]
@@ -424,12 +424,12 @@ def main(argv):
                 cells.append([name] + cut_cells + [rej, f"{eff:.1f} ± {unc:.1f}%"])
             ax = fig.add_axes([0.1, 0.27, 0.8, 0.56])
             draw_table(ax, ["region", "time\n(ns)", "$z_0$\n(mm)", "$p_T$\n(GeV/c)",
-                            "BIB rejection\nfactor", "signal efficiency\n($p_T$ → ∞)"],
+                            "BIB rejection\nfactor", "signal hit efficiency\n($p_T$ → ∞)"],
                        cells, [0.2, 0.12, 0.12, 0.14, 0.19, 0.23], 14, 2.1)
             caption = ("A hit is kept only if it passes all three cuts of its own subsystem: "
                        "|t - t$_{TOF}$| ≤ time, |$z_0$| ≤ $z_0$ and $p_T$ ≥ $p_T$ (off: that cut "
                        "is not applied there). BIB rejection factor: BIB hits before / after all "
-                       "cuts, = 1/(1 − R) with R the fraction removed. Signal efficiency: fraction "
+                       "cuts, = 1/(1 − R) with R the fraction removed. Signal hit efficiency: fraction "
                        + ("of the muon's own hits kept (not its secondaries')"
                           if cuts["signal"]["muon_hits_only"] else "of a signal event's hits kept")
                        + ", in the limit $p_T$ → ∞ (fit of ε$_∞$ + c/$p_T^2$ to muons well above "
@@ -456,7 +456,7 @@ def main(argv):
             draw_table(ax, ["region", "time\nalone", "time\non top", "$z_0$\nalone",
                             "$z_0$\non top", "$p_T$\nalone", "$p_T$\non top", "all three\ncombined"],
                        cells, [0.13] + [0.12] * 6 + [0.15], 12.5, 2.1)
-            caption = ("Each cell: BIB rejection factor / signal efficiency for $p_T$ → ∞. Alone: the "
+            caption = ("Each cell: BIB rejection factor / signal hit efficiency for $p_T$ → ∞. Alone: the "
                        "cut applied by itself. On top: the cut applied to the hits that pass the other "
                        "two, as in the N-1 plots – dropping that cut divides the combined rejection "
                        "factor (last column) by this factor, and the combined efficiency by this "

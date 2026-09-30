@@ -24,7 +24,7 @@ Two kinds of comparison are produced:
      to summary_by_region.csv. Two more tables break this down by cut:
      each cut alone, and each cut on top of the other two (as in the N-1
      plots: BIB hits passing the other two / passing all three, and the
-     signal efficiency among the hits passing the other two - dropping
+     signal hit efficiency among the hits passing the other two - dropping
      that cut divides the combined numbers by these).
   2. A before/after hit-density comparison (mean density, hits/mm^2,
      using the true detector geometry area when available - same
@@ -280,9 +280,9 @@ def per_cut_breakdown(cuts, bib_sys, bib_mask, bib_per_cut,
                       sig_sys, sig_mask, sig_per_cut, sig_pt, sig_event):
     """
     For each region (system id, and the TOTALS) and each cut: what the cut does
-    on its own ("alone": BIB hits before / after it, signal efficiency of
+    on its own ("alone": BIB hits before / after it, signal hit efficiency of
     it alone) and on top of the other two ("n1": BIB hits passing the other
-    two / passing all three, signal efficiency among the hits passing the
+    two / passing all three, signal hit efficiency among the hits passing the
     other two) - see main(). Returns {region: {cut: {"alone": (rejection
     factor as text, rejection factor, eff, unc), "n1": (...)} or None}}.
     """
@@ -491,7 +491,7 @@ def main():
 
     # Each cut alone, and each cut on top of the other two (as in the N-1
     # plots), per subsystem and overall: BIB rejection factor from the hit
-    # counts, signal efficiency for pT -> inf from the same fit as above.
+    # counts, signal hit efficiency for pT -> inf from the same fit as above.
     # per_cut_results[region][cut] = {"alone": (rejection text, rejection,
     # eff, unc), "n1": (...)}, or None where that cut is off.
     per_cut_results = per_cut_breakdown(cuts, bib_hits["system"], bib_mask, bib_per_cut,
@@ -536,7 +536,7 @@ def main():
         w.writeheader()
         w.writerows(csv_rows)
     header = (["region"] + (["time (ns)", "z0 (mm)", "pT (GeV/c)"] if per_system else [])
-              + ["BIB rejection factor", "signal efficiency, pT -> inf"])
+              + ["BIB rejection factor", "signal hit efficiency, pT -> inf"])
     print()
     print_table("Summary: BIB rejection factor and signal hit efficiency for pT -> inf "
                 "(all cuts combined)", header, summary_rows)
@@ -548,11 +548,12 @@ def main():
           "R = fraction removed.")
     whose = ("the muon's own hits" if "_n_hits_all" in sig_hits
              else "all hits (secondaries included)")
-    print(f"  Efficiency for pT -> inf: fit eff + c/pT^2 to {whose}, muons with {window}.")
+    print(f"  Hit efficiency for pT -> inf: fraction of {whose} kept (per hit, not per track), "
+          f"from a fit of eff + c/pT^2 vs. the generated pT to muons with {window}.")
 
     header = ["region"] + sum(([f"{CUT_SHORT_TITLE[n]}: rej.", "eff."] for n in CUT_ORDER), [])
-    for key, title in (("alone", "Each cut alone - BIB rejection factor and signal efficiency "
-                                 "for pT -> inf:"),
+    for key, title in (("alone", "Each cut alone - BIB rejection factor and signal hit "
+                                 "efficiency for pT -> inf:"),
                        ("n1", "Each cut on top of the other two, as in the N-1 plots:")):
         rows = []
         for r_b in bib_cutflow:
