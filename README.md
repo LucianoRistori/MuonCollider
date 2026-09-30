@@ -959,7 +959,9 @@ ROOT is not installed in the analysis sandbox; the analysis is done with
 Python (uproot/awkward/numpy/matplotlib), which reads the same ROOT
 ntuples and gives identical results. Code lives in
 `~/code/MuonCollider/` on the user's Mac:
-- `bib_common.py` — sets `axes.xmargin = 0` for all the plots (the
+- `bib_common.py` — `add_grid` (gridlines at all the ticks of a plot,
+  major and minor, behind the data; every script calls it before saving
+  a figure) and sets `axes.xmargin = 0` for all the plots (the
   horizontal axis spans exactly the plotted range - a histogram's bins,
   the data - with no margin; the vertical axis keeps matplotlib's 5%;
   bar charts show half a slot either side of their categories);

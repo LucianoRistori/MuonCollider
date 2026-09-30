@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, add_incidence_angles, add_time_of_flight,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
@@ -97,6 +98,7 @@ def main():
         ax.set_ylabel("hits")
     plt.suptitle("Raw hit time (measured, uncorrected) - grows with distance from IP")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "hit_time_raw_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -112,6 +114,7 @@ def main():
     plt.suptitle("Time-of-flight-corrected hit time - a genuine on-time IP muon "
                  "peaks at 0 regardless of subsystem", fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "time_corrected_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -128,6 +131,7 @@ def main():
     plt.suptitle(f"Time-of-flight-corrected hit time, zoomed to +/-{TC_ZOOM_RANGE_NS:.0f}ns",
                  fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom.png", dpi=130)
     plt.close(fig)
 

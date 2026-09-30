@@ -42,6 +42,33 @@ import cuts_table
 # matplotlib's usual 5% margin.
 matplotlib.rcParams["axes.xmargin"] = 0
 
+# Gridlines (see add_grid): at the labelled ticks, and lighter at the
+# minor ones (e.g. 2..9 x 10^n on a log axis).
+GRID_MAJOR = dict(color="#b4b4b4", linewidth=0.6)
+GRID_MINOR = dict(color="#e0e0e0", linewidth=0.5)
+
+
+def add_grid(fig=None, x=True):
+    """
+    Gridlines at all the ticks of every plot in `fig` (default: the
+    current figure), horizontal and vertical, drawn behind the data -
+    GRID_MAJOR at the labelled ticks, GRID_MINOR at the minor ones.
+    x=False leaves out the vertical lines, for a bar chart whose
+    horizontal axis is a list of categories. Colorbars get no grid, and
+    neither does the second y axis of a two-scale plot (twinx hides its
+    copy of the x axis): its ticks fall on those of the first.
+    """
+    import matplotlib.pyplot as plt
+    fig = fig or plt.gcf()
+    which_axes = "both" if x else "y"
+    for ax in fig.axes:
+        if (not ax.axison or ax.get_label() == "<colorbar>" or hasattr(ax, "_colorbar")
+                or not ax.xaxis.get_visible()):
+            continue
+        ax.set_axisbelow(True)
+        ax.grid(True, which="major", axis=which_axes, **GRID_MAJOR)
+        ax.grid(True, which="minor", axis=which_axes, **GRID_MINOR)
+
 SYSTEM_NAMES = {
     1: "VXD barrel",
     2: "VXD endcap",

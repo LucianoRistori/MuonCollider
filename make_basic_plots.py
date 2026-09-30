@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, region_table, add_peak_density, subsystem_density_table,
     write_logfile, prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
@@ -124,6 +125,7 @@ def main():
             ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
                      f"{b.get_height():.3g}", ha="center", va="bottom", fontsize=7)
     plt.tight_layout()
+    add_grid(x=False)
     plt.savefig(outdir / "density_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -147,6 +149,7 @@ def main():
         ax.legend(fontsize=8)
     plt.suptitle("Hit density per layer, mean vs. peak - barrel subsystems")
     plt.tight_layout()
+    add_grid(x=False)
     plt.savefig(outdir / "density_per_layer_barrels.png", dpi=130)
     plt.close(fig)
 
@@ -170,6 +173,7 @@ def main():
         ax.legend(fontsize=8)
     plt.suptitle("Hit density per disk, mean vs. peak - endcap subsystems")
     plt.tight_layout()
+    add_grid(x=False)
     plt.savefig(outdir / "density_per_disk_endcaps.png", dpi=130)
     plt.close(fig)
 
@@ -181,6 +185,7 @@ def main():
     ax.set_yscale("log")
     ax.set_title("Hit time distribution (all subsystems, raw counts)")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "hit_time_distribution.png", dpi=130)
     plt.close(fig)
 
@@ -204,6 +209,7 @@ def main():
     ax.set_title("Hit map (r vs z), colored by subsystem (subsampled, spatial reference only)")
     ax.legend(markerscale=15, loc="upper right")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "rz_map_by_subsystem.png", dpi=140)
     plt.close(fig)
 

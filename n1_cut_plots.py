@@ -44,6 +44,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
@@ -174,6 +175,7 @@ def main():
                  "BIB vs. signal, hits/collision/bin" + SCALE_NOTE
                  + "; dashed line = this cut's threshold", fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_n1.png", dpi=130)
     plt.close(fig)
 
@@ -197,6 +199,7 @@ def main():
                  "(time + momentum cuts applied): BIB vs. signal, hits/collision/bin" + SCALE_NOTE,
                  fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_zoom_n1.png", dpi=130)
     plt.close(fig)
 
@@ -222,6 +225,7 @@ def main():
         "dashed lines = this cut's threshold", fontsize=10,
     )
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "inv_radius_per_subsystem_n1.png", dpi=130)
     plt.close(fig)
 
@@ -250,6 +254,7 @@ def main():
         fontsize=10,
     )
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "inv_radius_per_subsystem_zoom_n1.png", dpi=130)
     plt.close(fig)
 
@@ -271,6 +276,7 @@ def main():
                  "applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE + "; "
                  "dashed line = this cut's threshold", fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "time_corrected_per_subsystem_n1.png", dpi=130)
     plt.close(fig)
 
@@ -294,6 +300,7 @@ def main():
                  "N-1 (z-intercept + momentum cuts applied): BIB vs. signal, "
                  "hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom_n1.png", dpi=130)
     plt.close(fig)
 

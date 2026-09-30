@@ -44,6 +44,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
@@ -150,6 +151,7 @@ def main():
                  "signal hits overlaid (black)")
     ax.legend(markerscale=15, loc="upper right", fontsize=7)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "rz_map_with_signal.png", dpi=140)
     plt.close(fig)
 

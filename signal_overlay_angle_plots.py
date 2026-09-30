@@ -49,6 +49,7 @@ import numpy as np
 from matplotlib.ticker import LogFormatterSciNotation
 
 from bib_common import (
+    add_grid,
     load_hits, add_incidence_angles, add_time_of_flight,
     prepare_output_dir, _display_path, SYSTEM_NAMES, load_cuts,
     load_smearing_config, smearing_rng, describe_smearing,
@@ -267,6 +268,7 @@ def main():
     plt.suptitle("Z-axis intercept: BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE,
                  fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_with_signal.png", dpi=130)
     plt.close(fig)
 
@@ -287,6 +289,7 @@ def main():
     plt.suptitle(f"Z-axis intercept, zoomed to +/-{Z0_ZOOM_RANGE_MM:.0f}mm: "
                  "BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_zoom_with_signal.png", dpi=130)
     plt.close(fig)
 
@@ -310,6 +313,7 @@ def main():
         "BIB-only plot", fontsize=10,
     )
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "inv_radius_per_subsystem_with_signal.png", dpi=130)
     plt.close(fig)
 
@@ -335,6 +339,7 @@ def main():
         "BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE, fontsize=10,
     )
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "inv_radius_per_subsystem_zoom_with_signal.png", dpi=130)
     plt.close(fig)
 
@@ -353,6 +358,7 @@ def main():
     plt.suptitle("Time-of-flight-corrected hit time: BIB vs. signal, both in "
                  "hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "time_corrected_per_subsystem_with_signal.png", dpi=130)
     plt.close(fig)
 
@@ -373,6 +379,7 @@ def main():
     plt.suptitle(f"Time-of-flight-corrected hit time, zoomed to +/-{TC_ZOOM_RANGE_NS:.0f}ns: "
                  "BIB vs. signal, both in hits/collision/bin" + SCALE_NOTE, fontsize=10)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom_with_signal.png", dpi=130)
     plt.close(fig)
 

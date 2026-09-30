@@ -53,6 +53,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, add_incidence_angles, add_time_of_flight, load_cuts, apply_cuts,
     mask_hits, region_table, add_peak_density, subsystem_density_table,
     prepare_output_dir, _display_path, SYSTEM_NAMES,
@@ -471,6 +472,7 @@ def main():
                      f"{b.get_height():.3g}", ha="center", va="bottom", fontsize=7)
 
     plt.tight_layout()
+    add_grid(x=False)
     plt.savefig(outdir / "density_before_after_cuts.png", dpi=140)
     plt.close(fig)
 

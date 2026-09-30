@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, add_incidence_angles, prepare_output_dir, _display_path,
     SYSTEM_NAMES,
     load_smearing_config, smearing_rng, describe_smearing,
@@ -101,6 +102,7 @@ def main():
         ax.set_ylabel("hits")
     plt.suptitle("Longitudinal incidence angle (meridian-plane, relative to sensor normal)")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "theta_long_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -130,6 +132,7 @@ def main():
     plt.suptitle("Z where the hit's local (meridian-plane) track direction "
                  "crosses the Z axis")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -153,6 +156,7 @@ def main():
     plt.suptitle(f"Z-axis intercept, zoomed to +/-{Z0_ZOOM_RANGE_MM:.0f}mm "
                  "(same quantity as above, narrower range/finer bins)")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "z_axis_intercept_per_subsystem_zoom.png", dpi=130)
     plt.close(fig)
 
@@ -167,6 +171,7 @@ def main():
         ax.set_ylabel("hits")
     plt.suptitle("Transverse incidence angle (X-Y plane, relative to sensor normal)")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "theta_trans_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -201,6 +206,7 @@ def main():
         fontsize=10,
     )
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "inv_radius_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -244,6 +250,7 @@ def main():
         fontsize=10,
     )
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "inv_radius_per_subsystem_zoom.png", dpi=130)
     plt.close(fig)
 
@@ -258,6 +265,7 @@ def main():
         ax.set_ylabel("hits")
     plt.suptitle("Full 3D incidence angle vs. sensor normal (reference / cross-check)")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "theta_full_per_subsystem.png", dpi=130)
     plt.close(fig)
 
@@ -276,6 +284,7 @@ def main():
         plt.colorbar(h[3], ax=ax, label="hits")
     plt.suptitle("Longitudinal vs. transverse incidence angle")
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "theta_long_vs_trans_2d.png", dpi=130)
     plt.close(fig)
 

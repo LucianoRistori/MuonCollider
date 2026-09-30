@@ -51,6 +51,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from bib_common import (
+    add_grid,
     load_hits, add_incidence_angles, add_time_of_flight,
     load_cuts, apply_cuts, load_track_params, VERTEX_SYSTEM_IDS,
     prepare_output_dir, _display_path,
@@ -354,9 +355,8 @@ def main():
     ax.set_ylim(0, 108)
     ax.set_title(f"Track-finding efficiency vs. pT ({n_bins} bins evenly spaced in 1/pT)\n"
                  f"(found = ≥{min_hits_found} surviving hits after cuts, per track{vertex_note})")
-    ax.grid(True, which="major", alpha=0.3)
-    ax.grid(True, which="minor", alpha=0.12)
     plt.tight_layout()
+    add_grid()
     plt.savefig(outdir / "track_efficiency_vs_pt.png", dpi=140)
     plt.close(fig)
 
