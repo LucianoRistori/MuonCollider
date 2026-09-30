@@ -1,3 +1,13 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# docs/src: the data and LaTeX by-products of rebuilding a note (see its README.txt)
+docs/src/*/fitdata.npz
+docs/src/*/*.aux
+docs/src/*/*.log
+docs/src/*/*.fls
+docs/src/*/*.fdb_latexmk
+docs/src/*/*.out
+docs/src/*/*.pdf
+!docs/src/*/fig_*.pdf

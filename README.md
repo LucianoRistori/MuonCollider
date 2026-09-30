@@ -93,6 +93,19 @@ Analysis folder (or set `SIM_DIR=/path`), and calls `run_all_steps.sh`
 (see `./run_all --help`). Each run's `code_version.txt` also records the
 size and date of every input file used.
 
+## Documentation
+- This README: the n-tuple format, the analysis steps and their plots,
+  and how the results are defined and quoted.
+- `docs/efficiency_pt_infinity.pdf`: how the efficiencies for pT → ∞ are
+  obtained - the fit of eff_inf + c/pT² to the muons above 10 GeV/c, why
+  that form and that range, with the numbers and plots of run
+  2026-09-30_145059_pdf. Its source, and how to rebuild it (e.g. for other
+  cuts), is in `docs/src/efficiency_pt_infinity/` (see `README.txt`
+  there).
+- Each run's highlights PDF (the main plots and numbers of that run), in
+  `runs/<run>/_highlights/`; the latest run's is also in the Analysis
+  folder, as `_highlights_<date>_<time>.pdf`.
+
 ## Source files
 `ntu_bib_plus_1evt.root` and `ntu_bib_minus_1evt.root`, tree `HTAtree` —
 1 entry each, one seed/primary particle (`part_pdg = -14`, muon
@@ -732,7 +745,8 @@ PDF in `_highlights/` has a page with the same table.
   term. Quoted for
   the fraction of a signal muon's hits kept, per subsystem
   (`apply_cuts.py`), and for the track-finding efficiency
-  (`track_efficiency.py`).
+  (`track_efficiency.py`). The method in detail, with plots:
+  `docs/efficiency_pt_infinity.pdf`.
 - **Each cut separately**, per subsystem, two ways (two more tables after
   the summary, the same columns in `summary_by_region.csv`, and a page
   of the PDF):
