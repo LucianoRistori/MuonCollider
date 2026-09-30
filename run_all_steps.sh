@@ -20,7 +20,8 @@
 #   1. Checks everything first - settings files (typos, bad values),
 #      input files, Python packages. If anything is wrong it stops
 #      before running anything.
-#   2. Creates runs/<date>_<time>/ in the working folder and copies the
+#   2. Creates runs/<date>_<time>/ (a PDF-only run: runs/<date>_<time>_pdf/)
+#      in the working folder and copies the
 #      settings files into it at the START, so the archive records
 #      exactly what was used (editing the files during a run has no
 #      effect on that run).
@@ -158,6 +159,7 @@ if [ -z "$RUN_ID" ]; then
 else
     case "$RUN_ID" in
         *_FAILED|*_INTERRUPTED) stop "run $RUN_ID did not complete - start a new run instead" ;;
+        *_pdf) stop "run $RUN_ID was a PDF-only run (step 4 only) - start a new run instead" ;;
     esac
     [ -d "$WORKDIR/runs/$RUN_ID" ] || stop "no run named $RUN_ID in $WORKDIR/runs/"
     [ ! -f "$WORKDIR/runs/$RUN_ID/summary.txt" ] || stop "run $RUN_ID is already complete"
@@ -183,9 +185,11 @@ done
 
 # ---------------------------------------------------------------- run folder
 if [ -z "$RUN_ID" ]; then
-    RUN_ID="$(date +%Y-%m-%d_%H%M%S)"
+    suffix=""                  # PDF-only runs: <date>_<time>_pdf, to tell them apart
+    [ "$MODE" = pdf ] && suffix="_pdf"
+    RUN_ID="$(date +%Y-%m-%d_%H%M%S)$suffix"
     while [ -e "$WORKDIR/runs/$RUN_ID" ] || [ -e "$WORKDIR/runs/${RUN_ID}_FAILED" ]; do
-        sleep 1; RUN_ID="$(date +%Y-%m-%d_%H%M%S)"
+        sleep 1; RUN_ID="$(date +%Y-%m-%d_%H%M%S)$suffix"
     done
     RUN_DIR="$WORKDIR/runs/$RUN_ID"
     mkdir -p "$RUN_DIR" || stop "cannot create $RUN_DIR"
@@ -385,7 +389,7 @@ for f in $HIGHLIGHTS; do
         missing_hl="$missing_hl $f"
     fi
 done
-PDF="_highlights/highlights_$RUN_ID.pdf"
+PDF="_highlights/highlights_${RUN_ID%_pdf}.pdf"     # (named like any run's)
 pdf_failed=0
 pdf_msg="$("$PYTHON" "$CODE_DIR/make_highlights_pdf.py" "$RUN_DIR" 2>&1)" || pdf_failed=1
 

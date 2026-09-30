@@ -76,10 +76,11 @@ plots - then writes `summary.txt` and the PDF, like any run. It takes
 about a quarter of the time of a full run (1 min 17 s against about
 6 min in a test) and gives the same numbers and plots as a full run
 with the same settings: good for scans of cuts and resolutions. Its
-run folder, PDF name and place in the Analysis folder are those of any
-run (`code_version.txt` says `Mode: PDF only (step 4)`). `./run_all
---full` runs all of steps 1-4 (`--pdf-only` asks for the default
-explicitly).
+run folder is `runs/<date>_<time>_pdf/`, so PDF-only runs stand out
+from full ones (and `code_version.txt` says `Mode: PDF only (step 4)`),
+but its PDF is `highlights_<date>_<time>.pdf` like any run's, and it
+becomes what the Analysis folder shows like any run. `./run_all --full`
+runs all of steps 1-4 (`--pdf-only` asks for the default explicitly).
 
 The code folder (`~/code/MuonCollider`) keeps only templates of the
 settings files (`templates/`); the copies in the Analysis folder are the

@@ -11,7 +11,8 @@ run folder itself, so they are always right for that run.
 again for an earlier run:
 Usage:
     python3 make_highlights_pdf.py <run folder>
-writes <run folder>/_highlights/highlights_<run name>.pdf
+writes <run folder>/_highlights/highlights_<date>_<time>.pdf (the run's
+name, without the _pdf of a PDF-only run: the PDF is the same either way)
 """
 import csv
 import re
@@ -352,7 +353,7 @@ def main(argv):
             if rows:
                 layer_pages.append((f"BIB hit density per layer ({part}/2)", rows))
     n_pages = 1 + per_system + has_per_cut + len(pages) + len(layer_pages)
-    out = hl / f"highlights_{run['name']}.pdf"
+    out = hl / f"highlights_{re.sub(r'_pdf$', '', run['name'])}.pdf"
 
     with PdfPages(out) as pdf:
         # ---- title page
