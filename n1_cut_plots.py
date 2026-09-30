@@ -32,7 +32,9 @@ distribution:
   - time_corrected_per_subsystem_zoom_n1.png    (+/- time of [zoom], ns)
 
 Usage:
-    python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir]
+    python3 n1_cut_plots.py <bib.root> <signal.root> [cuts_config] [output_dir] [--zoom-only]
+--zoom-only makes only the three zoomed plots (the ones in the highlights
+PDF; ./run_all --pdf-only uses it).
 """
 import os
 import sys
@@ -81,15 +83,17 @@ def n1_mask(per_cut_masks, skip_name):
 
 
 def main():
-    if len(sys.argv) < 3:
+    argv = [a for a in sys.argv[1:] if a != "--zoom-only"]
+    zoom_only = len(argv) < len(sys.argv) - 1     # only the 3 zoomed plots (the PDF's)
+    if len(argv) < 2:
         print(f"Usage: python3 {sys.argv[0]} <bib.root> <signal.root> "
-              f"[cuts_config] [output_dir]")
+              f"[cuts_config] [output_dir] [--zoom-only]")
         sys.exit(1)
-    bib_file = sys.argv[1]
-    signal_file = sys.argv[2]
-    cuts_config = sys.argv[3] if len(sys.argv) > 3 else \
+    bib_file = argv[0]
+    signal_file = argv[1]
+    cuts_config = argv[2] if len(argv) > 2 else \
         default_cuts_config()
-    outdir = Path(sys.argv[4] if len(sys.argv) > 4 else "../output_n1_cuts")
+    outdir = Path(argv[3] if len(argv) > 3 else "../output_n1_cuts")
     outdir = prepare_output_dir(outdir)
 
     smearing_config = os.environ.get("SMEARING_CONFIG", "").strip()
@@ -156,28 +160,29 @@ def main():
     sys_ids = sorted(SYSTEM_NAMES.keys())
 
     # ---- 1. z_axis_intercept_mm, full range, N-1 (time + momentum applied) --
-    fig, axes = panel_grid()
-    for ax, s in zip(axes, sys_ids):
-        bsel = (bib_sys == s) & bib_n1_z
-        ssel = (sig_sys == s) & sig_n1_z
-        bv = bib_hits["z_axis_intercept_mm"][bsel]
-        bv = bv[np.isfinite(bv)]
-        bv = bv[np.abs(bv) <= Z0_RANGE_MM]
-        sv = sig_hits["z_axis_intercept_mm"][ssel]
-        sv = sv[np.isfinite(sv)]
-        sv = sv[np.abs(sv) <= Z0_RANGE_MM]
-        overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_RANGE_MM, Z0_RANGE_MM, 121),
-                     n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_RANGE_MM)
-        ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
-        ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
-    plt.suptitle("Z-axis intercept, N-1 (time + momentum cuts applied, not this one): "
-                 "BIB vs. signal, hits/collision/bin" + SCALE_NOTE
-                 + "; dashed line = this cut's threshold", fontsize=10)
-    plt.tight_layout()
-    add_grid()
-    plt.savefig(outdir / "z_axis_intercept_per_subsystem_n1.png", dpi=130)
-    plt.close(fig)
+    if not zoom_only:        # (--zoom-only: the PDF uses only the zoomed plots)
+        fig, axes = panel_grid()
+        for ax, s in zip(axes, sys_ids):
+            bsel = (bib_sys == s) & bib_n1_z
+            ssel = (sig_sys == s) & sig_n1_z
+            bv = bib_hits["z_axis_intercept_mm"][bsel]
+            bv = bv[np.isfinite(bv)]
+            bv = bv[np.abs(bv) <= Z0_RANGE_MM]
+            sv = sig_hits["z_axis_intercept_mm"][ssel]
+            sv = sv[np.isfinite(sv)]
+            sv = sv[np.abs(sv) <= Z0_RANGE_MM]
+            overlay_hist(ax, bv, sv, bins=np.linspace(-Z0_RANGE_MM, Z0_RANGE_MM, 121),
+                         n_sig_events=n_sig_events)
+            draw_symmetric_cut_lines(ax, cuts, "z_axis_intercept_mm", s, xmax=Z0_RANGE_MM)
+            ax.set_title(panel_title(cuts, "z_axis_intercept_mm", s))
+            ax.set_xlabel("z-axis intercept of meridian-plane track (mm)")
+        plt.suptitle("Z-axis intercept, N-1 (time + momentum cuts applied, not this one): "
+                     "BIB vs. signal, hits/collision/bin" + SCALE_NOTE
+                     + "; dashed line = this cut's threshold", fontsize=10)
+        plt.tight_layout()
+        add_grid()
+        plt.savefig(outdir / "z_axis_intercept_per_subsystem_n1.png", dpi=130)
+        plt.close(fig)
 
     # ---- 2. z_axis_intercept_mm, ZOOMED, N-1 --------------------------------
     fig, axes = panel_grid()
@@ -204,30 +209,31 @@ def main():
     plt.close(fig)
 
     # ---- 3. inv_radius_per_mm, full range, N-1 (time + z applied) ----------
-    INV_R_MAX = 80.0
-    pt_ticks, pt_labels = pt_ticks_for_axis(INV_R_MAX, step=40.0)   # (labels are long)
-    fig, axes = panel_grid()
-    for ax, s in zip(axes, sys_ids):
-        bsel = (bib_sys == s) & bib_n1_p
-        ssel = (sig_sys == s) & sig_n1_p
-        bv = bib_hits["inv_radius_per_mm"][bsel] * 1000.0
-        sv = sig_hits["inv_radius_per_mm"][ssel] * 1000.0
-        overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_MAX, INV_R_MAX, 161),
-                     n_sig_events=n_sig_events)
-        draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_MAX)
-        ax.set_title(panel_title(cuts, "momentum_gev", s))
-        ax.set_xticks(pt_ticks)
-        ax.set_xticklabels(pt_labels)
-        ax.set_xlabel("p$_T$ (GeV/c)")
-    plt.suptitle(
-        f"Transverse momentum p$_T$ = 0.3 B R (B={B_FIELD_T:.0f}T), N-1 (time + z-intercept "
-        "cuts applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE + "; "
-        "dashed lines = this cut's threshold", fontsize=10,
-    )
-    plt.tight_layout()
-    add_grid()
-    plt.savefig(outdir / "inv_radius_per_subsystem_n1.png", dpi=130)
-    plt.close(fig)
+    if not zoom_only:        # (--zoom-only: the PDF uses only the zoomed plots)
+        INV_R_MAX = 80.0
+        pt_ticks, pt_labels = pt_ticks_for_axis(INV_R_MAX, step=40.0)   # (labels are long)
+        fig, axes = panel_grid()
+        for ax, s in zip(axes, sys_ids):
+            bsel = (bib_sys == s) & bib_n1_p
+            ssel = (sig_sys == s) & sig_n1_p
+            bv = bib_hits["inv_radius_per_mm"][bsel] * 1000.0
+            sv = sig_hits["inv_radius_per_mm"][ssel] * 1000.0
+            overlay_hist(ax, bv, sv, bins=np.linspace(-INV_R_MAX, INV_R_MAX, 161),
+                         n_sig_events=n_sig_events)
+            draw_momentum_cut_lines(ax, cuts, s, xmax=INV_R_MAX)
+            ax.set_title(panel_title(cuts, "momentum_gev", s))
+            ax.set_xticks(pt_ticks)
+            ax.set_xticklabels(pt_labels)
+            ax.set_xlabel("p$_T$ (GeV/c)")
+        plt.suptitle(
+            f"Transverse momentum p$_T$ = 0.3 B R (B={B_FIELD_T:.0f}T), N-1 (time + z-intercept "
+            "cuts applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE + "; "
+            "dashed lines = this cut's threshold", fontsize=10,
+        )
+        plt.tight_layout()
+        add_grid()
+        plt.savefig(outdir / "inv_radius_per_subsystem_n1.png", dpi=130)
+        plt.close(fig)
 
     # ---- 4. inv_radius_per_mm, ZOOMED, N-1 ----------------------------------
     INV_R_ZOOM_MAX = GEV_PER_INV_M / PT_ZOOM_RANGE_GEV
@@ -259,26 +265,27 @@ def main():
     plt.close(fig)
 
     # ---- 5. t_corrected_ns, full range, N-1 (z + momentum applied) ---------
-    fig, axes = panel_grid()
-    for ax, s in zip(axes, sys_ids):
-        bsel = (bib_sys == s) & bib_n1_time
-        ssel = (sig_sys == s) & sig_n1_time
-        bv = bib_hits["t_corrected_ns"][bsel]
-        bv = bv[np.isfinite(bv)]
-        sv = sig_hits["t_corrected_ns"][ssel]
-        sv = sv[np.isfinite(sv)]
-        overlay_hist(ax, bv, sv, bins=np.linspace(-TC_RANGE_NS, TC_RANGE_NS, 161),
-                     n_sig_events=n_sig_events)
-        draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_RANGE_NS)
-        ax.set_title(panel_title(cuts, "t_corrected_ns", s))
-        ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
-    plt.suptitle("Time-of-flight-corrected hit time, N-1 (z-intercept + momentum cuts "
-                 "applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE + "; "
-                 "dashed line = this cut's threshold", fontsize=10)
-    plt.tight_layout()
-    add_grid()
-    plt.savefig(outdir / "time_corrected_per_subsystem_n1.png", dpi=130)
-    plt.close(fig)
+    if not zoom_only:        # (--zoom-only: the PDF uses only the zoomed plots)
+        fig, axes = panel_grid()
+        for ax, s in zip(axes, sys_ids):
+            bsel = (bib_sys == s) & bib_n1_time
+            ssel = (sig_sys == s) & sig_n1_time
+            bv = bib_hits["t_corrected_ns"][bsel]
+            bv = bv[np.isfinite(bv)]
+            sv = sig_hits["t_corrected_ns"][ssel]
+            sv = sv[np.isfinite(sv)]
+            overlay_hist(ax, bv, sv, bins=np.linspace(-TC_RANGE_NS, TC_RANGE_NS, 161),
+                         n_sig_events=n_sig_events)
+            draw_symmetric_cut_lines(ax, cuts, "t_corrected_ns", s, xmax=TC_RANGE_NS)
+            ax.set_title(panel_title(cuts, "t_corrected_ns", s))
+            ax.set_xlabel("t - t$_{expected}$(TOF from IP) (ns)")
+        plt.suptitle("Time-of-flight-corrected hit time, N-1 (z-intercept + momentum cuts "
+                     "applied, not this one): BIB vs. signal, hits/collision/bin" + SCALE_NOTE
+                     + "; dashed line = this cut's threshold", fontsize=10)
+        plt.tight_layout()
+        add_grid()
+        plt.savefig(outdir / "time_corrected_per_subsystem_n1.png", dpi=130)
+        plt.close(fig)
 
     # ---- 6. t_corrected_ns, ZOOMED, N-1 -------------------------------------
     fig, axes = panel_grid()
@@ -304,7 +311,7 @@ def main():
     plt.savefig(outdir / "time_corrected_per_subsystem_zoom_n1.png", dpi=130)
     plt.close(fig)
 
-    print(f"Wrote 6 N-1 plots to {short_path(outdir)}/")
+    print(f"Wrote {3 if zoom_only else 6} N-1 plots to {short_path(outdir)}/")
 
 
 if __name__ == "__main__":

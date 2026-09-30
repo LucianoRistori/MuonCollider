@@ -39,6 +39,14 @@
 #   ./run_all --steps 1,2                   start a run with steps 1-2
 #   ./run_all --run <date>_<time> --steps 3,4   add steps 3-4 to it
 # The run is completed automatically once all four steps are done.
+#
+# Only what the highlights PDF needs (for scans of cuts and resolutions):
+#   ./run_all --pdf-only
+# runs step 4 alone - the cuts and their results, the track-finding
+# efficiency, and only the three zoomed N-1 plots - then writes
+# summary.txt and the PDF, all in runs/<date>_<time>_pdf/. The step
+# folders, _highlights/ and latest_run.txt here are not touched: they
+# keep showing the last full run.
 # =====================================================================
 set -u
 set -o pipefail
@@ -68,6 +76,13 @@ step4_n1_cuts/time_corrected_per_subsystem_zoom_n1.png
 step4_n1_cuts/z_axis_intercept_per_subsystem_n1.png
 step4_n1_cuts/z_axis_intercept_per_subsystem_zoom_n1.png"
 
+# The plots in the highlights PDF: all that a --pdf-only run makes.
+PDF_PLOTS="step4_cuts/density_before_after_cuts.png
+step4_track_efficiency/track_efficiency_vs_pt.png
+step4_n1_cuts/z_axis_intercept_per_subsystem_zoom_n1.png
+step4_n1_cuts/inv_radius_per_subsystem_zoom_n1.png
+step4_n1_cuts/time_corrected_per_subsystem_zoom_n1.png"
+
 tilde() {   # show a path with the home folder written as ~
     case "$1" in "$HOME"/*) printf '~/%s' "${1#"$HOME"/}" ;; *) printf '%s' "$1" ;; esac
 }
@@ -77,11 +92,14 @@ stop() { printf '\nERROR: %s\n\n' "$*" >&2; exit 1; }
 # ---------------------------------------------------------------- arguments
 WORKDIR=""
 STEPS="1 2 3 4"
+STEPS_GIVEN=0
 RUN_ID=""
+PDF_ONLY=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --steps) [ $# -ge 2 ] || stop "--steps needs a value, e.g. --steps 1,2"
-                 STEPS="$(printf '%s' "$2" | tr ',' ' ')"; shift 2 ;;
+                 STEPS="$(printf '%s' "$2" | tr ',' ' ')"; STEPS_GIVEN=1; shift 2 ;;
+        --pdf-only) PDF_ONLY=1; shift ;;
         --run)   [ $# -ge 2 ] || stop "--run needs a run name (a folder name under runs/)"
                  RUN_ID="$2"; shift 2 ;;
         -h|--help) sed -n '2,/^# =====/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -93,6 +111,14 @@ done
 for s in $STEPS; do
     case "$s" in 1|2|3|4) ;; *) stop "--steps: '$s' is not a step number (1 to 4)" ;; esac
 done
+REQUIRED="1 2 3 4"            # the steps a run needs to be complete
+if [ "$PDF_ONLY" = 1 ]; then
+    [ -z "$RUN_ID" ] || stop "--pdf-only makes a new run; it can't be combined with --run"
+    [ "$STEPS_GIVEN" = 0 ] || stop "--pdf-only runs step 4 only; it can't be combined with --steps"
+    STEPS="4"
+    REQUIRED="4"
+    HIGHLIGHTS="$PDF_PLOTS"
+fi
 [ -n "$WORKDIR" ] || WORKDIR="$PWD"
 [ -d "$WORKDIR" ] || stop "working folder not found: $WORKDIR"
 WORKDIR="$(cd "$WORKDIR" && pwd -P)"
@@ -118,6 +144,7 @@ if [ -z "$RUN_ID" ]; then
 else
     case "$RUN_ID" in
         *_FAILED|*_INTERRUPTED) stop "run $RUN_ID did not complete - start a new run instead" ;;
+        *_pdf) stop "run $RUN_ID was a --pdf-only run - start a new run instead" ;;
     esac
     [ -d "$WORKDIR/runs/$RUN_ID" ] || stop "no run named $RUN_ID in $WORKDIR/runs/"
     [ ! -f "$WORKDIR/runs/$RUN_ID/summary.txt" ] || stop "run $RUN_ID is already complete"
@@ -141,9 +168,11 @@ done
 
 # ---------------------------------------------------------------- run folder
 if [ -z "$RUN_ID" ]; then
-    RUN_ID="$(date +%Y-%m-%d_%H%M%S)"
+    suffix=""
+    [ "$PDF_ONLY" = 1 ] && suffix="_pdf"
+    RUN_ID="$(date +%Y-%m-%d_%H%M%S)$suffix"
     while [ -e "$WORKDIR/runs/$RUN_ID" ] || [ -e "$WORKDIR/runs/${RUN_ID}_FAILED" ]; do
-        sleep 1; RUN_ID="$(date +%Y-%m-%d_%H%M%S)"
+        sleep 1; RUN_ID="$(date +%Y-%m-%d_%H%M%S)$suffix"
     done
     RUN_DIR="$WORKDIR/runs/$RUN_ID"
     mkdir -p "$RUN_DIR" || stop "cannot create $RUN_DIR"
@@ -217,13 +246,22 @@ step4() {
         apply_cuts.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_cuts" &&
     run_py "Step 4: track-finding efficiency vs pT" \
         track_efficiency.py "$SIGNAL" --cuts "$CUTS" --out "$RUN_DIR/step4_track_efficiency" &&
-    run_py "Step 4: N-1 cut plots" \
-        n1_cut_plots.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_n1_cuts"
+    if [ "$PDF_ONLY" = 1 ]; then
+        run_py "Step 4: N-1 cut plots (only the zoomed ones, for the PDF)" \
+            n1_cut_plots.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_n1_cuts" --zoom-only
+    else
+        run_py "Step 4: N-1 cut plots" \
+            n1_cut_plots.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_n1_cuts"
+    fi
 }
 
 main() {
     say "======================================================================"
-    say " BIB analysis run $RUN_ID   (steps: $STEPS)"
+    if [ "$PDF_ONLY" = 1 ]; then
+        say " BIB analysis run $RUN_ID   (--pdf-only: step 4, then the PDF)"
+    else
+        say " BIB analysis run $RUN_ID   (steps: $STEPS)"
+    fi
     say " Working folder: $(tilde "$WORKDIR")"
     say " Settings (copies kept in runs/$RUN_ID/):"
     "$PYTHON" "$CODE_DIR/check_configs.py" "$CUTS" "$SMEARING_CONFIG" \
@@ -293,7 +331,7 @@ fi
 
 # ---------------------------------------------------------------- partial run
 todo=""
-for s in 1 2 3 4; do
+for s in $REQUIRED; do
     grep -qx "step $s" "$RUN_DIR/steps_done.txt" 2>/dev/null || todo="$todo $s"
 done
 if [ -n "$todo" ]; then
@@ -356,7 +394,11 @@ elapsed=$(( $(date +%s) - T_START ))
 {
     say ""
     say "======================================================================"
-    if promote; then
+    if [ "$PDF_ONLY" = 1 ]; then
+        say " RUN COMPLETE (--pdf-only): runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
+        [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: runs/$RUN_ID/$PDF"
+        say " The step folders, _highlights/ and latest_run.txt here were not changed."
+    elif promote; then
         say " RUN COMPLETE: runs/$RUN_ID   ($((elapsed / 60))m $((elapsed % 60))s)"
         say " The step folders here now show this run; key plots are in _highlights/."
         [ "$pdf_failed" = 1 ] || say " Presentation of the main plots: $PDF"

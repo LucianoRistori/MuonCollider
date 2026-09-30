@@ -64,6 +64,17 @@ that run's own numbers. To make
 it for an earlier run:
 `python3 ~/code/MuonCollider/make_highlights_pdf.py runs/<date>_<time>`.
 
+**Only the PDF: `./run_all --pdf-only`.** Everything in the PDF comes
+from step 4, so for scans of cuts or resolutions `./run_all --pdf-only`
+runs step 4 alone - the cuts and their results, the track-finding
+efficiency, and only the three zoomed N-1 plots - then writes
+`summary.txt` and the PDF, all in `runs/<date>_<time>_pdf/` (the PDF in
+its `_highlights/`). It takes about a quarter of the time of a full run
+(1 min 17 s against about 6 min in a test) and gives the same numbers
+and plots as a full run with the same settings. The `step*` folders,
+`_highlights/` and `latest_run.txt` in the Analysis folder are not
+touched: they keep showing the last full run.
+
 The code folder (`~/code/MuonCollider`) keeps only templates of the
 settings files (`templates/`); the copies in the Analysis folder are the
 ones used, and each run keeps a copy of all three. `./run_all` finds the
