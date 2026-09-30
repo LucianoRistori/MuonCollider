@@ -14,8 +14,9 @@ Two kinds of comparison are produced:
   1. A cutflow (hit counts before / after each individual cut / after
      all three combined, per subsystem) for BIB and for signal
      separately - this shows each cut's own selectivity.
-     The run's summary table is built from it: per subsystem, the BIB
-     rejection factor (hits before / hits after = 1/(1 - R), R being
+     The run's summary table is built from it: per subsystem, and in
+     total for the vertex detector (VXD), all the rest (IT + OT) and
+     everything (ALL) - bib_common.TOTALS - the BIB rejection factor (hits before / hits after = 1/(1 - R), R being
      the fraction of BIB hits removed) and the signal hit efficiency in
      the limit pT -> infinity (bib_common.efficiency_at_infinite_pt -
      not averaged over the sample, which is flat in 1/pT from 1.5
@@ -62,6 +63,7 @@ from bib_common import (
     rejection_factor, format_rejection_factor, pt_inf_fit_min, efficiency_at_infinite_pt,
     PT_INF_FIT_MIN_GEV,
     signal_muon_hits_only,
+    TOTALS, region_systems, region_mask,
 )
 import cuts_table
 import geometry as geom_mod
@@ -231,13 +233,16 @@ def cutflow_rows(hits, combined_mask, per_cut_masks):
         row["n_after_all"] = int((smask & combined_mask).sum())
         row["frac_after_all"] = row["n_after_all"] / n_total if n_total else float("nan")
         rows.append(row)
-    n_total_all = int(len(system))
-    overall = {"system": "ALL", "system_name": "ALL", "n_total": n_total_all}
-    for name in CUT_ORDER:
-        overall[f"n_after_{name}"] = int(per_cut_masks[name].sum())
-    overall["n_after_all"] = int(combined_mask.sum())
-    overall["frac_after_all"] = overall["n_after_all"] / n_total_all if n_total_all else float("nan")
-    rows.append(overall)
+    # then the totals: vertex detector, all the rest, everything
+    for key, (label, _) in TOTALS.items():
+        smask = region_mask(system, key)
+        n_total = int(smask.sum())
+        row = {"system": key, "system_name": label, "n_total": n_total}
+        for name in CUT_ORDER:
+            row[f"n_after_{name}"] = int((smask & per_cut_masks[name]).sum())
+        row["n_after_all"] = int((smask & combined_mask).sum())
+        row["frac_after_all"] = row["n_after_all"] / n_total if n_total else float("nan")
+        rows.append(row)
     return rows
 
 
@@ -265,28 +270,31 @@ CUT_SHORT_TITLE = {"t_corrected_ns": "time", "z_axis_intercept_mm": "z0", "momen
 
 
 def cut_is_off(cuts, name, s):
-    """True if cut `name` removes nothing in region s (a system id, or "ALL"
-    for all of them): off, or - for pT - a cut at 0."""
-    systems = SYSTEM_NAMES.keys() if s == "ALL" else [s]
+    """True if cut `name` removes nothing in region s (a system id, or a key
+    of TOTALS): off, or - for pT - a cut at 0, in all its subsystems."""
     return all(v is None or (name == "momentum_gev" and v == 0)
-               for v in (cuts[name]["per_system"].get(x) for x in systems))
+               for v in (cuts[name]["per_system"].get(x) for x in region_systems(s)))
 
 
 def per_cut_breakdown(cuts, bib_sys, bib_mask, bib_per_cut,
                       sig_sys, sig_mask, sig_per_cut, sig_pt, sig_event):
     """
-    For each region (system id, and "ALL") and each cut: what the cut does
+    For each region (system id, and the TOTALS) and each cut: what the cut does
     on its own ("alone": BIB hits before / after it, signal efficiency of
     it alone) and on top of the other two ("n1": BIB hits passing the other
     two / passing all three, signal efficiency among the hits passing the
     other two) - see main(). Returns {region: {cut: {"alone": (rejection
     factor as text, rejection factor, eff, unc), "n1": (...)} or None}}.
     """
-    regions = sorted(SYSTEM_NAMES.keys()) + ["ALL"]
+    regions = sorted(SYSTEM_NAMES.keys()) + list(TOTALS)
 
     def bib_counts(mask):
         c = np.bincount(bib_sys[mask], minlength=32)
-        return {**{s: int(c[s]) for s in SYSTEM_NAMES}, "ALL": int(mask.sum())}
+        counts = {s: int(c[s]) for s in SYSTEM_NAMES}
+        for key in TOTALS:
+            counts[key] = (int(mask.sum()) if key == "ALL"
+                           else sum(counts[x] for x in region_systems(key)))
+        return counts
     n_total = bib_counts(np.ones(len(bib_sys), dtype=bool))
     n_all = bib_counts(bib_mask)
     results = {s: {} for s in regions}
@@ -299,8 +307,8 @@ def per_cut_breakdown(cuts, bib_sys, bib_mask, bib_per_cut,
             if cut_is_off(cuts, name, s):
                 results[s][name] = None
                 continue
-            sel = (sig_sys == s) if s != "ALL" else np.ones(len(sig_sys), dtype=bool)
-            pt_min = pt_inf_fit_min(cuts, None if s == "ALL" else [s])
+            sel = region_mask(sig_sys, s)
+            pt_min = pt_inf_fit_min(cuts, region_systems(s))
             e_alone = efficiency_at_infinite_pt(sig_pt[sel], sig_per_cut[name][sel], pt_min,
                                                 groups=sig_event[sel])
             sel_n1 = sel & sig_others
@@ -475,9 +483,9 @@ def main():
     sig_pt = np.sqrt(px ** 2 + py ** 2)[sig_hits["event_id"]]
     sig_sys = sig_hits["system"]
     eff_inf = {}
-    for s in sorted(SYSTEM_NAMES.keys()) + ["ALL"]:
-        sel = (sig_sys == s) if s != "ALL" else np.ones(len(sig_sys), dtype=bool)
-        pt_min = pt_inf_fit_min(cuts, None if s == "ALL" else [s])
+    for s in sorted(SYSTEM_NAMES.keys()) + list(TOTALS):
+        sel = region_mask(sig_sys, s)
+        pt_min = pt_inf_fit_min(cuts, region_systems(s))
         eff_inf[s] = efficiency_at_infinite_pt(sig_pt[sel], sig_mask[sel], pt_min,
                                                groups=sig_hits["event_id"][sel]) + (pt_min,)
 

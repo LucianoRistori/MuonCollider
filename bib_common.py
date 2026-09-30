@@ -487,6 +487,28 @@ CUT_NAMES = ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev")
 # exclude_vertex_hits option, see load_track_params().
 VERTEX_SYSTEM_IDS = {1, 2}
 
+# Totals quoted after the subsystems' own results: the vertex detector,
+# all the rest, and everything - {key: (name, system IDs)}. The key is the
+# region's "system" in the result tables and CSV files.
+TOTALS = {
+    "VXD": ("VXD", tuple(sorted(VERTEX_SYSTEM_IDS))),
+    "IT+OT": ("IT + OT", tuple(sorted(set(SYSTEM_NAMES) - VERTEX_SYSTEM_IDS))),
+    "ALL": ("ALL", tuple(sorted(SYSTEM_NAMES))),
+}
+
+
+def region_systems(region):
+    """The subsystem IDs in a region: a subsystem ID, or a key of TOTALS."""
+    return TOTALS[region][1] if region in TOTALS else (region,)
+
+
+def region_mask(system, region):
+    """Hits (given their `system` array) in a region: a subsystem ID, or a
+    key of TOTALS ("ALL" is every hit)."""
+    if region == "ALL":
+        return np.ones(len(system), dtype=bool)
+    return np.isin(system, region_systems(region))
+
 
 def default_cuts_config():
     """

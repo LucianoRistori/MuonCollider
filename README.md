@@ -676,7 +676,10 @@ PDF in `_highlights/` has a page with the same table.
 **How the results are quoted.**
 - **BIB rejection factor** = BIB hits before the cuts / BIB hits after
   them = 1/(1 - R), with R the fraction of BIB hits the cuts remove
-  ("the cuts reduce the BIB by a factor N"). Per subsystem and overall.
+  ("the cuts reduce the BIB by a factor N"). Per subsystem, and in total
+  for the vertex detector (`VXD`: barrel + endcap), for all the rest
+  (`IT + OT`) and for everything (`ALL`) - the totals come after the
+  subsystems in every table, and the efficiencies too.
 - **Signal efficiencies for pT → ∞**, not averaged over the sample: the
   muon-gun sample is flat in 1/pT from 1.5 GeV/c up, so most of its
   muons lie below the pT cut, and an average over it mostly measures
@@ -756,10 +759,11 @@ python3 apply_cuts.py <bib.root> <signal.root> [cuts_config] [output_dir] [geome
 run as `apply_cuts.py ntu_bib_2evt.root
 ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root __cuts_config.txt
 Analysis/step4_cuts`. Outputs, in `Analysis/step4_cuts/`:
-- `cutflow_bib.csv` / `cutflow_signal.csv` - per subsystem (and an "ALL"
-  row): hit counts passing each individual cut on its own, and all three
+- `cutflow_bib.csv` / `cutflow_signal.csv` - per subsystem (and the
+  totals `VXD`, `IT+OT` and `ALL`): hit counts passing each individual cut on its own, and all three
   combined, plus the combined pass fraction.
-- `summary_by_region.csv` - per subsystem (and "ALL"): its cuts, BIB
+- `summary_by_region.csv` - per subsystem (and the totals `VXD`,
+  `IT+OT` and `ALL`): its cuts, BIB
   hits before/after the cuts, the BIB rejection factor, and the signal
   hit efficiency for pT → ∞ with its uncertainty and fit range - the
   numbers of the run's summary table - plus, for each cut (`time`, `z0`,

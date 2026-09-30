@@ -168,6 +168,9 @@ def captions(run):
                 f"are kept." + (f" The cut is off in {', '.join(off)}." if off else ""))
 
     rej_all, eff_all = run["table"][-1][1], run["table"][-1][2]
+    rej = {name: r for name, r, _, _ in run["table"]}
+    rej_split = (f"; {rej['VXD']} in the vertex detector and {rej['IT + OT']} in the rest"
+                 if "VXD" in rej and "IT + OT" in rej else "")      # (older runs: no split)
     trk = run["track"]
     sig_hits = ("the hits of a signal muon (its own, not its secondaries')"
                 if c["signal"]["muon_hits_only"] else "the hits in a signal event")
@@ -201,7 +204,7 @@ def captions(run):
          f"Mean BIB hit density per subsystem (hits/mm$^2$, log scale) for one collision's worth of "
          f"background{made_of}, before the cuts (light blue) and after all cuts combined (dark blue). "
          f"{cut_sentence} Overall they reduce the BIB hits by a factor {rej_all} (rejection "
-         f"factor), and keep {eff_all:.1f}% of {sig_hits} with $p_T$ → ∞."),
+         f"factor{rej_split}), and keep {eff_all:.1f}% of {sig_hits} with $p_T$ → ∞."),
         ("track_efficiency_vs_pt.png",
          "Track-finding efficiency vs. transverse momentum",
          f"Fraction of signal muons counted as found – at least {trk_min} of their hits survive "
@@ -396,7 +399,9 @@ def main(argv):
         fig.text(0.6, box.y0 - 0.06, f"Track-finding efficiency for $p_T$ → ∞:  "
                  f"{trk['eff']:.1f} ± {trk['unc']:.1f}%", fontsize=11.5, weight="bold", color=INK)
         pt_min = run["signal_pt_min"]
-        fig.text(0.6, box.y0 - 0.105,
+        totals = ("VXD: vertex detector (barrel + endcap); IT + OT: all the rest\n"
+                  if any(name == "VXD" for name, *_ in run["table"]) else "")
+        fig.text(0.6, box.y0 - 0.105, totals +
                  "rejection factor = 1/(1 − fraction of BIB hits removed)\n"
                  "efficiencies for $p_T$ → ∞: fit of ε$_∞$ + c/$p_T^2$ to muons above "
                  + (f"{pt_min[0]:g} GeV/c" if len(pt_min) == 1 else "twice the $p_T$ cut"),
