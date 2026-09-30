@@ -561,7 +561,9 @@ BIB, so on one common axis it sat far below the BIB curve. In each panel
 it is therefore drawn multiplied by a power of ten, 10ⁿ, that brings the
 two curves to the same height on the log scale (`signal_scale()`): each
 histogram's range runs from its smallest to its largest non-empty bin,
-and 10ⁿ moves the middle of the signal range (on the log scale) onto
+but reaches at most 3 decades below the largest (`MAX_RANGE_DECADES`;
+set it to `None` for the full range - lower bins are then below the
+plot), and 10ⁿ moves the middle of the signal range (on the log scale) onto
 the middle of the BIB range, rounded to the nearest power of ten. The y
 axis covers both ranges - the larger of the two spans, plus up to half a
 decade from the rounding, and at least half a decade - with 5% of the

@@ -31,7 +31,8 @@ angle/curvature/time histograms now are.
 Display: the signal is typically several orders of magnitude below BIB,
 so in each panel it is drawn multiplied by a power of ten that brings
 the two distributions to the same height on the log scale (see
-signal_scale()), shown in the legend box ("Signal x 10^n"). The left
+signal_scale(); each one's range reaches at most MAX_RANGE_DECADES below
+its peak), shown in the legend box ("Signal x 10^n"). The left
 axis is in BIB units, the right axis in the signal's own, unscaled
 units - both hits / collision / bin.
 
@@ -116,6 +117,10 @@ Y_MARGIN = 0.05            # of the y span, left free above and below the histog
 # The y axis spans at least this many decades, so that it always shows at
 # least two labelled ticks (minor ticks are labelled below 2 decades):
 MIN_SPAN_DECADES = 0.5
+# Each histogram's range goes down at most this many decades below its
+# highest bin: lower bins are left out of the range, and so of the plot
+# (None: the full range, down to the smallest non-empty bin).
+MAX_RANGE_DECADES = 3.0
 # for the figure titles:
 SCALE_NOTE = " (signal $\\times$ 10$^n$ as marked; right axis unscaled)"
 
@@ -125,7 +130,8 @@ def signal_scale(bib_counts, sig_counts, margin=Y_MARGIN):
     For one panel: the power of ten n such that the signal, multiplied
     by 10**n, sits at the same height as BIB on the log scale, and the
     y-axis limits (in BIB units). Each histogram's range runs from its
-    smallest to its largest non-empty bin; 10**n brings the middle of the
+    smallest to its largest non-empty bin, but at most MAX_RANGE_DECADES
+    below the largest; 10**n brings the middle of the
     signal range (on the log scale) to the middle of the BIB range,
     rounded to the nearest power of ten. The axis covers both ranges -
     the larger of the two spans, plus up to half a decade from the
@@ -133,15 +139,21 @@ def signal_scale(bib_counts, sig_counts, margin=Y_MARGIN):
     at least MIN_SPAN_DECADES). n = 0 if either histogram is empty.
     Returns (n, (ymin, ymax)), or (0, None) if both are empty.
     """
-    b = np.log10(bib_counts[bib_counts > 0])
-    s = np.log10(sig_counts[sig_counts > 0])
+    def log_range(counts):          # (lowest, highest) log10 of the range, or None
+        v = np.log10(counts[counts > 0])
+        if not v.size:
+            return None
+        hi = v.max()
+        lo = v.min() if MAX_RANGE_DECADES is None else max(v.min(), hi - MAX_RANGE_DECADES)
+        return lo, hi
+    b, s = log_range(bib_counts), log_range(sig_counts)
     n = 0
-    if b.size and s.size:
-        n = int(np.round((b.min() + b.max()) / 2 - (s.min() + s.max()) / 2))
-    shown = np.concatenate([b, s + n])
-    if not shown.size:
+    if b and s:
+        n = int(np.round((b[0] + b[1]) / 2 - (s[0] + s[1]) / 2))
+    shown = [x for x in (b, s and (s[0] + n, s[1] + n)) if x]
+    if not shown:
         return 0, None
-    lo, hi = shown.min(), shown.max()
+    lo, hi = min(x[0] for x in shown), max(x[1] for x in shown)
     span = max(hi - lo, MIN_SPAN_DECADES)
     mid = (lo + hi) / 2
     half = (0.5 + margin) * span
