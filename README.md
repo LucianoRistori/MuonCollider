@@ -93,6 +93,40 @@ Analysis folder (or set `SIM_DIR=/path`), and calls `run_all_steps.sh`
 (see `./run_all --help`). Each run's `code_version.txt` also records the
 size and date of every input file used.
 
+## Resolution scans (./run_scan)
+
+A scan of the timing or the pointing-angle resolution, with the z0 and
+time cuts re-derived at each point from signal containment (the method
+of Sections 15-16 of the paper), is run from the same Analysis folder
+with a fourth settings file, `__scan_config.txt`:
+
+```
+cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
+# edit __scan_config.txt: parameter (time or angle), containment (%),
+# grid (log/linear <first> <last> <n>, or list <values>)
+./run_scan           # about 15-25 s
+```
+
+At each value of the scanned resolution, applied to the hits of all
+subsystems: every other resolution is as in `__smearing_config.txt`, the
+pT cut as in `__cuts_config.txt`; the z0 and then the time cut of every
+subsystem are set to keep `containment` % of the signal hits (z0 on the
+hits passing pT, time on those passing pT and z0; in a time scan z0 is
+derived once). Results are for the 6-layer IT+OT barrel tower: the
+track-finding efficiency for pT -> inf (muons with no IT/OT endcap hit,
+found = at least `min_hits_found` of their IT/OT barrel hits pass) and
+E[#fakes] for the three track models of the fake-rate framework.
+
+Each scan is archived in `runs/<date>_<time>_scan_<time|angle>/` (the four
+settings files, `run_log.txt`, `code_version.txt`, `scan_results.csv`
+with the cuts of every subsystem, three plots and `scan_<p>.pdf`); the
+PDF is also copied to the Analysis folder as `_scan_<p>_<date>_<time>.pdf`.
+`./run_scan` never touches the `step*` folders or `_highlights/` of
+`./run_all`. Code: `resolution_scan.py`, `run_scan.sh`. With the Section
+15/16 settings (time: log 0.010 1.0 10; angle: linear 0 5 11; 98%) it
+reproduces `resolution_scans/*_results.csv` exactly; the scripts in
+`resolution_scans/` are kept as the record of those sections.
+
 ## Documentation
 - This README: the n-tuple format, the analysis steps and their plots,
   and how the results are defined and quoted.
