@@ -42,6 +42,11 @@
 #      folders, and it names the last full run instead).
 #      If anything fails, the run folder is renamed <date>_<time>_FAILED
 #      and the step* folders are left as they were.
+#   5. Makes the files of the run folder read-only (complete or failed runs;
+#      a full run split into pieces only once its last step is done), so the
+#      archive can't be edited by accident. The run folder itself can still
+#      be deleted. The copies in the step* folders and _highlights/ stay
+#      editable.
 #
 # Input files: named in __input_files_config.txt, and read from the Data/
 # (ROOT) and Geometry/ (XML) folders inside the folder ABOVE the working
@@ -95,6 +100,13 @@ tilde() {   # show a path with the home folder written as ~
 say() { printf '%s\n' "$*"; }
 stop() { printf '\nERROR: %s\n\n' "$*" >&2; exit 1; }
 
+lock_run() {   # make a finished run's files read-only (folders stay writable,
+               # so a whole run can still be deleted)
+    find "$1" -type f -exec chmod a-w {} + 2>/dev/null
+    sleep 1    # a second pass for any file just written that the first missed
+    find "$1" -type f -perm -u+w -exec chmod a-w {} + 2>/dev/null
+}
+
 # ---------------------------------------------------------------- arguments
 WORKDIR=""
 STEPS=""
@@ -142,6 +154,9 @@ done
 WORKDIR="$(cd "$WORKDIR" && pwd -P)"
 
 SIM_DIR="${SIM_DIR:-${DATA_DIR:-$(dirname "$WORKDIR")}}"   # holds Data/ and Geometry/
+
+# settings files copied back from a (read-only) run folder: keep them editable
+chmod u+w "$WORKDIR"/__*_config.txt 2>/dev/null
 
 # keep the copy of the user manual in the working folder up to date (the
 # master copy is docs/user_manual.pdf in the code, under git)
@@ -361,6 +376,7 @@ if [ "$status" -ne 0 ]; then
         latest_note
         say "######################################################################"
     } | tee -a "$RUN_DIR/run_log.txt"
+    lock_run "$RUN_DIR"
     exit 1
 fi
 
@@ -472,3 +488,4 @@ elapsed=$(( $(date +%s) - T_START ))
     sed 's/^/ /' "$RUN_DIR/summary.txt"
     say "======================================================================"
 } 2>&1 | tee -a "$RUN_DIR/run_log.txt"
+lock_run "$RUN_DIR"     # the archive is read-only from now on

@@ -19,6 +19,8 @@
 #   4. If it succeeded, puts a copy of the PDF in the working folder as
 #      _scan_<time|angle>_<date>_<time>.pdf (replacing the previous one of
 #      the same kind). If it failed, the run folder is renamed ..._FAILED.
+#   5. Makes the files of the run folder read-only (the folder itself can
+#      still be deleted), so the archive can't be edited by accident.
 # The step* and _highlights folders of ./run_all are never touched.
 # =====================================================================
 set -u
@@ -28,11 +30,21 @@ PYTHON="${PYTHON:-python3}"
 say() { printf '%s\n' "$*"; }
 stop() { printf '\nERROR: %s\n\n' "$*" >&2; exit 1; }
 
+lock_run() {   # make a finished run's files read-only (folders stay writable,
+               # so a whole run can still be deleted)
+    find "$1" -type f -exec chmod a-w {} + 2>/dev/null
+    sleep 1    # a second pass for any file just written that the first missed
+    find "$1" -type f -perm -u+w -exec chmod a-w {} + 2>/dev/null
+}
+
 case "${1:-}" in -h|--help) sed -n '2,/^# =====/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
 WORKDIR="${1:-$PWD}"
 [ -d "$WORKDIR" ] || stop "working folder not found: $WORKDIR"
 WORKDIR="$(cd "$WORKDIR" && pwd -P)"
 SIM_DIR="${SIM_DIR:-$(dirname "$WORKDIR")}"
+
+# settings files copied back from a (read-only) run folder: keep them editable
+chmod u+w "$WORKDIR"/__*_config.txt 2>/dev/null
 
 # keep the copy of the user manual in the working folder up to date (the
 # master copy is docs/user_manual.pdf in the code, under git)
@@ -108,6 +120,7 @@ if [ "$status" -ne 0 ] || [ ! -f "$RUN_DIR/scan_$PARAM.pdf" ]; then
     say "######################################################################"
     say " SCAN DID NOT COMPLETE. Details: runs/${RUN_ID}_FAILED/run_log.txt"
     say "######################################################################"
+    lock_run "${RUN_DIR}_FAILED"
     exit 1
 fi
 TOP="_scan_${PARAM}_${STAMP}.pdf"
@@ -120,3 +133,4 @@ cp "$RUN_DIR/scan_$PARAM.pdf" "$WORKDIR/$TOP"
     say " Results: $TOP (also scan_results.csv and the plots in runs/$RUN_ID/)"
     say "======================================================================"
 } | tee -a "$RUN_DIR/run_log.txt"
+lock_run "$RUN_DIR"     # the archive is read-only from now on

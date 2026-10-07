@@ -47,7 +47,10 @@ show the latest successful run, full or not; `latest_run.txt` says
 which run they show (after a PDF-only run there are no step 1-3
 folders, and it names the last full run). A failed or interrupted run is kept as
 `runs/<date>_<time>_FAILED` (or `_INTERRUPTED`) and leaves the `step*`
-folders untouched. To compare runs: `cat runs/*/summary.txt`.
+folders untouched. To compare runs: `cat runs/*/summary.txt`. When a run finishes (or
+fails), the files of its run folder are made read-only, so the archive
+can't be edited by accident (the folder can still be deleted; to edit a
+file on purpose: `chmod u+w runs/<run>/<file>`); `./run_scan` does the same.
 
 The 14 key plots of each full run (only the five in the PDF, for a
 PDF-only run) are also gathered in one folder,

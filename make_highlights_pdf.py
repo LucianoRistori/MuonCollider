@@ -365,6 +365,16 @@ def main(argv):
     n_pages = 1 + per_system + has_per_cut + len(pages) + len(layer_pages)
     out = hl / f"highlights_{re.sub(r'_pdf$', '', run['name'])}.pdf"
 
+    # runs are read-only: replace an existing PDF rather than write into it,
+    # and leave the new one read-only too
+    was_locked = False
+    if out.exists():
+        try:
+            open(out, "a").close()          # writes nothing
+        except PermissionError:
+            was_locked = True
+    if was_locked:
+        out.unlink()
     with PdfPages(out) as pdf:
         # ---- title page
         fig = plt.figure(figsize=PAGE)
@@ -519,6 +529,8 @@ def main(argv):
         info["Title"] = f"Muon Collider BIB study - highlights of run {run['name']}"
         info["Creator"] = "make_highlights_pdf.py"
 
+    if was_locked:
+        out.chmod(0o444)
     print(f"Wrote {out.name} ({n_pages} pages) to _highlights/")
     if missing:
         print(f"  (not found, so not included: {', '.join(missing)})")

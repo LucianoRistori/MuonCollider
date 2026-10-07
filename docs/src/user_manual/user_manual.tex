@@ -297,12 +297,20 @@ Every run gets its own folder, named by the date and time it started:
 \bottomrule
 \end{tabularx}
 
+When a run finishes (or fails), all the files in its folder are made
+\textbf{read-only}, so the archive can't be changed by accident; the
+folder itself can still be deleted. The copies in the \code{step*} folders
+and \code{\_highlights/} stay editable.
+
 Each holds the settings files exactly as used, \code{run\_log.txt}
 (everything printed), \code{code\_version.txt} (git commit of the code,
 input files with sizes and dates), and the results (\code{summary.txt},
 step folders, \code{\_highlights/}; or the scan's CSV, plots and PDF). To
 repeat an old run, copy its settings files back into the Analysis folder
-and run again. To rebuild the PDF of an old run:
+and run again. The copies are read-only too:
+\code{chmod u+w \_\_*\_config.txt} makes them editable (each run also
+does this for you). To edit a file inside a run on purpose:
+\code{chmod u+w runs/<run>/<file>}. To rebuild the PDF of an old run:
 \code{python3 \textasciitilde/code/MuonCollider/make\_highlights\_pdf.py runs/<run>}.
 Old run folders can be deleted freely; Dropbox keeps a version history.
 
