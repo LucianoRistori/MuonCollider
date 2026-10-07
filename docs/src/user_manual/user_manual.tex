@@ -1,0 +1,334 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{mathpazo}
+\linespread{1.06}
+\usepackage[margin=1in,headheight=14pt]{geometry}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{titlesec}
+\usepackage{fancyvrb}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{ink}{HTML}{0B0B0B}
+\definecolor{muted}{HTML}{52514E}
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{boxbg}{HTML}{F3F6FB}
+\definecolor{codebg}{HTML}{F5F5F3}
+
+\titleformat{\section}{\large\bfseries\color{ink}}{\thesection}{0.7em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{ink}}{\thesubsection}{0.7em}{}
+\titlespacing*{\section}{0pt}{1.2\baselineskip}{0.45\baselineskip}
+\titlespacing*{\subsection}{0pt}{0.9\baselineskip}{0.3\baselineskip}
+\setlist{itemsep=2pt,topsep=3pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{3em}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pT}{\ensuremath{p_T}}
+\newcommand{\cuts}{\code{\_\_cuts\_config.txt}}
+\newcommand{\smear}{\code{\_\_smearing\_config.txt}}
+\newcommand{\inputs}{\code{\_\_input\_files\_config.txt}}
+\newcommand{\scan}{\code{\_\_scan\_config.txt}}
+\newcommand{\Efakes}{\ensuremath{E[\#\mathrm{fakes}]}}
+
+\DefineVerbatimEnvironment{shell}{Verbatim}{fontsize=\small,frame=leftline,
+  framerule=2pt,rulecolor=\color{accent},xleftmargin=6pt,framesep=8pt}
+\DefineVerbatimEnvironment{tree}{Verbatim}{fontsize=\footnotesize,xleftmargin=6pt}
+
+\newtcolorbox{keybox}[1][]{colback=boxbg,colframe=accent,boxrule=0.6pt,arc=2pt,
+  left=8pt,right=8pt,top=5pt,bottom=5pt,#1}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\footnotesize\color{muted}MuonCollider analysis package --- user manual}
+\fancyfoot[R]{\footnotesize\color{muted}\thepage\ of \pageref{LastPage}}
+
+\begin{document}
+
+{\LARGE\bfseries\color{ink} MuonCollider BIB analysis: user manual}\par
+\vspace{2pt}
+{\color{muted} How to run the package, where everything lives, and what comes out.
+Luciano Ristori, October 2026.}\par
+\vspace{6pt}
+
+\begin{keybox}
+\textbf{The 30-second version.} Everything is run from \emph{one} folder, in a Terminal:
+\begin{shell}
+cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
+\end{shell}
+In that folder you edit plain-text settings files (names starting with
+\code{\_\_}), then type one command:
+\begin{itemize}[leftmargin=1.2em]
+\item \code{./run\_all} --- applies smearing and cuts to the BIB and signal
+  files and makes the highlights plots and PDF, with the BIB rejection,
+  signal efficiencies \emph{and the expected number of fake tracks} for your
+  cuts and resolutions (Sections~\ref{sec:highlights} and~\ref{sec:fakes}).
+\item \code{./run\_scan} --- scans the timing or pointing-angle resolution,
+  re-deriving the cuts at each point (Section~\ref{sec:scan}).
+\end{itemize}
+Every run is archived, with a copy of the settings it used, in \code{runs/}.
+The newest results are always the files whose names start with \code{\_}
+in the Analysis folder. Nothing you do there can damage the code.
+\end{keybox}
+
+%=====================================================================
+\section{Where everything lives}
+
+There are two places: the \textbf{code}, under git, and the
+\textbf{simulation folder} in Dropbox, which holds the data, the settings
+and all results.
+
+\subsection{The simulation folder (Dropbox) --- where you work}
+\begin{tree}
+~/Dropbox/Documents/MuonColliderSimulation/
+|-- Data/                      input ROOT n-tuples (BIB plus/minus/ipp, combined BIB, signal)
+|-- Geometry/                  detector geometry XML files (MuSIC, Vertex, IT, OT)
+`-- Analysis/                  <-- THE WORKING FOLDER: cd here, edit, run
+    |-- __input_files_config.txt   which files in Data/ and Geometry/ to use
+    |-- __cuts_config.txt          cuts per subsystem, track definition
+    |-- __smearing_config.txt      detector resolutions (position, time, angle)
+    |-- __scan_config.txt          what ./run_scan scans
+    |-- run_all, run_scan          the two commands (tiny launchers)
+    |-- _highlights_<date>_<time>.pdf   PDF of the latest ./run_all
+    |-- _highlights/                    its key plots (PNG) and the same PDF
+    |-- _scan_time_<date>_<time>.pdf    PDF of the latest time scan
+    |-- _scan_angle_<date>_<time>.pdf   PDF of the latest angle scan
+    |-- latest_run.txt             which run the step* folders show, + its summary
+    |-- step1_... step4_...        all plots/tables of the latest successful ./run_all
+    |-- runs/                      ARCHIVE: one folder per run or scan (see Sec. 6)
+    `-- claude_scratch/            scratch files from work with Claude; ignore
+\end{tree}
+
+\subsection{The code (git) --- normally you don't touch it}
+\begin{tree}
+~/code/MuonCollider/            git, github.com/LucianoRistori/MuonCollider
+|-- README.md                  detailed reference: n-tuple format, every step, definitions
+|-- docs/user_manual.pdf       this manual (source in docs/src/user_manual/)
+|-- docs/efficiency_pt_infinity.pdf   note: how efficiencies for pT -> inf are obtained
+|-- run_all_steps.sh           what ./run_all does (checks, steps 1-4, archiving)
+|-- run_scan.sh                what ./run_scan does
+|-- bib_common.py              shared library: reading, smearing, cuts, efficiencies
+|-- make_basic_plots.py, incidence_angle_plots.py, time_of_flight_plots.py,
+|   signal_overlay_*.py, apply_cuts.py, track_efficiency.py, n1_cut_plots.py
+|                              the analysis steps 1-4
+|-- fake_rate.py               expected number of fake tracks (Sec. 4)
+|-- resolution_scan.py         the resolution scans (Sec. 5)
+|-- make_highlights_pdf.py     builds the highlights PDF of a run
+|-- check_configs.py, cuts_table.py, input_files.py   read and check the settings
+|-- templates/                 pristine copies of the four settings files
+|-- fake_rate_framework/       analytic fake-track framework of the paper (Sec. 13-14)
+`-- resolution_scans/          original scripts and results of paper Sec. 15-16
+\end{tree}
+The launchers \code{run\_all} and \code{run\_scan} in the Analysis folder
+just find the code in \code{\textasciitilde/code/MuonCollider} and run it on
+the folder they are in. If you move the code, run with
+\code{MUONCOLLIDER\_CODE=/new/path ./run\_all}.
+
+%=====================================================================
+\section{The four settings files}
+All four are commented plain text: open them in any editor and read the
+comments, which explain every line. A summary:
+
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\inputs & \code{[data]}: the BIB files \code{bib\_plus}, \code{bib\_minus},
+  \code{bib\_ipp} (optional), the combined BIB file \code{bib\_combined},
+  and the \code{signal} muon-gun sample; \code{[geometry]}: the four XML
+  files. \emph{Names only}: files are looked up in \code{Data/} and
+  \code{Geometry/}. The combined file is (re)built automatically when it
+  is missing or does not match plus + minus + ipp.\\[3pt]
+\cuts & \code{[cuts]}: a table, one row per subsystem (VXD/IT/OT, barrel
+  and endcap), with the three cuts \emph{time} ($|t_\mathrm{corrected}|$, ns),
+  \emph{z0} ($|z_0|$, mm) and \emph{pT} (minimum \pT, GeV/$c$), or \code{off};
+  then three \emph{zoom} columns that only set the range of the zoomed N-1
+  plots. \code{[track]}: a muon is ``found'' if at least
+  \code{min\_hits\_found} of its hits pass (\code{exclude\_vertex\_hits}:
+  VXD hits not counted). \code{[signal]}: \code{muon\_hits\_only}.\\[3pt]
+\smear & Gaussian resolutions applied to the (exact) simulated hits:
+  \code{[position]} \code{sigma\_u\_mm}, \code{sigma\_v\_mm};
+  \code{[time]} \code{sigma\_t\_ns}; \code{[angle\_u]}, \code{[angle\_v]}
+  \code{sigma\_deg} (pointing angle). Each section has
+  \code{enabled = true/false}. \code{[general] seed} fixes the random numbers.\\[3pt]
+\scan & Only for \code{./run\_scan}: \code{parameter} (\code{time} or
+  \code{angle}), \code{containment} (\% of signal hits each re-derived cut
+  keeps) and \code{grid} (the values to scan).\\
+\bottomrule
+\end{tabularx}
+
+Both commands check the files before running anything (typos, unknown
+settings, non-numbers, missing input files) and stop with a message saying
+what to fix. If a settings file is missing, a fresh copy is made from
+\code{templates/} and you are asked to check it. Editing a file while a run
+is going has no effect on that run: the files are copied at the start.
+
+%=====================================================================
+\section{Case 1 --- highlights plots for some data files}\label{sec:highlights}
+\begin{enumerate}[leftmargin=1.5em]
+\item New data? Copy the ROOT files into \code{Data/} and put their names
+  in \inputs. (Same data as last time: skip this.)
+\item Set the cuts in \cuts\ and the resolutions in \smear.
+\item Run:
+\begin{shell}
+cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
+./run_all            # step 4 only: everything the PDF needs  (~1 1/4 min)
+./run_all --full     # steps 1-4: all plots of the analysis   (~6 min)
+\end{shell}
+\item Look at \code{\_highlights\_<date>\_<time>.pdf} in the Analysis folder.
+\end{enumerate}
+
+\textbf{What the steps are.} Step~1: hit maps and densities of the BIB
+(plus, minus, combined). Step~2: incidence angles and time-of-flight of BIB
+and signal. Step~3: BIB and signal overlaid ($z_0$, \pT, corrected time).
+Step~4: the cuts --- BIB rejection and signal hit efficiency per
+subsystem, track-finding efficiency vs.\ \pT, N-1 plots, expected fake tracks.
+
+\textbf{What comes out.} The PDF has a title page with the settings and the
+main results (BIB rejection factor and signal hit efficiency for
+$\pT\to\infty$ per subsystem, track-finding efficiency, expected fake
+tracks), the cuts per subsystem, and the key plots with captions quoting
+that run's numbers. The same results are in \code{summary.txt} of the run
+(also at the bottom of \code{latest\_run.txt}). The \code{step*} folders and
+\code{\_highlights/} show the latest \emph{successful} run; a failed run
+never replaces them. To compare all past runs: \code{cat runs/*/summary.txt}.
+
+%=====================================================================
+\section{Case 2 --- fake-track rate for given cuts and resolutions}\label{sec:fakes}
+This is the same command as Case~1: set \cuts\ and \smear, then
+\code{./run\_all}. The expected number of fake tracks is reported
+\begin{itemize}[leftmargin=1.2em]
+\item on the title page of the highlights PDF (``Expected fake tracks''),
+\item in \code{summary.txt} and \code{latest\_run.txt} (last line),
+\item in \code{step4\_cuts/fake\_rate.csv}, with the BIB hits after the cuts
+  in each of the six layers used.
+\end{itemize}
+
+\textbf{What the number is.} \Efakes\ is the expected number of fake tracks
+in the 6-layer IT + OT barrel ``tower'' of the fake-rate framework (paper,
+Sections 14--16):
+\[
+E[\#\mathrm{fakes}] = P_\mathrm{true}\prod_{i=1}^{6} n_i ,\qquad
+n_i = \frac{\text{BIB hits after the cuts in layer } i}{\text{area of layer } i}\times W_i^2,
+\]
+where $W_i^2$ are the plane areas of the projective tower (1~m$^2$ outermost
+plane) and $P_\mathrm{true}$ is the fake probability calibrated in
+\code{fake\_rate\_framework/real\_tower\_calibration.py}, for three track
+models: exact helix (the one quoted), conservative quadratic, and straight
+line ($B=0$). Values well below 1 mean fakes are negligible.
+
+\textbf{Two things to remember.}
+(1) It uses only the IT and OT barrel layers; the calibration assumes the
+current geometry (a warning is printed if the layer areas change).
+(2) The track-finding efficiency of \code{./run\_all} uses the whole tracker
+(at least \code{min\_hits\_found} surviving non-VXD hits), while the
+efficiency of \code{./run\_scan} is defined on the same barrel tower as
+\Efakes\ (muons with no IT/OT endcap hit, at least \code{min\_hits\_found}
+of their 6 barrel hits pass). The two efficiencies are not the same
+quantity.
+
+%=====================================================================
+\section{Case 3 --- resolution scans}\label{sec:scan}
+\begin{enumerate}[leftmargin=1.5em]
+\item Edit \scan:
+\begin{shell}
+parameter   = time               # or: angle
+containment = 98                 # % of signal hits kept by each re-derived cut
+grid        = log 0.010 1.0 10   # time: 10 ps - 1 ns, 10 points
+#  angle:  grid = linear 0 5 11   (0 - 5 deg in 0.5 deg steps)
+#  any:    grid = list 0.02 0.05 0.1
+\end{shell}
+\item Check \smear\ (all the resolutions that are \emph{not} scanned) and
+  the \pT\ cut in \cuts.
+\item Run \code{./run\_scan} (about 15--25~s) and open
+  \code{\_scan\_time\_<date>\_<time>.pdf} (or \code{\_scan\_angle\_...}).
+\end{enumerate}
+
+\textbf{What a scan does at each value.} The scanned resolution is applied
+to the hits of \emph{all} subsystems (for angle, equally to $u$ and $v$);
+every other resolution is taken from \smear; the \pT\ cut from \cuts\ is
+kept fixed. The $z_0$ and time cuts of every subsystem are then
+\emph{re-derived} so that each keeps \code{containment}\,\% of the signal
+hits: $z_0$ first (on the hits passing \pT), then time (on those passing
+\pT\ and $z_0$). In a time scan $z_0$ does not depend on the timing, so it
+is derived once. The $z_0$ and time values written in \cuts\ are
+\emph{not} used. The scan reports the track-finding efficiency for
+$\pT\to\infty$ and \Efakes, both on the barrel tower (Section~\ref{sec:fakes}).
+
+\textbf{What comes out} (in \code{runs/<date>\_<time>\_scan\_<time|angle>/}):
+a PDF with a settings page, a results table, and three plots (\Efakes,
+efficiency, and the derived cuts of all six subsystems vs.\ the resolution);
+\code{scan\_results.csv} with every number. With
+the settings above (98\%) a scan reproduces the paper's Sections 15 and 16
+exactly.
+
+\textbf{Tip:} \code{grid = list <value>} gives a single point: the
+efficiency and \Efakes\ for one resolution with containment-derived cuts,
+to compare with the fixed cuts of Case~2.
+
+%=====================================================================
+\section{The archive: \code{runs/}}
+Every run gets its own folder, named by the date and time it started:
+
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\code{2026-10-07\_161638} & a full \code{./run\_all -{}-full} run\\
+\code{2026-10-07\_161638\_pdf} & a default \code{./run\_all} (step 4 only)\\
+\code{..\_scan\_time}, \code{..\_scan\_angle} & a \code{./run\_scan}\\
+\code{..\_FAILED}, \code{..\_INTERRUPTED} & did not complete --- see its \code{run\_log.txt}\\
+\bottomrule
+\end{tabularx}
+
+Each holds the settings files exactly as used, \code{run\_log.txt}
+(everything printed), \code{code\_version.txt} (git commit of the code,
+input files with sizes and dates), and the results (\code{summary.txt},
+step folders, \code{\_highlights/}; or the scan's CSV, plots and PDF). To
+repeat an old run, copy its settings files back into the Analysis folder
+and run again. To rebuild the PDF of an old run:
+\code{python3 \textasciitilde/code/MuonCollider/make\_highlights\_pdf.py runs/<run>}.
+Old run folders can be deleted freely; Dropbox keeps a version history.
+
+%=====================================================================
+\section{If something goes wrong}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{``ERROR: ... fix the settings file(s)''} --- nothing was run;
+  the message lists each problem and the file it is in.
+\item \textbf{Python is missing packages} --- the message gives the
+  command, e.g.\ \code{python3 -m pip install uproot awkward}.
+  Needed: \code{numpy}, \code{uproot}, \code{awkward}, \code{matplotlib}.
+\item \textbf{A run ends in \code{\_FAILED}} --- open its
+  \code{run\_log.txt}; the step that failed is at the end. Your
+  \code{step*} folders and \code{\_highlights/} still show the last good run.
+\item \textbf{\code{./run\_all: Permission denied}} --- the launcher lost
+  its executable flag (e.g.\ after a copy): \code{chmod +x run\_all run\_scan}.
+\item \textbf{Help on the commands} --- \code{./run\_all -{}-help},
+  \code{./run\_scan -{}-help}.
+\item \textbf{A full run under a time limit} can be split:
+  \code{./run\_all -{}-full -{}-steps 1,2}, then
+  \code{./run\_all -{}-run <run> -{}-steps 3,4}.
+\end{itemize}
+
+%=====================================================================
+\section{Where to read more}
+\begin{itemize}[leftmargin=1.2em]
+\item \code{README.md} in the code folder: the n-tuple format, each
+  analysis step and its plots, how every quantity is defined and quoted.
+\item \code{docs/efficiency\_pt\_infinity.pdf}: the efficiencies for
+  $\pT\to\infty$ (the fit of $\varepsilon_\infty + c/\pT^2$).
+\item The paper draft and the project notes (milestones, decisions) are in
+  the Claude project ``Muon Collider Tracking''.
+\item \code{fake\_rate\_framework/} and \code{resolution\_scans/}: the
+  scripts behind the paper's Sections 13--16.
+\item Changing the code: commit with git in \code{\textasciitilde/code/MuonCollider}
+  and \code{git push} to GitHub; each run records the commit it used.
+\end{itemize}
+
+\end{document}

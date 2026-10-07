@@ -1,5 +1,9 @@
 # BIB n-tuple format and first plots
 
+**New here, or back after a while? Start with `docs/user_manual.pdf`** (also in the
+Analysis folder as `_START_HERE_user_manual.pdf`): where everything lives and how to
+run the three main cases. This README is the detailed reference.
+
 ## How to run the analysis
 
 Everything is run from the Analysis folder in Dropbox, which holds the
@@ -128,6 +132,8 @@ reproduces `resolution_scans/*_results.csv` exactly; the scripts in
 `resolution_scans/` are kept as the record of those sections.
 
 ## Documentation
+- `docs/user_manual.pdf`: the user manual - folders, settings files,
+  `./run_all`, `./run_scan`, the archive (source: `docs/src/user_manual/`).
 - This README: the n-tuple format, the analysis steps and their plots,
   and how the results are defined and quoted.
 - `docs/efficiency_pt_infinity.pdf`: how the efficiencies for pT → ∞ are
