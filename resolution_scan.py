@@ -129,6 +129,19 @@ def pass_mask(values, system, limits):
         return np.abs(values) <= lim[system]
 
 
+def whole_tracker_efficiency(hits, passed, pt_gen, n_events, min_hits, excl_vxd, cuts):
+    """Track-finding efficiency for pT -> inf over the whole tracker, as
+    track_efficiency.py (./run_all) defines it: all muons; found = at least
+    min_hits of its hits pass the cuts (VXD hits not counted if excl_vxd).
+    Returns (eff, unc, n_fit)."""
+    count = passed
+    if excl_vxd:
+        count = count & ~np.isin(hits["system"], list(bc.VERTEX_SYSTEM_IDS))
+    found = np.bincount(hits["event_id"][count], minlength=n_events) >= min_hits
+    counted = [s for s in bc.SYSTEM_NAMES if not (excl_vxd and s in bc.VERTEX_SYSTEM_IDS)]
+    return bc.efficiency_at_infinite_pt(pt_gen, found, bc.pt_inf_fit_min(cuts, counted))
+
+
 def no_smear(cfg, *names):
     """Copy of a smearing config with the named quantities switched off."""
     c = {k: (dict(v) if isinstance(v, dict) else v) for k, v in cfg.items()}
@@ -143,7 +156,9 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
     scan = load_scan_config(scan_path)
     p, containment, grid = scan["parameter"], scan["containment"], scan["grid"]
     cuts_cfg = bc.load_cuts(cuts_path)
-    min_hits = bc.load_track_params(cuts_path)["min_hits_found"]
+    track_params = bc.load_track_params(cuts_path)
+    min_hits = track_params["min_hits_found"]
+    excl_vxd = track_params["exclude_vertex_hits"]
     smear = bc.load_smearing_config(smear_path)
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +166,10 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
     print(f"Scan of the {p} resolution: {scan['grid_text']}  ({len(grid)} points)")
     print(f"Cuts: z0 and time re-derived at {containment:g}% signal containment in every "
           f"subsystem; pT cut as in the cuts config")
-    print(f"Track found: >= {min_hits} of its IT/OT barrel hits pass the cuts")
+    print(f"Track found: barrel tower: >= {min_hits} of its IT/OT barrel hits pass the cuts "
+          f"(muons with no IT/OT endcap hit)")
+    print(f"             whole tracker: >= {min_hits} of its hits pass the cuts"
+          f"{', VXD hits not counted' if excl_vxd else ''} (all muons, as in ./run_all)")
     print(f"Fixed smearing: {bc.describe_smearing(no_smear(smear, 'time') if p == 'time' else no_smear(smear, 'angle_u', 'angle_v'))}")
 
     rng_geom = bc.smearing_rng(smear)
@@ -231,6 +249,9 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         found = (n_found >= min_hits)[barrel_only]
         eff, eff_unc, n_fit = bc.efficiency_at_infinite_pt(
             pt_gen[barrel_only], found, bc.pt_inf_fit_min(cuts_now, list(TOWER)))
+        # whole tracker, defined exactly as track_efficiency.py (./run_all)
+        eff_t, eff_t_unc, n_fit_t = whole_tracker_efficiency(
+            sig, passed, pt_gen, n_events, min_hits, excl_vxd, cuts_now)
 
         # BIB density per barrel layer after the cuts -> E[#fakes]
         bib_pass = bib_pt & pass_mask(bib["z_axis_intercept_mm"], bib["system"], z0) \
@@ -244,7 +265,9 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
             row[f"z0_cut_mm_{SHORT[s]}"] = z0[s]
         for s in SYSTEMS:
             row[f"time_cut_ns_{SHORT[s]}"] = tl[s]
-        row.update(eff_inf=eff, eff_inf_unc=eff_unc, n_fit=n_fit, prod_n=prod_n)
+        row.update(eff_inf=eff, eff_inf_unc=eff_unc, n_fit=n_fit,
+                   eff_inf_tracker=eff_t, eff_inf_tracker_unc=eff_t_unc, n_fit_tracker=n_fit_t,
+                   prod_n=prod_n)
         for m in P_TRUE:
             row[f"efakes_{m}"] = ef[m]
         for (s, layer), n in n_layer.items():
@@ -254,7 +277,8 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         print(f"{p} res = {value*sh['show_scale']:8.3g} {sh['show_unit']}:  "
               f"z0 IT/OT = {z0[IT_BARREL]:.1f}/{z0[OT_BARREL]:.1f} mm  "
               f"time IT/OT = {tl[IT_BARREL]:.4f}/{tl[OT_BARREL]:.4f} ns  "
-              f"eff = {eff*100:.2f} +- {eff_unc*100:.2f} %  "
+              f"eff barrel/tracker = {eff*100:.2f} +- {eff_unc*100:.2f} / "
+              f"{eff_t*100:.2f} +- {eff_t_unc*100:.2f} %  "
               f"E[fakes] (exact helix) = {row['efakes_exact_helix']:.3e}  ({time.time()-t0:.0f}s)")
 
     with open(outdir / "scan_results.csv", "w", newline="") as f:
@@ -262,12 +286,12 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         w.writeheader()
         w.writerows(rows)
     print("Wrote scan_results.csv")
-    make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, outdir)
+    make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir)
     print(f"Done ({time.time()-t0:.0f}s)")
 
 
 # ------------------------------------------------------------------ output
-def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, outdir):
+def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -316,16 +340,22 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, outdir):
 
     # 2. efficiency
     fig, ax = plt.subplots(figsize=(7.5, 5.2))
-    eff = np.array([r["eff_inf"] for r in rows]) * 100
-    unc = np.array([r["eff_inf_unc"] for r in rows]) * 100
-    ax.errorbar(x, eff, yerr=unc, color="#1b9e77", lw=2, marker="o", ms=5, capsize=3)
+    vxd_txt = ", VXD hits not counted" if excl_vxd else ""
+    for key, color, label in (
+            ("eff_inf", "#1b9e77",
+             f"IT+OT barrel tower: muons with no IT/OT endcap hit,\n"
+             f">= {min_hits} of their 6 IT/OT barrel hits pass"),
+            ("eff_inf_tracker", "#d95f02",
+             f"whole tracker (as in ./run_all): all muons,\n>= {min_hits} of their hits pass{vxd_txt}")):
+        ax.errorbar(x, np.array([r[key] for r in rows]) * 100,
+                    yerr=np.array([r[key + "_unc"] for r in rows]) * 100,
+                    color=color, lw=2, marker="o", ms=5, capsize=3, label=label)
+    ax.legend(fontsize=8, loc="lower left")
     if logx:
         ax.set_xscale("log")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r"track-finding efficiency, $p_T\to\infty$ (%)")
-    ax.set_title(f"Track-finding efficiency vs {p} resolution\n"
-                 f"(barrel-confined muons, >= {min_hits} of their IT/OT barrel hits pass)\n{sub}",
-                 fontsize=10)
+    ax.set_title(f"Track-finding efficiency vs {p} resolution\n{sub}", fontsize=11)
     ax.grid(True, which="both", alpha=0.25)
     mark_today(ax)
     fig.tight_layout()
@@ -366,19 +396,24 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, outdir):
         f"Fixed smearing: {bc.describe_smearing(fixed)}  (from __smearing_config.txt)",
         f"pT cut (GeV/c): {pt_txt}  (from __cuts_config.txt, fixed)",
         f"z0, time cuts:  re-derived at each point, {scan['containment']:g}% signal containment, every subsystem",
-        f"Efficiency:     pT -> inf, barrel-confined muons, found = >= {min_hits} IT/OT barrel hits pass",
+        f"Efficiency:     pT -> inf;  barrel: muons with no IT/OT endcap hit, found = >= {min_hits} of "
+        f"their IT/OT barrel hits pass",
+        f"                tracker (as ./run_all): all muons, found = >= {min_hits} of their hits pass"
+        f"{', VXD not counted' if excl_vxd else ''}",
         f"E[#fakes]:      6-layer IT+OT barrel tower, BIB density after cuts x calibrated P_true",
         "",
         f"{'res (' + sh['show_unit'] + ')':>10} {'z0 IT':>7} {'z0 OT':>7} {'t IT':>8} {'t OT':>8}"
-        f" {'eff (%)':>14} {'E[fakes] helix':>15} {'quad':>10} {'line':>10}",
+        f" {'eff barrel (%)':>15} {'eff tracker (%)':>16} {'E[fakes] helix':>15} {'quad':>9} {'line':>9}",
         f"{'':>10} {'(mm)':>7} {'(mm)':>7} {'(ns)':>8} {'(ns)':>8}",
     ]
     for r, xv in zip(rows, x):
         lines.append(
             f"{xv:10.4g} {r['z0_cut_mm_IT_barrel']:7.1f} {r['z0_cut_mm_OT_barrel']:7.1f} "
             f"{r['time_cut_ns_IT_barrel']:8.4f} {r['time_cut_ns_OT_barrel']:8.4f} "
-            f"{r['eff_inf']*100:7.2f} +- {r['eff_inf_unc']*100:4.2f} {r['efakes_exact_helix']:15.3e} "
-            f"{r['efakes_conservative_quad']:10.2e} {r['efakes_line_B0']:10.2e}")
+            f"{r['eff_inf']*100:8.2f} +- {r['eff_inf_unc']*100:4.2f} "
+            f"{r['eff_inf_tracker']*100:9.2f} +- {r['eff_inf_tracker_unc']*100:4.2f} "
+            f"{r['efakes_exact_helix']:15.3e} "
+            f"{r['efakes_conservative_quad']:9.2e} {r['efakes_line_B0']:9.2e}")
     lines += ["", "Cuts for every subsystem: cuts_vs_" + p + ".png and scan_results.csv"]
     title = plt.figure(figsize=(11, 8.5))
     title.text(0.05, 0.95, "\n".join(lines), family="monospace", fontsize=8.5, va="top")

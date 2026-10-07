@@ -116,10 +116,13 @@ subsystems: every other resolution is as in `__smearing_config.txt`, the
 pT cut as in `__cuts_config.txt`; the z0 and then the time cut of every
 subsystem are set to keep `containment` % of the signal hits (z0 on the
 hits passing pT, time on those passing pT and z0; in a time scan z0 is
-derived once). Results are for the 6-layer IT+OT barrel tower: the
-track-finding efficiency for pT -> inf (muons with no IT/OT endcap hit,
-found = at least `min_hits_found` of their IT/OT barrel hits pass) and
-E[#fakes] for the three track models of the fake-rate framework.
+derived once). Results: E[#fakes] for the three track models of the
+fake-rate framework (6-layer IT+OT barrel tower), and the track-finding
+efficiency for pT -> inf in two versions - on the same barrel tower
+(muons with no IT/OT endcap hit, found = at least `min_hits_found` of
+their IT/OT barrel hits pass) and over the whole tracker, defined exactly
+as in `./run_all` (all muons, found = at least `min_hits_found` hits pass,
+VXD hits not counted if `exclude_vertex_hits`).
 
 Each scan is archived in `runs/<date>_<time>_scan_<time|angle>/` (the four
 settings files, `run_log.txt`, `code_version.txt`, `scan_results.csv`

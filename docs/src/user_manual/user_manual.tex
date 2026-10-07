@@ -228,12 +228,13 @@ line ($B=0$). Values well below 1 mean fakes are negligible.
 \textbf{Two things to remember.}
 (1) It uses only the IT and OT barrel layers; the calibration assumes the
 current geometry (a warning is printed if the layer areas change).
-(2) The track-finding efficiency of \code{./run\_all} uses the whole tracker
-(at least \code{min\_hits\_found} surviving non-VXD hits), while the
-efficiency of \code{./run\_scan} is defined on the same barrel tower as
-\Efakes\ (muons with no IT/OT endcap hit, at least \code{min\_hits\_found}
-of their 6 barrel hits pass). The two efficiencies are not the same
-quantity.
+(2) There are two track-finding efficiencies. \code{./run\_all} reports the
+\emph{whole-tracker} one (all muons; found if at least \code{min\_hits\_found}
+of their hits pass, VXD hits not counted). \code{./run\_scan} reports it too,
+and next to it the \emph{barrel-tower} one, defined on the same six layers as
+\Efakes\ (muons with no IT/OT endcap hit; found if at least
+\code{min\_hits\_found} of their 6 barrel hits pass). They are different
+quantities: compare like with like.
 
 %=====================================================================
 \section{Case 3 --- resolution scans}\label{sec:scan}
@@ -260,12 +261,14 @@ kept fixed. The $z_0$ and time cuts of every subsystem are then
 hits: $z_0$ first (on the hits passing \pT), then time (on those passing
 \pT\ and $z_0$). In a time scan $z_0$ does not depend on the timing, so it
 is derived once. The $z_0$ and time values written in \cuts\ are
-\emph{not} used. The scan reports the track-finding efficiency for
-$\pT\to\infty$ and \Efakes, both on the barrel tower (Section~\ref{sec:fakes}).
+\emph{not} used. The scan reports \Efakes\ and the track-finding efficiency for
+$\pT\to\infty$, both on the barrel tower, and also the whole-tracker
+efficiency exactly as \code{./run\_all} defines it (Section~\ref{sec:fakes}).
 
 \textbf{What comes out} (in \code{runs/<date>\_<time>\_scan\_<time|angle>/}):
 a PDF with a settings page, a results table, and three plots (\Efakes,
-efficiency, and the derived cuts of all six subsystems vs.\ the resolution);
+the two efficiencies, and the derived cuts of all six subsystems vs.\ the
+resolution);
 \code{scan\_results.csv} with every number. With
 the settings above (98\%) a scan reproduces the paper's Sections 15 and 16
 exactly.
