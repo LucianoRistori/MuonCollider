@@ -46,6 +46,21 @@ SIM_DIR="${SIM_DIR:-$(dirname "$WORKDIR")}"
 # settings files copied back from a (read-only) run folder: keep them editable
 chmod u+w "$WORKDIR"/__*_config.txt 2>/dev/null
 
+relock_finished_runs() {   # Dropbox can reset the permissions of a file it
+    # has just synced, so lock every finished run again at each start
+    # (a full run split into pieces is finished once it has summary.txt)
+    local d
+    for d in "$WORKDIR"/runs/*/; do
+        d="${d%/}"
+        case "$d" in
+            *_FAILED|*_INTERRUPTED|*_scan_time|*_scan_angle) ;;
+            *) [ -f "$d/summary.txt" ] || continue ;;
+        esac
+        find "$d" -type f -perm -u+w -exec chmod a-w {} + 2>/dev/null
+    done
+}
+relock_finished_runs
+
 # keep the copy of the user manual in the working folder up to date (the
 # master copy is docs/user_manual.pdf in the code, under git)
 MANUAL="$CODE_DIR/docs/user_manual.pdf"
