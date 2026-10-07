@@ -59,6 +59,12 @@
 \vspace{2pt}
 {\color{muted} How to run the package, where everything lives, and what comes out.
 Luciano Ristori, October 2026.}\par
+\vspace{4pt}
+{\small\color{muted}\textbf{Master copy:} \code{\textasciitilde/code/MuonCollider/docs/user\_manual.pdf}
+(git; source \code{docs/src/user\_manual/user\_manual.tex}). The copy
+\code{\_START\_HERE\_user\_manual.pdf} in the Analysis folder is refreshed from it
+automatically by \code{./run\_all} and \code{./run\_scan}: do not edit the copy;
+change the source and rebuild (see \code{README.txt} next to it).}\par
 \vspace{6pt}
 
 \begin{keybox}
@@ -99,6 +105,7 @@ and all results.
     |-- __smearing_config.txt      detector resolutions (position, time, angle)
     |-- __scan_config.txt          what ./run_scan scans
     |-- run_all, run_scan          the two commands (tiny launchers)
+    |-- _START_HERE_user_manual.pdf    this manual (auto-refreshed copy)
     |-- _highlights_<date>_<time>.pdf   PDF of the latest ./run_all
     |-- _highlights/                    its key plots (PNG) and the same PDF
     |-- _scan_time_<date>_<time>.pdf    PDF of the latest time scan

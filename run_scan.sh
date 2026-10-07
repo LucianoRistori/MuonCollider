@@ -34,6 +34,14 @@ WORKDIR="${1:-$PWD}"
 WORKDIR="$(cd "$WORKDIR" && pwd -P)"
 SIM_DIR="${SIM_DIR:-$(dirname "$WORKDIR")}"
 
+# keep the copy of the user manual in the working folder up to date (the
+# master copy is docs/user_manual.pdf in the code, under git)
+MANUAL="$CODE_DIR/docs/user_manual.pdf"
+if [ -f "$MANUAL" ] && ! cmp -s "$MANUAL" "$WORKDIR/_START_HERE_user_manual.pdf"; then
+    cp "$MANUAL" "$WORKDIR/_START_HERE_user_manual.pdf" \
+        && say "(updated _START_HERE_user_manual.pdf from the code's docs/user_manual.pdf)"
+fi
+
 command -v "$PYTHON" >/dev/null 2>&1 || stop "'$PYTHON' not found"
 for f in __scan_config.txt __cuts_config.txt __smearing_config.txt __input_files_config.txt; do
     if [ ! -f "$WORKDIR/$f" ]; then

@@ -143,6 +143,14 @@ WORKDIR="$(cd "$WORKDIR" && pwd -P)"
 
 SIM_DIR="${SIM_DIR:-${DATA_DIR:-$(dirname "$WORKDIR")}}"   # holds Data/ and Geometry/
 
+# keep the copy of the user manual in the working folder up to date (the
+# master copy is docs/user_manual.pdf in the code, under git)
+MANUAL="$CODE_DIR/docs/user_manual.pdf"
+if [ -f "$MANUAL" ] && ! cmp -s "$MANUAL" "$WORKDIR/_START_HERE_user_manual.pdf"; then
+    cp "$MANUAL" "$WORKDIR/_START_HERE_user_manual.pdf" \
+        && say "(updated _START_HERE_user_manual.pdf from the code's docs/user_manual.pdf)"
+fi
+
 # ---------------------------------------------------------------- checks
 command -v "$PYTHON" >/dev/null 2>&1 || stop "'$PYTHON' not found. Install Python 3, or run with PYTHON=/path/to/python3 ./run_all"
 
