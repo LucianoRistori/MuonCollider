@@ -265,10 +265,13 @@ to the hits of \emph{all} subsystems (for angle, equally to $u$ and $v$);
 every other resolution is taken from \smear; the \pT\ cut from \cuts\ is
 kept fixed. The $z_0$ and time cuts of every subsystem are then
 \emph{re-derived} so that each keeps \code{containment}\,\% of the signal
-hits: $z_0$ first (on the hits passing \pT), then time (on those passing
-\pT\ and $z_0$). In a time scan $z_0$ does not depend on the timing, so it
-is derived once. The $z_0$ and time values written in \cuts\ are
-\emph{not} used. The scan reports \Efakes\ and the track-finding efficiency for
+hits \emph{in its own N-1 distribution}, exactly as in the N-1 plots of
+\code{./run\_all}: $z_0$ on the hits passing \pT\ and time, time on those
+passing \pT\ and $z_0$. The two are found together by iteration (2--4
+rounds). The $z_0$ and time values written in \cuts\ are \emph{not} used.
+(Before October 2026 $z_0$ was set first, on the hits passing \pT\ only;
+late hits of curling low-\pT\ muons in the outer OT barrel layer then made
+the OT barrel $z_0$ cut about four times too loose.) The scan reports \Efakes\ and the track-finding efficiency for
 $\pT\to\infty$, both on the barrel tower, and also the whole-tracker
 efficiency exactly as \code{./run\_all} defines it (Section~\ref{sec:fakes}).
 
@@ -276,9 +279,8 @@ efficiency exactly as \code{./run\_all} defines it (Section~\ref{sec:fakes}).
 a PDF with a settings page, a results table, and three plots (\Efakes,
 the two efficiencies, and the derived cuts of all six subsystems vs.\ the
 resolution);
-\code{scan\_results.csv} with every number. With
-the settings above (98\%) a scan reproduces the paper's Sections 15 and 16
-exactly.
+\code{scan\_results.csv} with every number. Scans made before the N-1 definition (and the paper's Sections 15--16)
+have OT barrel $z_0$ cuts about four times looser, hence a higher \Efakes.
 
 \textbf{Tip:} \code{grid = list <value>} gives a single point: the
 efficiency and \Efakes\ for one resolution with containment-derived cuts,

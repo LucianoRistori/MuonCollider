@@ -116,10 +116,15 @@ cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
 
 At each value of the scanned resolution, applied to the hits of all
 subsystems: every other resolution is as in `__smearing_config.txt`, the
-pT cut as in `__cuts_config.txt`; the z0 and then the time cut of every
-subsystem are set to keep `containment` % of the signal hits (z0 on the
-hits passing pT, time on those passing pT and z0; in a time scan z0 is
-derived once). Results: E[#fakes] for the three track models of the
+pT cut as in `__cuts_config.txt`; the z0 and time cuts of every
+subsystem are set so that each keeps `containment` % of the signal hits
+in its own N-1 distribution, as in the N-1 plots (z0 on the hits passing
+pT and time, time on those passing pT and z0), found together by
+iteration (2-4 rounds, `n1_iterations` in the CSV). Until October 2026
+z0 was set first, on the hits passing pT only: in the OT barrel ~3% of
+the signal hits (late second crossings of curling low-pT muons, which
+fail the time cut) then set a z0 cut ~4x too loose (~540 mm instead of
+~135 mm at 1.5 deg), making E[#fakes] too high by 1-2 orders of magnitude. Results: E[#fakes] for the three track models of the
 fake-rate framework (6-layer IT+OT barrel tower), and the track-finding
 efficiency for pT -> inf in two versions - on the same barrel tower
 (muons with no IT/OT endcap hit, found = at least `min_hits_found` of
@@ -133,9 +138,10 @@ with the cuts of every subsystem, three plots and `scan_<p>.pdf`); the
 PDF is also copied to the Analysis folder as `_scan_<p>_<date>_<time>.pdf`.
 `./run_scan` never touches the `step*` folders or `_highlights/` of
 `./run_all`. Code: `resolution_scan.py`, `run_scan.sh`. With the Section
-15/16 settings (time: log 0.010 1.0 10; angle: linear 0 5 11; 98%) it
-reproduces `resolution_scans/*_results.csv` exactly; the scripts in
-`resolution_scans/` are kept as the record of those sections.
+15/16 settings (time: log 0.010 1.0 10; angle: linear 0 5 11; 98%) the
+z0-first version reproduced `resolution_scans/*_results.csv` exactly; the scripts in
+`resolution_scans/` are kept as the record of those sections (they use the
+old z0-first order; with the N-1 definition the numbers change, see above).
 
 ## Documentation
 - `docs/user_manual.pdf`: the user manual - folders, settings files,

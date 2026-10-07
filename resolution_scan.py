@@ -121,6 +121,29 @@ def limit_per_system(values, system, select, containment):
     return out
 
 
+def n1_cuts(sig, sig_pt, containment, tol=1e-3, max_iter=20):
+    """z0 and time cuts of every subsystem such that each keeps
+    `containment` % of the signal hits in its own N-1 distribution:
+    z0 on the hits passing pT and time, time on those passing pT and z0
+    (as in the N-1 plots of ./run_all). The two depend on each other, so
+    they are found by iterating from z0 on the hits passing pT alone,
+    until no cut changes by more than `tol` (relative).
+    Returns (z0 limits, time limits, number of iterations)."""
+    z, t, sy = sig["z_axis_intercept_mm"], sig["t_corrected_ns"], sig["system"]
+    z0 = limit_per_system(z, sy, sig_pt, containment)
+    tl = limit_per_system(t, sy, sig_pt & pass_mask(z, sy, z0), containment)
+    for it in range(1, max_iter + 1):
+        z0_new = limit_per_system(z, sy, sig_pt & pass_mask(t, sy, tl), containment)
+        tl_new = limit_per_system(t, sy, sig_pt & pass_mask(z, sy, z0_new), containment)
+        change = max(max(abs(z0_new[s] / z0[s] - 1), abs(tl_new[s] / tl[s] - 1)) for s in SYSTEMS)
+        z0, tl = z0_new, tl_new
+        if change <= tol:
+            return z0, tl, it
+    print(f"  WARNING: z0/time cuts not converged after {max_iter} iterations "
+          f"(last change {change:.1e})")
+    return z0, tl, max_iter
+
+
 def pass_mask(values, system, limits):
     lim = np.full(32, np.inf)
     for s, x in limits.items():
@@ -164,8 +187,9 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
     outdir.mkdir(parents=True, exist_ok=True)
 
     print(f"Scan of the {p} resolution: {scan['grid_text']}  ({len(grid)} points)")
-    print(f"Cuts: z0 and time re-derived at {containment:g}% signal containment in every "
-          f"subsystem; pT cut as in the cuts config")
+    print(f"Cuts: z0 and time re-derived in every subsystem, each keeping {containment:g}% of the "
+          f"signal hits in its N-1 distribution (passing the other two cuts); pT cut as in the "
+          f"cuts config")
     print(f"Track found: barrel tower: >= {min_hits} of its IT/OT barrel hits pass the cuts "
           f"(muons with no IT/OT endcap hit)")
     print(f"             whole tracker: >= {min_hits} of its hits pass the cuts"
@@ -210,7 +234,6 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
     for n in ("t_corrected_ns", "z_axis_intercept_mm"):
         pt_only[n]["enabled"] = False
 
-    z0_fixed = None
     rows = []
     for i, value in enumerate(grid):
         if p == "time":
@@ -229,11 +252,7 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         sig_pt, _ = bc.apply_cuts(sig, pt_only, B_FIELD_T=B_FIELD_T)
         bib_pt, _ = bc.apply_cuts(bib, pt_only, B_FIELD_T=B_FIELD_T)
 
-        if p == "angle" or z0_fixed is None:
-            z0_fixed = limit_per_system(sig["z_axis_intercept_mm"], sig["system"], sig_pt, containment)
-        z0 = z0_fixed
-        sig_z0 = pass_mask(sig["z_axis_intercept_mm"], sig["system"], z0)
-        tl = limit_per_system(sig["t_corrected_ns"], sig["system"], sig_pt & sig_z0, containment)
+        z0, tl, n_iter = n1_cuts(sig, sig_pt, containment)
 
         cuts_now = {n: {"per_system": dict(cuts_cfg[n]["per_system"]), "enabled": True,
                         "zoom_per_system": cuts_cfg[n]["zoom_per_system"]} for n in bc.CUT_NAMES}
@@ -265,6 +284,7 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
             row[f"z0_cut_mm_{SHORT[s]}"] = z0[s]
         for s in SYSTEMS:
             row[f"time_cut_ns_{SHORT[s]}"] = tl[s]
+        row["n1_iterations"] = n_iter
         row.update(eff_inf=eff, eff_inf_unc=eff_unc, n_fit=n_fit,
                    eff_inf_tracker=eff_t, eff_inf_tracker_unc=eff_t_unc, n_fit_tracker=n_fit_t,
                    prod_n=prod_n)
@@ -395,7 +415,8 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
         f"({len(rows)} points), applied to all subsystems",
         f"Fixed smearing: {bc.describe_smearing(fixed)}  (from __smearing_config.txt)",
         f"pT cut (GeV/c): {pt_txt}  (from __cuts_config.txt, fixed)",
-        f"z0, time cuts:  re-derived at each point, {scan['containment']:g}% signal containment, every subsystem",
+        f"z0, time cuts:  re-derived at each point, every subsystem: each keeps {scan['containment']:g}% of the "
+        f"signal hits in its N-1 distribution",
         f"Efficiency:     pT -> inf;  barrel: muons with no IT/OT endcap hit, found = >= {min_hits} of "
         f"their IT/OT barrel hits pass",
         f"                tracker (as ./run_all): all muons, found = >= {min_hits} of their hits pass"
