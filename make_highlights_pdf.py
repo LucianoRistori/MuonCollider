@@ -108,9 +108,12 @@ def load_run(run_dir):
              "unc": 100 * float(lim["efficiency_pt_inf_unc"]),
              "pt_min": float(lim["fit_pt_min_gev"]), "n_tracks": int(lim["n_tracks"])}
     signal_pt_min = sorted({float(r["fit_pt_min_gev"]) for r in read_csv(by_region)})
+    fr = run_dir / "step4_cuts" / "fake_rate.csv"
+    fakes = read_csv(fr)[0] if fr.is_file() else None    # older runs have none
 
     return {"name": run_dir.name, "cuts": cuts, "smear": smear, "inputs": inputs,
             "table": table, "track": track, "signal_pt_min": signal_pt_min, "per_cut": per_cut,
+            "fakes": fakes,
             "layers": read_csv(layers) if layers.is_file() else None}
 
 
@@ -406,10 +409,19 @@ def main(argv):
         trk = run["track"]
         fig.text(0.6, box.y0 - 0.06, f"Track-finding efficiency for $p_T$ → ∞:  "
                  f"{trk['eff']:.1f} ± {trk['unc']:.1f}%", fontsize=11.5, weight="bold", color=INK)
+        note_y = box.y0 - 0.105
+        if run["fakes"]:
+            fk = run["fakes"]
+            fig.text(0.6, box.y0 - 0.095, "Expected fake tracks:  "
+                     f"{float(fk['efakes_exact_helix']):.1e}", fontsize=11.5, weight="bold", color=INK)
+            fig.text(0.6, box.y0 - 0.125, "6-layer IT+OT barrel tower, exact-helix model   (other models: "
+                     f"quad {float(fk['efakes_conservative_quad']):.1e}, "
+                     f"line {float(fk['efakes_line_B0']):.1e})", fontsize=8.5, color=MUTED)
+            note_y = box.y0 - 0.16
         pt_min = run["signal_pt_min"]
         totals = ("VXD: vertex detector (barrel + endcap); IT + OT: all the rest\n"
                   if any(name == "VXD" for name, *_ in run["table"]) else "")
-        fig.text(0.6, box.y0 - 0.105, totals +
+        fig.text(0.6, note_y, totals +
                  "rejection factor = 1/(1 − fraction of BIB hits removed)\n"
                  "efficiencies for $p_T$ → ∞: fit of ε$_∞$ + c/$p_T^2$ to muons above "
                  + (f"{pt_min[0]:g} GeV/c" if len(pt_min) == 1 else "twice the $p_T$ cut"),

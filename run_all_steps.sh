@@ -30,7 +30,8 @@
 #      runs/<date>_<time>/run_log.txt.
 #   4. Only if ALL its steps succeed: writes summary.txt (settings, BIB
 #      rejection factor and signal hit efficiency for pT -> infinity per
-#      subsystem, track-finding efficiency for pT -> infinity), gathers
+#      subsystem, track-finding efficiency for pT -> infinity, expected
+#      number of fake tracks in the IT+OT barrel tower), gathers
 #      the key plots in _highlights/ together with a PDF presentation of
 #      the main ones (highlights_<date>_<time>.pdf, also copied to the
 #      working folder as _highlights_<date>_<time>.pdf, next to
@@ -268,6 +269,8 @@ step3() {
 step4() {
     run_py "Step 4: cuts - BIB rejection and signal hit efficiency" \
         apply_cuts.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_cuts" &&
+    run_py "Step 4: expected fake tracks (IT+OT barrel tower)" \
+        fake_rate.py "$RUN_DIR/step4_cuts" &&
     run_py "Step 4: track-finding efficiency vs pT" \
         track_efficiency.py "$SIGNAL" --cuts "$CUTS" --out "$RUN_DIR/step4_track_efficiency" &&
     if [ "$MODE" = pdf ]; then
@@ -380,6 +383,8 @@ fi
          {exit}' "$RUN_DIR/run_log.txt"
     trk="$(grep -m1 '^Track-finding efficiency for pT -> inf' "$RUN_DIR/run_log.txt")"
     [ -z "$trk" ] || { say ""; say "$trk"; }
+    fk="$(grep -m1 '^Expected fake tracks' "$RUN_DIR/run_log.txt")"
+    [ -z "$fk" ] || say "$fk"
 } > "$RUN_DIR/summary.txt"
 
 missing_hl=""

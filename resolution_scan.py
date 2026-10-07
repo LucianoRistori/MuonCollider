@@ -31,21 +31,9 @@ TOWER = (IT_BARREL, OT_BARREL)                    # the 6-layer fake-rate tower
 SHORT = {1: "VXD_barrel", 2: "VXD_endcap", 3: "IT_barrel",
          4: "IT_endcap", 5: "OT_barrel", 6: "OT_endcap"}
 
-# ---- fake-rate framework constants (Sections 14-16 of the paper) --------
-# Real per-layer sensitive areas (mm^2) of the IT/OT barrel layers
-AREA_MM2 = {
-    (IT_BARREL, 0): 1043723.52, (IT_BARREL, 1): 2203416.32, (IT_BARREL, 2): 5167881.04,
-    (OT_BARREL, 0): 14003290.56, (OT_BARREL, 1): 19482839.04, (OT_BARREL, 2): 28615419.84,
-}
-# Plane areas W_i^2 (mm^2) of the projective tower (1 m^2 outermost plane)
-Y_TRUE = {(IT_BARREL, 0): 164.0, (IT_BARREL, 1): 354.0, (IT_BARREL, 2): 554.0,
-          (OT_BARREL, 0): 819.0, (OT_BARREL, 1): 1153.0, (OT_BARREL, 2): 1486.0}
-W2_SYNTH = {k: (1000.0 * y / 1486.0) ** 2 for k, y in Y_TRUE.items()}
-# Calibrated fake probability P_true(cut) for this tower
-# (fake_rate_framework/real_tower_calibration.py)
-P_TRUE = {"exact_helix": 7.3054e-26, "conservative_quad": 6.2186e-26, "line_B0": 3.6895e-28}
-MODEL_LABEL = {"exact_helix": "exact helix", "conservative_quad": "conservative quad",
-               "line_B0": "line (B=0)"}
+# fake-rate framework constants and formula: fake_rate.py
+from fake_rate import AREA_MM2, P_TRUE, MODEL_LABEL
+import fake_rate
 
 PARAM = {
     "time":  dict(unit="ns", label=r"timing resolution $\sigma_t$", col="sigma_t_ns",
@@ -247,12 +235,9 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         # BIB density per barrel layer after the cuts -> E[#fakes]
         bib_pass = bib_pt & pass_mask(bib["z_axis_intercept_mm"], bib["system"], z0) \
                           & pass_mask(bib["t_corrected_ns"], bib["system"], tl)
-        prod_n = 1.0
-        n_layer = {}
-        for (s, layer), area in AREA_MM2.items():
-            n_after = int(np.sum(bib_pass & (bib["system"] == s) & (bib["layer"] == layer)))
-            n_layer[(s, layer)] = n_after
-            prod_n *= n_after / area * W2_SYNTH[(s, layer)]
+        n_layer = {(s, layer): int(np.sum(bib_pass & (bib["system"] == s) & (bib["layer"] == layer)))
+                   for (s, layer) in AREA_MM2}
+        prod_n, ef = fake_rate.efakes(n_layer)
 
         row = {PARAM[p]["col"]: float(value)}
         for s in SYSTEMS:
@@ -260,8 +245,8 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         for s in SYSTEMS:
             row[f"time_cut_ns_{SHORT[s]}"] = tl[s]
         row.update(eff_inf=eff, eff_inf_unc=eff_unc, n_fit=n_fit, prod_n=prod_n)
-        for m, pt in P_TRUE.items():
-            row[f"efakes_{m}"] = pt * prod_n
+        for m in P_TRUE:
+            row[f"efakes_{m}"] = ef[m]
         for (s, layer), n in n_layer.items():
             row[f"bib_hits_after_{SHORT[s]}_L{layer}"] = n
         rows.append(row)
