@@ -1,6 +1,6 @@
 ---
 title: "Estimating Combinatorial Fake-Track Rates in a Multi-Plane Tracking Detector"
-date: "DRAFT v1.6 — 2026-10-08"
+date: "DRAFT v1.7 — 2026-10-08"
 ---
 
 **For discussion. Sections marked [DRAFT] are rough and meant to be revised; numbers are final (taken directly from the simulation) but the surrounding prose is not.**
@@ -529,17 +529,17 @@ Each layer is given its *own* noise density $\rho_i$ (hits/mm$^2$), read directl
 
 Because the six $\rho_i$ differ by a factor of $\sim$ 80 from innermost to outermost layer, the per-layer hit counts $n_i$ come out comparatively flat (52 to 81) — the shrinking density on the outer, more lightly-irradiated layers is largely offset by their much larger area. This non-uniform-$\rho_i$ case uses the general form of Section 4's identity, $E[\#\mathrm{fakes}]=P_\mathrm{true}(\mathrm{cut})\prod_i n_i$, with $\prod_i n_i=1.330\times10^{11}$ for this configuration — no special machinery beyond what Section 4 already proves, since the identity never assumed uniform $n_i$ in the first place.
 
-This is a genuinely new geometry (unevenly spaced, unlike Sections 7–13's evenly-spaced synthetic cone), so none of the earlier calibration constants $(K,C_\kappa)$ carry over; a fresh Monte Carlo calibration was run for all three models at the same physics defaults used throughout ($\sigma_\mathrm{ref}=100\ \mu$m, $B=5$ T, $p_T>10$ GeV/c, one-sided $3\sigma$ matched cut).
+This is a genuinely new geometry (unevenly spaced, unlike Sections 7–13's evenly-spaced synthetic cone), so none of the earlier calibration constants $(K,C_\kappa)$ carry over; a fresh Monte Carlo calibration was run for all three models at the same physics defaults used throughout ($\sigma_\mathrm{ref}=100\ \mu$m, $B=5$ T, $p_T>10$ GeV/c, one-sided $3\sigma$ matched cut). The operating point, however, has a hit resolution of 50 µm, so the calibrated $P_\mathrm{true}$ is scaled to it with Section 5.1's law, $P_\mathrm{true}\propto\sigma^\mathrm{ndof}$ at fixed geometry and cut: a factor $(50/100)^8=1/256$ for the two curved-track models and $(50/100)^9=1/512$ for the line. (Version 1.6 of this note, and its Sections 15–16, used the 100 µm calibration unscaled, and so overstated every $E[\#\mathrm{fakes}]$ by exactly these factors; the cuts, densities and efficiencies were not affected.)
 
 ### 14.2 Results: fake rate at today's estimated background level
 
-| model | ndof | $P_\mathrm{true}(\mathrm{cut})$ | $E[\#\mathrm{fakes}]$ at today's density |
-|---|---|---|---|
-| exact 4-param helix | 8 | $7.31\times10^{-26}$ | $9.71\times10^{-15}$ |
-| conservative quadratic | 8 | $6.22\times10^{-26}$ | $8.27\times10^{-15}$ |
-| origin-constrained line ($B=0$) | 9 | $3.69\times10^{-28}$ | $4.91\times10^{-17}$ |
+| model | ndof | $P_\mathrm{true}(\mathrm{cut})$ at 100 µm (calibrated) | $P_\mathrm{true}(\mathrm{cut})$ at 50 µm | $E[\#\mathrm{fakes}]$ at today's density |
+|---|---|---|---|---|
+| exact 4-param helix | 8 | $7.31\times10^{-26}$ | $2.85\times10^{-28}$ | $3.79\times10^{-17}$ |
+| conservative quadratic | 8 | $6.22\times10^{-26}$ | $2.43\times10^{-28}$ | $3.23\times10^{-17}$ |
+| origin-constrained line ($B=0$) | 9 | $3.69\times10^{-28}$ | $7.21\times10^{-31}$ | $9.58\times10^{-20}$ |
 
-At today's estimated BIB density, the expected number of fake tracks from this six-layer combination is of order $10^{-14}$ — utterly negligible, by many orders of magnitude, for either the field-assisted models or the $B=0$ control. The exact-helix and conservative-quadratic models again agree to within $\sim$ 20% (consistent with every earlier comparison in this paper), and both sit roughly $200\times$ above the $B=0$ line, the same qualitative pattern as Sections 11.5/12.4/13.3.
+At today's estimated BIB density, the expected number of fake tracks from this six-layer combination is of order $10^{-17}$ — utterly negligible, by many orders of magnitude, for either the field-assisted models or the $B=0$ control. The exact-helix and conservative-quadratic models again agree to within $\sim$ 20% (consistent with every earlier comparison in this paper), and both sit roughly $400\times$ above the $B=0$ line (the line's extra degree of freedom makes its $P_\mathrm{true}$ fall faster with resolution, so this ratio is twice the $200\times$ found at 100 µm), the same qualitative pattern as Sections 11.5/12.4/13.3.
 
 ### 14.3 How much headroom is there?
 
@@ -551,11 +551,11 @@ The one-point number above says fakes are not a problem *today*; the more useful
 
 | model | $\mu(E{=}1)$ | $\mu(E{=}10)$ | $\sigma(E{=}1)$ | $\sigma(E{=}10)$ |
 |---|---|---|---|---|
-| exact 4-param helix | $217\times$ | $318\times$ | $5.64$ mm | $7.53$ mm |
-| conservative quadratic | $222\times$ | $326\times$ | $5.76$ mm | $7.68$ mm |
-| origin-constrained line ($B=0$) | $523\times$ | $767\times$ | $6.49$ mm | $8.38$ mm |
+| exact 4-param helix | $546\times$ | $801\times$ | $5.64$ mm ($113\times$) | $7.53$ mm |
+| conservative quadratic | $560\times$ | $822\times$ | $5.76$ mm ($115\times$) | $7.68$ mm |
+| origin-constrained line ($B=0$) | $1478\times$ | $2170\times$ | $6.49$ mm ($130\times$) | $8.38$ mm |
 
-For the two field-assisted models (the ones actually relevant for real data), the BIB background level would need to be roughly $220\times$ higher than today's estimate before this six-layer tower reaches one expected fake — or, independently, the hit resolution would need to degrade from $100\ \mu$m to roughly $5.7$ mm, a factor of about $57$, at today's density. Both are large margins, in either direction consistent with each other through the $N=6$ vs.\ $\mathrm{ndof}=8$ power laws (a steeper density exponent means it takes a bigger resolution degradation to do the same damage, exactly the $N$-vs-ndof asymmetry visible in the two headroom factors above).
+For the two field-assisted models (the ones actually relevant for real data), the BIB background level would need to be roughly $550\times$ higher than today's estimate before this six-layer tower reaches one expected fake — or, independently, the hit resolution would need to degrade from $50\ \mu$m to roughly $5.7$ mm, a factor of about $110$, at today's density. (The resolution at which one fake is reached does not depend on the operating point's resolution, only on the densities; version 1.6 quoted $220\times$ and $57\times$, from the unscaled $P_\mathrm{true}$ and the 100 µm reference.) Both are large margins, in either direction consistent with each other through the $N=6$ vs.\ $\mathrm{ndof}=8$ power laws (a steeper density exponent means it takes a bigger resolution degradation to do the same damage, exactly the $N$-vs-ndof asymmetry visible in the two headroom factors above).
 
 ### 14.4 Caveats
 
@@ -587,9 +587,9 @@ Since the $z_0$ cut is defined on hits passing the time cut, and vice versa, the
 
 **Why the $z_0$ cut must not be set before the time cut (a correction to v1.4).** Version 1.4 of this note set the $z_0$ cut first, on the signal hits passing $p_T$ alone, and then the time cut on the hits passing $p_T$ and $z_0$. In the OT barrel this gives a $z_0$ cut about four to five times too loose (543 mm, against about 107 mm with the definition above). The reason is a small population of very late signal hits: about 3% of the OT-barrel signal hits passing the $p_T$ cut, almost all in the outermost layer, from muons below 5 GeV/$c$ (median 1.7 GeV/$c$), arriving 5–20 ns late (median about 11 ns). They are, very likely, second crossings of the outermost layer by low-$p_T$ muons that curl out beyond it and back. Both $z_0$ and the time-of-flight correction assume the path from the interaction point to the hit; if the true path is longer by $\Delta L$, the hit is late by $\Delta L/c$ and its $z_0$ is shifted by $\Delta L\cos\theta$, so that $z_0\approx c\,t_\mathrm{corrected}\cos\theta$ for these hits (correlation 0.98 between the two sides in the simulation). With about 3% of the hits at $|z_0|\gtrsim250$ mm, the 98% point of a $z_0$ distribution that has not been through any time cut lands inside this tail; any time cut below 1 ns removes them, which is why the N−1 plots never showed them. The $z_0$-first construction thus overstated the OT-barrel background, and with it $E[\#\mathrm{fakes}]$, by factors between 7 and 80 across Sections 15 and 16. The IT-barrel cuts were not affected.
 
-**BIB files (a correction in v1.6).** Versions up to 1.5 used BIB files in which the simulation had stored wrong momenta for the BIB hits; their positions, times and sensors were right. Since the hit direction enters $z_0$, the $p_T$ estimate and the time-of-flight correction, the corrected files (October 2026) make the BIB look much less like particles from the interaction point: with the same cuts, $E[\#\mathrm{fakes}]$ in these scans is 90 to 1000 times lower than in version 1.5. The signal sample is unchanged, and so are all the cuts and efficiencies below, which depend on the signal only.
+**BIB files (a correction in v1.6).** Versions up to 1.5 used BIB files in which the simulation had stored wrong momenta for the BIB hits; their positions, times and sensors were right. Since the hit direction enters $z_0$, the $p_T$ estimate and the time-of-flight correction, the corrected files (October 2026) make the BIB look much less like particles from the interaction point: with the same cuts and the same fake probability, $E[\#\mathrm{fakes}]$ in these scans is 90 to 1000 times lower than in version 1.5 (and a further 256 times lower than in version 1.6, which did not scale the fake probability to the 50 µm resolution; Section 14.1). The signal sample is unchanged, and so are all the cuts and efficiencies below, which depend on the signal only.
 
-**Background density and fake rate.** The resulting combined cuts are applied to the real BIB ntuple (the corrected files; restricted to IT/OT barrel hits), giving a post-cut hit density per layer at each $\sigma_t$. These densities feed directly into the already-calibrated $P_\mathrm{true}(\mathrm{cut})$ values from Section 14 (the geometric fit calibration is untouched by this study, for the reason given in Section 15.1) via the general combinatorial identity $E[\#\mathrm{fakes}]=P_\mathrm{true}(\mathrm{cut})\prod_i n_i$.
+**Background density and fake rate.** The resulting combined cuts are applied to the real BIB ntuple (the corrected files; restricted to IT/OT barrel hits), giving a post-cut hit density per layer at each $\sigma_t$. These densities feed directly into the already-calibrated $P_\mathrm{true}(\mathrm{cut})$ values from Section 14, scaled to the 50 µm hit resolution held fixed in this scan (Section 14.1; the geometric fit calibration is otherwise untouched by this study, for the reason given in Section 15.1) via the general combinatorial identity $E[\#\mathrm{fakes}]=P_\mathrm{true}(\mathrm{cut})\prod_i n_i$.
 
 **Track-finding efficiency, scoped to the same 6-layer tower as the fake rate.** Efficiency is computed consistently with the fake-rate side of this calculation: the fake rate above (and in Section 14) is defined purely for the 6-layer IT+OT barrel tower, so the efficiency reported alongside it is restricted to the same object, rather than to the full 4-system tracker (an earlier version of this scan used the full tracker — IT barrel, IT endcap, OT barrel, OT endcap, 17 layers total — which mixed two different geometric objects in the same plot). Concretely: (i) the muon-gun population used for the efficiency denominator is restricted to muons with zero truth hits in either endcap system (a purely geometric selection on raw hit positions, made before any smearing or cuts, so it is not circular with reconstruction efficiency) — 33.7% of the generated sample (33,670 of 100,000 events) is fully barrel-confined in this geometry; (ii) a track is "found" if it has at least 5 of the 6 barrel-tower layers surviving the combined cuts (`min_hits_found=5` of 6, rather than 5 of 17), and the $p_T\to\infty$ efficiency is extracted with the same extrapolation (`efficiency_at_infinite_pt`) used in the real analysis's own `track_efficiency.py`, applied to this barrel-confined subsample. For comparison, the figures also show the whole-tracker efficiency exactly as the analysis pipeline defines it (all muons; found if at least 5 of their non-vertex hits pass the cuts).
 
@@ -603,17 +603,17 @@ The scan covers $\sigma_t=10$ ps to $1$ ns, 10 points equally spaced on a log sc
 
 | $\sigma_t$ | $z_0$ cut, IT/OT (mm) | $t$ cut, IT/OT (ns) | $E[\#\mathrm{fakes}]$, exact helix | efficiency ($p_T\to\infty$) |
 |---|---|---|---|---|
-| 10 ps | 34.4 / 104.7 | 0.026 / 0.034 | $1.78\times10^{-17}$ | $98.51\pm0.25\%$ |
-| 46 ps | 34.5 / 107.1 | 0.109 / 0.113 | $2.65\times10^{-13}$ | $97.88\pm0.29\%$ |
-| 129 ps | 34.5 / 107.3 | 0.301 / 0.312 | $1.46\times10^{-9}$ | $98.06\pm0.29\%$ |
-| 359 ps | 34.4 / 107.3 | 0.838 / 0.859 | $1.33\times10^{-7}$ | $98.21\pm0.28\%$ |
-| 1000 ps | 34.4 / 107.3 | 2.331 / 2.412 | $4.07\times10^{-7}$ | $98.27\pm0.27\%$ |
+| 10 ps | 34.4 / 104.7 | 0.026 / 0.034 | $6.94\times10^{-20}$ | $98.51\pm0.25\%$ |
+| 46 ps | 34.5 / 107.1 | 0.109 / 0.113 | $1.04\times10^{-15}$ | $97.88\pm0.29\%$ |
+| 129 ps | 34.5 / 107.3 | 0.301 / 0.312 | $5.69\times10^{-12}$ | $98.06\pm0.29\%$ |
+| 359 ps | 34.4 / 107.3 | 0.838 / 0.859 | $5.21\times10^{-10}$ | $98.21\pm0.28\%$ |
+| 1000 ps | 34.4 / 107.3 | 2.331 / 2.412 | $1.59\times10^{-9}$ | $98.27\pm0.27\%$ |
 
 (Full 10-point table in `data/section15_time_scan.csv`, with the cuts of all six subsystems. The $z_0$ cuts barely change with $\sigma_t$, since $z_0$ itself does not depend on timing; the small drift of the OT-barrel value, 104.7 to 107.3 mm, comes from its N−1 population, which passes a time cut that does.)
 
 Two results stand out:
 
-**Fake rate has enormous headroom in timing resolution.** $E[\#\mathrm{fakes}]$ rises by about ten orders of magnitude from $\sigma_t=10$ ps to $\sigma_t=1$ ns, but even at the worst point scanned — $\sigma_t=1$ ns, roughly $33\times$ coarser than today's assumed 30 ps — the exact-helix and conservative-quadratic models give $E[\#\mathrm{fakes}]\approx3.5$–$4\times10^{-7}$, more than six orders of magnitude below the one-fake danger line, and the $B=0$ line control stays lower still ($2\times10^{-9}$). Unlike Section 14.3's density/resolution scaling laws, this curve is not a single power law — it climbs steeply up to $\sigma_t\approx200$ ps and then much more slowly, consistent with the non-uniform, locally-dipped BIB time distribution described in Section 15.1 — but the qualitative conclusion is the same as Section 14's: the timing requirement has very large margin before fakes become a concern for this six-layer combination.
+**Fake rate has enormous headroom in timing resolution.** $E[\#\mathrm{fakes}]$ rises by about ten orders of magnitude from $\sigma_t=10$ ps to $\sigma_t=1$ ns, but even at the worst point scanned — $\sigma_t=1$ ns, roughly $33\times$ coarser than today's assumed 30 ps — the exact-helix and conservative-quadratic models give $E[\#\mathrm{fakes}]\approx1.4$–$1.6\times10^{-9}$, almost nine orders of magnitude below the one-fake danger line, and the $B=0$ line control stays lower still ($4\times10^{-12}$). Unlike Section 14.3's density/resolution scaling laws, this curve is not a single power law — it climbs steeply up to $\sigma_t\approx200$ ps and then much more slowly, consistent with the non-uniform, locally-dipped BIB time distribution described in Section 15.1 — but the qualitative conclusion is the same as Section 14's: the timing requirement has very large margin before fakes become a concern for this six-layer combination.
 
 **Track-finding efficiency is essentially flat, by construction.** The barrel-tower $p_T\to\infty$ efficiency stays within its statistical uncertainty band (97.9–98.5%, uncertainties about 0.3%) across the full three-decade scan in $\sigma_t$, with no visible trend; the whole-tracker efficiency is equally flat (98.0–98.4%). This is the expected consequence of the 98%-containment construction itself: because the time cut is always re-derived to keep the signal-hit survival fraction fixed, degrading the timing resolution costs essentially nothing in efficiency *as long as the cut is widened to match* — the detector is simply trading cut width for resolution at a fixed operating point on the signal side. The real cost of coarser timing shows up entirely on the background side (the fake-rate curve above, and the growing background hit density it reflects), not in the track-finding efficiency measured this way. (The level is about half a point lower than in version 1.4 because each cut now keeps 98% of the hits passing the *other* cuts, rather than of a looser population.)
 
@@ -651,16 +651,16 @@ Four methodological issues came up in the course of this scan and were resolved 
 
 | $\sigma_\mathrm{angle}$ (deg) | $z_0$ cut, IT/OT (mm) | $t$ cut, IT/OT (ns) | $E[\#\mathrm{fakes}]$, exact helix | efficiency ($p_T\to\infty$) |
 |---|---|---|---|---|
-| 0.0 | 9.4 / 82.9 | 0.071 / 0.072 | $3.63\times10^{-17}$ | $98.62\pm0.23\%$ |
-| 1.0 (today) | 34.8 / 107.8 | 0.071 / 0.075 | $9.69\times10^{-15}$ | $98.04\pm0.27\%$ |
-| 3.0 | 103.3 / 238.7 | 0.071 / 0.103 | $1.04\times10^{-11}$ | $98.30\pm0.26\%$ |
-| 5.0 | 182.6 / 406.2 | 0.073 / 0.172 | $6.89\times10^{-10}$ | $98.03\pm0.29\%$ |
+| 0.0 | 9.4 / 82.9 | 0.071 / 0.072 | $1.42\times10^{-19}$ | $98.62\pm0.23\%$ |
+| 1.0 (today) | 34.8 / 107.8 | 0.071 / 0.075 | $3.79\times10^{-17}$ | $98.04\pm0.27\%$ |
+| 3.0 | 103.3 / 238.7 | 0.071 / 0.103 | $4.04\times10^{-14}$ | $98.30\pm0.26\%$ |
+| 5.0 | 182.6 / 406.2 | 0.073 / 0.172 | $2.69\times10^{-12}$ | $98.03\pm0.29\%$ |
 
 (Full 11-point table in `data/section16_angle_scan.csv`, with the cuts of all six subsystems.)
 
 **Track-finding efficiency in the barrel tower is flat**, within statistical uncertainty (97.9–98.6%), across the full 0–5$^\circ$ scan, with no trend — the same by-construction guarantee seen in Section 15, once the efficiency and fake-rate calculations are made to agree on which geometric object they describe. Pointing-angle resolution, on its own, does not cost this six-layer tower track-finding efficiency, provided the selection cuts are re-optimized to match. The whole-tracker efficiency, however, is not flat: it falls steadily from 99.0% at 0$^\circ$ to 97.1% at 5$^\circ$ (uncertainties about 0.2%). Its cause has not yet been investigated; since it involves the endcaps, which are outside the tower, it does not affect the fake-rate comparison of this section, but it should be understood before these margins are quoted for the full tracker.
 
-**The fake rate grows steeply with worsening angle resolution**, by about seven orders of magnitude from $\sigma_\mathrm{angle}=0^\circ$ to $5^\circ$, via a different mechanism from Section 15's: here, both the $z_0$ and time cut windows widen simultaneously as the angle estimate degrades (visible in the cut columns above — the OT-barrel $z_0$ limit grows from 83 mm to 406 mm, and its time limit from 0.072 to 0.172 ns), each admitting more background. Even at the worst point scanned, $E[\#\mathrm{fakes}]\approx7\times10^{-10}$ remains more than nine orders of magnitude below the one-fake danger line, so there is still enormous margin at today's resolution ($\sigma_\mathrm{angle}\approx1^\circ$, $E[\#\mathrm{fakes}]\approx1\times10^{-14}$) and even well beyond it.
+**The fake rate grows steeply with worsening angle resolution**, by about seven orders of magnitude from $\sigma_\mathrm{angle}=0^\circ$ to $5^\circ$, via a different mechanism from Section 15's: here, both the $z_0$ and time cut windows widen simultaneously as the angle estimate degrades (visible in the cut columns above — the OT-barrel $z_0$ limit grows from 83 mm to 406 mm, and its time limit from 0.072 to 0.172 ns), each admitting more background. Even at the worst point scanned, $E[\#\mathrm{fakes}]\approx3\times10^{-12}$ remains more than eleven orders of magnitude below the one-fake danger line, so there is still enormous margin at today's resolution ($\sigma_\mathrm{angle}\approx1^\circ$, $E[\#\mathrm{fakes}]\approx4\times10^{-17}$) and even well beyond it.
 
 **The $p_T$ cut buys a substantial, resolution-dependent factor.** Repeating the scan with the $p_T$ cut removed (`data/section16_angle_scan_no_pt_cut.csv`) raises $E[\#\mathrm{fakes}]$ by a factor of 220 at $0^\circ$, 78 at today's $1^\circ$, 33–51 between $1.5^\circ$ and $4^\circ$, and 67 and 132 at $4.5^\circ$ and $5^\circ$, while the barrel-tower efficiency rises by only 0.2–0.4 points. This is well below the four orders of magnitude quoted in version 1.4, which came from the $z_0$-first cut construction, and well above the factor of 4–61 of version 1.5, which used the BIB files with wrong hit momenta. It is not monotonic in $\sigma_\mathrm{angle}$, with a minimum around $2$–$2.5^\circ$; this behaviour has not been investigated.
 

@@ -1,5 +1,6 @@
 Settings files of the runs behind Sections 14-16 (identical to the copies
-in their run folders, Analysis/runs/2026-10-08_1555* and _155807_pdf):
+in their run folders, Analysis/runs/2026-10-08_2146* and _155807_pdf;
+the settings are the same as for the v1.6 runs 2026-10-08_1555*):
 
   __cuts_config.txt, __smearing_config.txt, __input_files_config.txt
                                      both scans
