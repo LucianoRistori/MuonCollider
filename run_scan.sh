@@ -11,13 +11,13 @@
 # What one scan does:
 #   1. Checks all four settings files and the input files first; stops
 #      before running anything if something is wrong.
-#   2. Creates runs/<date>_<time>_scan_<time|angle>/ and copies the four
+#   2. Creates runs/<date>_<time>_scan_<time|angle|position>/ and copies the four
 #      settings files into it at the START.
 #   3. Runs resolution_scan.py (see templates/__scan_config.txt for the
 #      method), saving everything printed to run_log.txt there, plus
-#      scan_results.csv, the plots and scan_<time|angle>.pdf.
+#      scan_results.csv, the plots and scan_<time|angle|position>.pdf.
 #   4. If it succeeded, puts a copy of the PDF in the working folder as
-#      _scan_<time|angle>_<date>_<time>.pdf (replacing the previous one of
+#      _scan_<time|angle|position>_<date>_<time>.pdf (replacing the previous one of
 #      the same kind). If it failed, the run folder is renamed ..._FAILED.
 #   5. Makes the files of the run folder read-only (the folder itself can
 #      still be deleted), so the archive can't be edited by accident.
@@ -53,7 +53,7 @@ relock_finished_runs() {   # Dropbox can reset the permissions of a file it
     for d in "$WORKDIR"/runs/*/; do
         d="${d%/}"
         case "$d" in
-            *_FAILED|*_INTERRUPTED|*_scan_time|*_scan_angle) ;;
+            *_FAILED|*_INTERRUPTED|*_scan_time|*_scan_angle|*_scan_position) ;;
             *) [ -f "$d/summary.txt" ] || continue ;;
         esac
         find "$d" -type f -perm -u+w -exec chmod a-w {} + 2>/dev/null

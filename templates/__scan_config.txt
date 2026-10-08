@@ -19,11 +19,13 @@
 #       __cuts_config.txt of their IT/OT barrel hits pass the cuts)
 #       expected number of fake tracks E[#fakes] (BIB density per layer
 #       after the cuts, times the calibrated fake probability of the
-#       fake-rate framework, for 3 track models)
+#       fake-rate framework, exact-helix model)
 
 [scan]
-# time:  timing resolution sigma_t (ns)
-# angle: pointing-angle resolution (degrees), the same for the u and v axes
+# time:     timing resolution sigma_t (ns)
+# angle:    pointing-angle resolution (degrees), the same for the u and v axes
+# position: hit position resolution (mm), the same for the u and v axes
+#           (it also scales the fake probability, ~ sigma_u^4 sigma_v^4)
 parameter = time
 
 # % of the signal hits kept by each of the z0 and time cuts
@@ -33,6 +35,16 @@ containment = 98
 #   log    <first> <last> <number of points>    (equally spaced in log)
 #   linear <first> <last> <number of points>
 #   list   <value> <value> ...
+#   factor <first> <last> <number of points>    (linear, in multiples of
+#          today's value in __smearing_config.txt; u and v each scaled)
 # e.g.  time:  log 0.010 1.0 10        (10 ps - 1 ns)
 #       angle: linear 0 5 11           (0 - 5 degrees, 0.5 degree steps)
 grid = log 0.010 1.0 10
+
+# Resolution headroom, used by ./run_all --headroom (step 5): three scans,
+# one resolution at a time, the other two at today's values, with the
+# containment above. Missing lines (or a missing file) mean factor 1 10 10.
+[headroom]
+position = factor 1 10 10
+time     = factor 1 10 10
+angle    = factor 1 10 10

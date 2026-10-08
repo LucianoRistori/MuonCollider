@@ -8,6 +8,16 @@
 #     (edit __cuts_config.txt, __smearing_config.txt, __input_files_config.txt)
 #     ./run_all            only what the highlights PDF needs: step 4
 #     ./run_all --full     the whole analysis: steps 1-4
+#     ./run_all --headroom adds step 5 (to either): the resolution headroom -
+#                          three scans, position, time and angle resolution
+#                          each from today's value to 10x (the other two at
+#                          today's), with the z0 and time cuts re-derived at
+#                          each point; ~2-3 minutes more. Its plot of E[#fakes]
+#                          vs each resolution goes into _highlights/ and the
+#                          PDF; all its results are in step5_headroom/.
+#                          (Grids and containment: [headroom] and [scan] of
+#                          __scan_config.txt if present, else 1-10x, 10
+#                          points, and 98%.)
 #
 # Everything in the highlights PDF comes from step 4 - the cuts and their
 # results, the track-finding efficiency and the zoomed N-1 plots - so by
@@ -68,7 +78,7 @@ STEP_DIRS="step1_basic_plots step1_basic_plots_minus step1_basic_plots_combined
 step2_incidence_angles step2_incidence_angles_minus step2_incidence_angles_combined
 step2_time_of_flight step2_time_of_flight_minus step2_time_of_flight_combined
 step2_time_of_flight_signal step3_signal_overlay
-step4_cuts step4_track_efficiency step4_n1_cuts"
+step4_cuts step4_track_efficiency step4_n1_cuts step5_headroom"
 
 # The key plots, gathered into _highlights/ after every successful run
 # (in the run folder, and in the working folder next to the step folders).
@@ -114,6 +124,7 @@ WORKDIR=""
 STEPS=""
 RUN_ID=""
 MODE=""            # pdf (the default: step 4 only) or full (steps 1-4)
+HEADROOM=0         # 1: also step 5, the resolution headroom scans
 while [ $# -gt 0 ]; do
     case "$1" in
         --steps) [ $# -ge 2 ] || stop "--steps needs a value, e.g. --steps 1,2"
@@ -122,6 +133,7 @@ while [ $# -gt 0 ]; do
                     MODE=full; shift ;;
         --pdf-only) [ "$MODE" != full ] || stop "--full and --pdf-only can't be combined"
                     MODE=pdf; shift ;;
+        --headroom) HEADROOM=1; shift ;;
         --run)   [ $# -ge 2 ] || stop "--run needs a run name (a folder name under runs/)"
                  RUN_ID="$2"; shift 2 ;;
         -h|--help) sed -n '2,/^# =====/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -148,8 +160,19 @@ else
     RUN_STEP_DIRS="step4_cuts step4_track_efficiency step4_n1_cuts"
     HIGHLIGHTS="$PDF_PLOTS"
 fi
+if [ -n "$RUN_ID" ] && grep -q '^Headroom: *yes' "${WORKDIR:-$PWD}/runs/$RUN_ID/code_version.txt" 2>/dev/null; then
+    HEADROOM=1                       # continuing a run that was started with --headroom
+fi
+if [ "$HEADROOM" = 1 ]; then
+    case " $STEPS " in *" 4 "*) STEPS="$STEPS 5" ;; esac
+    REQUIRED="$REQUIRED 5"
+    RUN_STEP_DIRS="$RUN_STEP_DIRS step5_headroom"
+    HIGHLIGHTS="$HIGHLIGHTS
+step5_headroom/headroom_efakes_vs_resolution.png"
+fi
 for s in $STEPS; do
-    case "$s" in 1|2|3|4) ;; *) stop "--steps: '$s' is not a step number (1 to 4)" ;; esac
+    case "$s" in 1|2|3|4) ;; 5) [ "$HEADROOM" = 1 ] || stop "step 5 is the headroom: use --headroom" ;;
+        *) stop "--steps: '$s' is not a step number (1 to 4)" ;; esac
 done
 [ -n "$WORKDIR" ] || WORKDIR="$PWD"
 [ -d "$WORKDIR" ] || stop "working folder not found: $WORKDIR"
@@ -167,7 +190,7 @@ relock_finished_runs() {   # Dropbox can reset the permissions of a file it
     for d in "$WORKDIR"/runs/*/; do
         d="${d%/}"
         case "$d" in
-            *_FAILED|*_INTERRUPTED|*_scan_time|*_scan_angle) ;;
+            *_FAILED|*_INTERRUPTED|*_scan_time|*_scan_angle|*_scan_position) ;;
             *) [ -f "$d/summary.txt" ] || continue ;;
         esac
         find "$d" -type f -perm -u+w -exec chmod a-w {} + 2>/dev/null
@@ -238,6 +261,9 @@ if [ -z "$RUN_ID" ]; then
     mkdir -p "$RUN_DIR" || stop "cannot create $RUN_DIR"
     cp "$WORKDIR/__cuts_config.txt" "$WORKDIR/__smearing_config.txt" "$WORKDIR/__input_files_config.txt" "$RUN_DIR/" \
         || stop "cannot copy the settings files into $RUN_DIR"
+    if [ "$HEADROOM" = 1 ] && [ -f "$WORKDIR/__scan_config.txt" ]; then
+        cp "$WORKDIR/__scan_config.txt" "$RUN_DIR/" || stop "cannot copy __scan_config.txt into $RUN_DIR"
+    fi
     {
         say "Run:            $RUN_ID"
         if [ "$MODE" = pdf ]; then
@@ -245,6 +271,7 @@ if [ -z "$RUN_ID" ]; then
         else
             say "Mode:           full (steps 1-4)"
         fi
+        [ "$HEADROOM" = 1 ] && say "Headroom: yes (step 5)"
         say "Started:        $(date)"
         say "Working folder: $WORKDIR"
         say "Code:           $CODE_DIR"
@@ -322,10 +349,23 @@ step4() {
     fi
 }
 
+step5() {
+    local sc="-" p
+    [ -f "$RUN_DIR/__scan_config.txt" ] && sc="$RUN_DIR/__scan_config.txt"
+    "$PYTHON" "$CODE_DIR/resolution_scan.py" --check-headroom "$sc" >/dev/null || return 1
+    for p in position time angle; do
+        run_py "Step 5: headroom - scan of the $p resolution" \
+            resolution_scan.py --headroom-one "$p" "$sc" "$CUTS" "$SMEARING_CONFIG" \
+            "$SIGNAL" "$COMBINED" "$RUN_DIR/step5_headroom" || return 1
+    done
+    run_py "Step 5: headroom - plots and headroom.pdf" \
+        resolution_scan.py --headroom-pdf "$sc" "$CUTS" "$SMEARING_CONFIG" "$RUN_DIR/step5_headroom"
+}
+
 main() {
     say "======================================================================"
     if [ "$MODE" = pdf ]; then
-        say " BIB analysis run $RUN_ID   (only what the PDF needs: step 4 - ./run_all --full for steps 1-4)"
+        say " BIB analysis run $RUN_ID   (only what the PDF needs: step 4 - ./run_all --full for steps 1-4)$([ "$HEADROOM" = 1 ] && printf " + step 5: resolution headroom")"
     else
         say " BIB analysis run $RUN_ID   (steps: $STEPS)"
     fi
@@ -426,6 +466,10 @@ fi
     [ -z "$trk" ] || { say ""; say "$trk"; }
     fk="$(grep -m1 '^Expected fake tracks' "$RUN_DIR/run_log.txt")"
     [ -z "$fk" ] || say "$fk"
+    if grep -q '^Headroom in the detector resolutions' "$RUN_DIR/run_log.txt"; then
+        say ""
+        grep -A3 -m1 '^Headroom in the detector resolutions' "$RUN_DIR/run_log.txt"
+    fi
 } > "$RUN_DIR/summary.txt"
 
 missing_hl=""

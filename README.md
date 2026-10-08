@@ -102,15 +102,16 @@ size and date of every input file used.
 
 ## Resolution scans (./run_scan)
 
-A scan of the timing or the pointing-angle resolution, with the z0 and
+A scan of the timing, pointing-angle or hit-position resolution, with the z0 and
 time cuts re-derived at each point from signal containment (the method
 of Sections 15-16 of the paper), is run from the same Analysis folder
 with a fourth settings file, `__scan_config.txt`:
 
 ```
 cd ~/Dropbox/Documents/MuonColliderSimulation/Analysis
-# edit __scan_config.txt: parameter (time or angle), containment (%),
-# grid (log/linear <first> <last> <n>, or list <values>)
+# edit __scan_config.txt: parameter (time, angle or position), containment (%),
+# grid (log/linear <first> <last> <n>, list <values>, or
+#       factor <first> <last> <n> = multiples of today's value)
 ./run_scan           # about 15-25 s
 ```
 
@@ -142,6 +143,29 @@ PDF is also copied to the Analysis folder as `_scan_<p>_<date>_<time>.pdf`.
 z0-first version reproduced `resolution_scans/*_results.csv` exactly; the scripts in
 `resolution_scans/` are kept as the record of those sections (they use the
 old z0-first order; with the N-1 definition the numbers change, see above).
+
+Position resolution enters E[#fakes] twice: through the cuts (z0, pT and
+time come from the smeared hit positions) and through the fake
+probability, calibrated at 0.1 mm and scaled as (sigma_u/0.1)^4
+(sigma_v/0.1)^4 for the helix (u = r-phi, v = z in the barrel;
+`fake_rate.py`, also in `./run_all`).
+
+### Headroom in the detector resolutions (./run_all --headroom)
+
+`./run_all --headroom` (also with `--full`) adds a step 5: three scans -
+position, time and angle resolution, each from today's value in
+`__smearing_config.txt` to 10x in 10 points, the other two at today's
+values, cuts re-derived as above (grids and containment from the
+`[headroom]` and `[scan]` sections of `__scan_config.txt` if present).
+`_highlights/` and the highlights PDF get `headroom_efakes_vs_resolution.png`
+(E[#fakes] vs each resolution, three panes, top axis x today's value);
+`step5_headroom/` has `headroom.pdf`, `headroom_summary.csv` and one
+folder per scan. First results (Oct 2026; 0.1 mm, 50 ps, 1.5 deg, 2 GeV/c
+OT pT cut): at 10x E[#fakes] is 4e-4 (position), 1.5e-6 (time), 4e-4
+(angle) - none reaches one fake; position alone would at ~27x. The
+angle scan has a step near 7.5 deg, where the widening z0 cut lets the
+late hits of curling muons into the time-cut distribution and the OT
+barrel time cut opens to several ns - kept, as what those cuts would do.
 
 ## Documentation
 - `docs/paper/paper_draft.pdf`: the paper draft on the fake-track rate

@@ -110,10 +110,12 @@ def load_run(run_dir):
     signal_pt_min = sorted({float(r["fit_pt_min_gev"]) for r in read_csv(by_region)})
     fr = run_dir / "step4_cuts" / "fake_rate.csv"
     fakes = read_csv(fr)[0] if fr.is_file() else None    # older runs have none
+    hr = run_dir / "step5_headroom" / "headroom_summary.csv"
+    headroom = read_csv(hr) if hr.is_file() else None     # only ./run_all --headroom
 
     return {"name": run_dir.name, "cuts": cuts, "smear": smear, "inputs": inputs,
             "table": table, "track": track, "signal_pt_min": signal_pt_min, "per_cut": per_cut,
-            "fakes": fakes,
+            "fakes": fakes, "headroom": headroom,
             "layers": read_csv(layers) if layers.is_file() else None}
 
 
@@ -154,6 +156,31 @@ def headroom_caption(run):
             f"layers; μ = 1 is this run. E[#fakes] = P$_{{true}}$ ∏ n$_i$ grows as μ$^6$, so it reaches "
             f"one fake at μ = {mu:.0f} (exact-helix track model): the factor by which the "
             f"background could grow before fakes matter.")
+
+
+def resolution_headroom_caption(run):
+    rows = {r["parameter"]: r for r in run["headroom"]}
+    def one(p, label):
+        r = rows[p]
+        unit = r["unit"]
+        today = f"{float(r['today']):g} {unit}"
+        if r["factor_one_fake"]:
+            res = (f"one fake at {float(r['factor_one_fake']):.1f}× "
+                   f"({float(r['value_one_fake']):.4g} {unit})")
+        else:
+            res = (f"{float(r['efakes_at_max']):.0e} fakes at {float(r['max_factor']):g}× "
+                   f"({float(r['max_value']):.4g} {unit})")
+        return f"{label} (today {today}): {res}"
+    cont = float(run["headroom"][0]["containment"])
+    return (f"Expected fake tracks in the 6-layer IT+OT barrel tower when ONE resolution is "
+            f"degraded (top axis: × today's value), the other two kept at today's values; at each "
+            f"point the $z_0$ and time cuts are re-derived to keep {cont:g}% of the signal hits.  "
+            + "; ".join(one(p, l) for p, l in (("position", "Position"), ("time", "Time"),
+                                                 ("angle", "Angle")))
+            + ". Position enters through the cuts and the fake probability (∝ σ$_u^4$σ$_v^4$); "
+            "time and angle only through the cuts. The step in the angle scan is where the "
+            "widening $z_0$ cut lets late hits of curling muons into the time-cut distribution. "
+            "Details: step5_headroom/headroom.pdf.")
 
 
 def captions(run):
@@ -238,6 +265,11 @@ def captions(run):
         ("fake_rate_vs_density_multiplier.png",
          "Fake-track headroom vs. BIB density",
          headroom_caption(run)),
+    ] + ([
+        ("headroom_efakes_vs_resolution.png",
+         "Fake-track headroom vs. detector resolution",
+         resolution_headroom_caption(run)),
+    ] if run.get("headroom") else []) + [
         ("z_axis_intercept_per_subsystem_zoom_n1.png",
          "$z$-axis intercept $z_0$ (N-1)",
          f"Where each hit's direction, extrapolated in the $r$-$z$ plane, crosses the beam line, for "

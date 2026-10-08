@@ -79,8 +79,11 @@ In that folder you edit plain-text settings files (names starting with
   files and makes the highlights plots and PDF, with the BIB rejection,
   signal efficiencies \emph{and the expected number of fake tracks} for your
   cuts and resolutions (Sections~\ref{sec:highlights} and~\ref{sec:fakes}).
-\item \code{./run\_scan} --- scans the timing or pointing-angle resolution,
-  re-deriving the cuts at each point (Section~\ref{sec:scan}).
+\item \code{./run\_all -{}-headroom} --- the same, plus the headroom in the
+  three detector resolutions: \Efakes\ as each one is degraded up to
+  10$\times$ (Section~\ref{sec:headroom}).
+\item \code{./run\_scan} --- scans the timing, pointing-angle or hit-position
+  resolution, re-deriving the cuts at each point (Section~\ref{sec:scan}).
 \end{itemize}
 Every run is archived, with a copy of the settings it used, in \code{runs/}.
 The newest results are always the files whose names start with \code{\_}
@@ -270,11 +273,12 @@ quantities: compare like with like.
 \begin{enumerate}[leftmargin=1.5em]
 \item Edit \scan:
 \begin{shell}
-parameter   = time               # or: angle
+parameter   = time               # or: angle, position
 containment = 98                 # % of signal hits kept by each re-derived cut
 grid        = log 0.010 1.0 10   # time: 10 ps - 1 ns, 10 points
 #  angle:  grid = linear 0 5 11   (0 - 5 deg in 0.5 deg steps)
 #  any:    grid = list 0.02 0.05 0.1
+#  any:    grid = factor 1 10 10  (1x - 10x the value in __smearing_config.txt)
 \end{shell}
 \item Check \smear\ (all the resolutions that are \emph{not} scanned) and
   the \pT\ cut in \cuts.
@@ -283,7 +287,8 @@ grid        = log 0.010 1.0 10   # time: 10 ps - 1 ns, 10 points
 \end{enumerate}
 
 \textbf{What a scan does at each value.} The scanned resolution is applied
-to the hits of \emph{all} subsystems (for angle, equally to $u$ and $v$);
+to the hits of \emph{all} subsystems (for angle and position, equally to
+$u$ and $v$; with \code{factor}, each scaled from its own value);
 every other resolution is taken from \smear; the \pT\ cut from \cuts\ is
 kept fixed. The $z_0$ and time cuts of every subsystem are then
 \emph{re-derived} so that each keeps \code{containment}\,\% of the signal
@@ -307,6 +312,33 @@ have OT barrel $z_0$ cuts about four times looser, hence a higher \Efakes.
 \textbf{Tip:} \code{grid = list <value>} gives a single point: the
 efficiency and \Efakes\ for one resolution with containment-derived cuts,
 to compare with the fixed cuts of Case~2.
+
+%=====================================================================
+\section{Case 4 --- headroom in the detector resolutions}\label{sec:headroom}
+\code{./run\_all -{}-headroom} (also with \code{-{}-full}) runs as usual and
+then a step~5: three scans like those of Case~3 --- hit position, time and
+pointing angle, each from today's value in \smear\ to 10$\times$ in 10
+points, the other two kept at today's values, with the $z_0$ and time cuts
+re-derived at each point. It adds about 2--3 minutes.
+\begin{itemize}[leftmargin=1.2em]
+\item \code{\_highlights/} and the highlights PDF get one more plot,
+  \code{headroom\_efakes\_vs\_resolution.png}: \Efakes\ vs.\ each resolution,
+  in three panes (bottom axis: the resolution; top axis: $\times$ today's
+  value), with what each reaches at 10$\times$, or where it reaches one fake.
+\item \code{step5\_headroom/} has \code{headroom.pdf} (summary table, the
+  same plot, the efficiencies, then each scan's own plots),
+  \code{headroom\_summary.csv}, and one folder per scan with its
+  \code{scan\_results.csv}; the summary is also at the end of
+  \code{summary.txt}.
+\end{itemize}
+Position resolution enters twice --- through the cuts and through the fake
+probability ($\propto\sigma_u^4\sigma_v^4$) --- time and angle only
+through the cuts. The ranges can be changed in a \code{[headroom]}
+section of \scan\ (e.g.\ \code{position = factor 1 20 20}); without it,
+1--10$\times$ and 98\,\% containment are used. In the angle scan, a step
+appears where the widening $z_0$ cut lets the late hits of curling muons
+into the time-cut distribution, which then opens to several ns: this is
+what those cuts would really do, and is kept.
 
 %=====================================================================
 \section{The archive: \code{runs/}}
