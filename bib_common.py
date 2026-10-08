@@ -981,9 +981,11 @@ def short_path(path):
 
 def loaded_line(path, hits, label=""):
     """One-line description of a loaded input file, e.g.
-    'Loaded BIB ntu_bib_ipp_3evt.root: 3 events, 17,297,266 hits'."""
+    'Loaded BIB ntu_bib_ipp_1bx.root: 13,333 entries, 17,297,266 hits'
+    (an entry is one generated particle: a muon of the gun, or one BIB
+    primary of the bunch crossing)."""
     n_ev = int(hits["_n_events"])
-    events = f"{n_ev:,} event" + ("" if n_ev == 1 else "s")
+    events = f"{n_ev:,} entr" + ("y" if n_ev == 1 else "ies")
     who = f"Loaded {label} " if label else "Loaded "
     line = f"{who}{Path(path).name}: {events}, {len(hits['x']):,} hits"
     if "_n_hits_all" in hits:

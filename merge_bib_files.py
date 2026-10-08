@@ -1,8 +1,8 @@
 """
-Merge two or more BIB/background ROOT files (each a single-entry HTAtree,
-one simulated mega-event of beam-induced background or electromagnetic
-background hits) into one combined ROOT file with one entry per input
-file, so that downstream analysis can be pointed at a single input file
+Merge two or more BIB/background ROOT files (each one bunch crossing of
+beam-induced background or electromagnetic background hits, in one entry
+or - since the October 2026 files - one entry per BIB primary particle)
+into one combined ROOT file holding all their entries, in order, so that downstream analysis can be pointed at a single input file
 instead of running once per component and adding results together by
 hand.
 
@@ -69,9 +69,10 @@ def merge(in_paths, out_path):
     t_check = uproot.open(tmp_path)["HTAtree"]
     n_hit_check = t_check["n_hit"].array(library="np")
     os.replace(tmp_path, str(out_path))
-    print(f"Wrote {os.path.basename(str(out_path))}: {t_check.num_entries} entries, "
-          f"{int(n_hit_check.sum()):,} total hits (per entry: "
-          f"{', '.join(f'{int(n):,}' for n in n_hit_check)})")
+    per_entry = (", ".join(f"{int(n):,}" for n in n_hit_check) if len(n_hit_check) <= 10
+                 else f"{int(n_hit_check.min()):,} to {int(n_hit_check.max()):,}")
+    print(f"Wrote {os.path.basename(str(out_path))}: {t_check.num_entries:,} entries, "
+          f"{int(n_hit_check.sum()):,} total hits (per entry: {per_entry})")
 
 
 def main():
