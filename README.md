@@ -144,6 +144,8 @@ z0-first version reproduced `resolution_scans/*_results.csv` exactly; the script
 old z0-first order; with the N-1 definition the numbers change, see above).
 
 ## Documentation
+- `docs/paper/paper_draft.pdf`: the paper draft on the fake-track rate
+  (source `docs/paper/paper_draft.md`; see `docs/paper/README.txt`).
 - `docs/user_manual.pdf`: the user manual - folders, settings files,
   `./run_all`, `./run_scan`, the archive (source: `docs/src/user_manual/`).
 - This README: the n-tuple format, the analysis steps and their plots,

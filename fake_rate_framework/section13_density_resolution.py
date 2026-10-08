@@ -128,7 +128,7 @@ ax.set_title(r"$E[\#\mathrm{fakes}]$ vs. hit density  ($B=5$ T, $p_T>10$ GeV/c, 
 ax.legend(loc="upper left", fontsize=9)
 ax.grid(True, which="both", alpha=0.25)
 fig.tight_layout()
-fig.savefig("/mnt/user-data/outputs/section13_density.png", dpi=150)
+fig.savefig("section13_density.png", dpi=150)
 print("saved section13_density.png")
 
 # --- Plot 2: E[#fakes] vs resolution sigma, density fixed at RHO_REF ---
@@ -146,5 +146,5 @@ ax2.set_title(r"$E[\#\mathrm{fakes}]$ vs. resolution  ($B=5$ T, $p_T>10$ GeV/c, 
 ax2.legend(loc="upper left", fontsize=9)
 ax2.grid(True, which="both", alpha=0.25)
 fig2.tight_layout()
-fig2.savefig("/mnt/user-data/outputs/section13_resolution.png", dpi=150)
+fig2.savefig("section13_resolution.png", dpi=150)
 print("saved section13_resolution.png")
