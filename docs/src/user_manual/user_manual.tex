@@ -235,6 +235,15 @@ within about 15\% (3\% in the headroom factor below), and $B=0$ is not our
 case. All three stay in \code{fake\_rate.csv} and \code{scan\_results.csv},
 for comparison with the paper. Values well below 1 mean fakes are negligible.
 
+\textbf{Position resolution.} $P_\mathrm{true}$ was calibrated at 0.1~mm
+and scales steeply with the hit position resolution (paper Sections 5.1,
+10.4): $P_\mathrm{true}\propto(\sigma_u/0.1\,\mathrm{mm})^4(\sigma_v/0.1\,\mathrm{mm})^4$
+for the helix ($u$ = $r\phi$, bending view; $v$ = $z$; 4 degrees of
+freedom in each view). The resolutions are taken from \smear\ (with
+position smearing off, 0.1~mm is used) and are recorded in
+\code{fake\_rate.csv}. Halving both resolutions divides \Efakes\ by
+$2^8=256$.
+
 \textbf{Headroom.} Since \Efakes\ is a product of six densities, scaling
 the BIB density of all six layers by a common factor $\mu$ scales it by
 $\mu^6$; one fake is reached at $\mu = \Efakes^{-1/6}$. This factor is

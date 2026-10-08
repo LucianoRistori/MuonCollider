@@ -310,7 +310,7 @@ step4() {
     run_py "Step 4: cuts - BIB rejection and signal hit efficiency" \
         apply_cuts.py "$COMBINED" "$SIGNAL" "$CUTS" "$RUN_DIR/step4_cuts" &&
     run_py "Step 4: expected fake tracks (IT+OT barrel tower)" \
-        fake_rate.py "$RUN_DIR/step4_cuts" &&
+        fake_rate.py "$RUN_DIR/step4_cuts" "$RUN_DIR/__smearing_config.txt" &&
     run_py "Step 4: track-finding efficiency vs pT" \
         track_efficiency.py "$SIGNAL" --cuts "$CUTS" --out "$RUN_DIR/step4_track_efficiency" &&
     if [ "$MODE" = pdf ]; then

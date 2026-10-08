@@ -441,7 +441,9 @@ def main(argv):
                     if "mu_one_fake_exact_helix" in fk else "")
             fig.text(0.6, box.y0 - 0.095, "Expected fake tracks:  "
                      f"{float(fk['efakes_exact_helix']):.1e}{head}", fontsize=11.5, weight="bold", color=INK)
-            fig.text(0.6, box.y0 - 0.125, "6-layer IT+OT barrel tower, exact-helix track model",
+            pos = (f", position resolution {float(fk['sigma_u_mm']):g}/{float(fk['sigma_v_mm']):g} mm"
+                   if "sigma_u_mm" in fk else "")
+            fig.text(0.6, box.y0 - 0.125, f"6-layer IT+OT barrel tower, exact helix{pos}",
                      fontsize=8.5, color=MUTED)
             note_y = box.y0 - 0.16
         pt_min = run["signal_pt_min"]

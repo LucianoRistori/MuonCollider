@@ -277,7 +277,7 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
                           & pass_mask(bib["t_corrected_ns"], bib["system"], tl)
         n_layer = {(s, layer): int(np.sum(bib_pass & (bib["system"] == s) & (bib["layer"] == layer)))
                    for (s, layer) in AREA_MM2}
-        prod_n, ef = fake_rate.efakes(n_layer)
+        prod_n, ef = fake_rate.efakes(n_layer, AREA_MM2, *fake_rate.position_sigmas(smear))
 
         row = {PARAM[p]["col"]: float(value)}
         for s in SYSTEMS:

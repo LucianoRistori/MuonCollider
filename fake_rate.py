@@ -8,15 +8,27 @@ E[#fakes] = P_true x prod_i n_i,  n_i = (BIB hits after cuts / area)_i x W_i^2
 with W_i^2 the plane areas of the projective tower (1 m^2 outermost plane)
 and P_true the calibrated probability for 3 track models.
 
+P_true depends steeply on the hit position resolution: it was calibrated at
+sigma_ref = 0.1 mm in both coordinates and scales as
+    P_true(sigma_u, sigma_v) = P_ref x (sigma_u/sigma_ref)^nb x (sigma_v/sigma_ref)^nd
+(paper Sections 5.1, 10.4, 13.2), with nb, nd the degrees of freedom of the
+bending-view and depth-view fits: 4 + 4 for the helix models, 5 + 4 for the
+origin line (B = 0). In the barrel, u is the r-phi (bending) coordinate and
+v the z (depth) coordinate. The resolutions come from __smearing_config.txt
+([position] sigma_u_mm, sigma_v_mm); with position smearing off, sigma_ref
+is used.
+
 Used by resolution_scan.py (./run_scan), and by ./run_all at the end of
 its cuts step:
-    python3 fake_rate.py <step4_cuts folder>
+    python3 fake_rate.py <step4_cuts folder> [<__smearing_config.txt>]
+(without the second argument, $SMEARING_CONFIG is used if set)
 reads density_per_layer_before_after_cuts.csv there, prints E[#fakes] and
 the headroom (the common factor on all six densities that gives one
 expected fake, mu_E1 = E^(-1/6)), writes fake_rate.csv and plots E[#fakes]
 vs. that factor (fake_rate_vs_density_multiplier.png) next to it.
 """
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -33,19 +45,40 @@ AREA_MM2 = {
 Y_TRUE = {(IT_BARREL, 0): 164.0, (IT_BARREL, 1): 354.0, (IT_BARREL, 2): 554.0,
           (OT_BARREL, 0): 819.0, (OT_BARREL, 1): 1153.0, (OT_BARREL, 2): 1486.0}
 W2_SYNTH = {k: (1000.0 * y / 1486.0) ** 2 for k, y in Y_TRUE.items()}
-# Calibrated fake probability P_true for this tower, per track model
+# Calibrated fake probability P_true for this tower, per track model,
+# at the reference position resolution SIGMA_REF_MM in both coordinates
 P_TRUE = {"exact_helix": 7.3054e-26, "conservative_quad": 6.2186e-26, "line_B0": 3.6895e-28}
+SIGMA_REF_MM = 0.1
+# (bending-view ndof, depth-view ndof) per model: P_true ~ sigma_u^nb sigma_v^nd
+NDOF_VIEWS = {"exact_helix": (4, 4), "conservative_quad": (4, 4), "line_B0": (5, 4)}
 MODEL_LABEL = {"exact_helix": "exact helix", "conservative_quad": "conservative quad",
                "line_B0": "line (B=0)"}
 
 
-def efakes(n_after, area=AREA_MM2):
+def p_true(sigma_u=SIGMA_REF_MM, sigma_v=SIGMA_REF_MM):
+    """Fake probability per model at position resolutions sigma_u (r-phi)
+    and sigma_v (z), in mm, scaled from the calibration at SIGMA_REF_MM."""
+    return {m: p * (sigma_u / SIGMA_REF_MM) ** NDOF_VIEWS[m][0]
+               * (sigma_v / SIGMA_REF_MM) ** NDOF_VIEWS[m][1] for m, p in P_TRUE.items()}
+
+
+def position_sigmas(smear_cfg):
+    """(sigma_u, sigma_v) in mm for the fake probability, from a loaded
+    smearing config; SIGMA_REF_MM for both if position smearing is off."""
+    pos = (smear_cfg or {}).get("position") or {}
+    if pos.get("enabled") and pos.get("sigma_u", 0) > 0 and pos.get("sigma_v", 0) > 0:
+        return float(pos["sigma_u"]), float(pos["sigma_v"])
+    return SIGMA_REF_MM, SIGMA_REF_MM
+
+
+def efakes(n_after, area=AREA_MM2, sigma_u=SIGMA_REF_MM, sigma_v=SIGMA_REF_MM):
     """n_after: {(system, layer): BIB hits after the cuts} for the 6 tower
-    layers. Returns (prod_n, {model: E[#fakes]})."""
+    layers; sigma_u, sigma_v: hit position resolutions (mm).
+    Returns (prod_n, {model: E[#fakes]})."""
     prod_n = 1.0
     for key in AREA_MM2:
         prod_n *= n_after[key] / area[key] * W2_SYNTH[key]
-    return prod_n, {m: p * prod_n for m, p in P_TRUE.items()}
+    return prod_n, {m: p * prod_n for m, p in p_true(sigma_u, sigma_v).items()}
 
 
 N_LAYERS = len(AREA_MM2)
@@ -100,10 +133,19 @@ def plot_headroom(e, out_png):
 
 
 def main(argv):
-    if len(argv) != 1:
+    if len(argv) not in (1, 2):
         print(__doc__.split("Used by")[1], file=sys.stderr)
         return 2
     folder = Path(argv[0])
+    smear_path = argv[1] if len(argv) == 2 else os.environ.get("SMEARING_CONFIG")
+    smear_cfg = None
+    if smear_path:
+        import bib_common
+        smear_cfg = bib_common.load_smearing_config(smear_path)
+    else:
+        print(f"NOTE: no smearing config given - fake probability at the reference "
+              f"position resolution {SIGMA_REF_MM} mm", file=sys.stderr)
+    su, sv = position_sigmas(smear_cfg)
     n_after, area = {}, {}
     with open(folder / "density_per_layer_before_after_cuts.csv") as f:
         for r in csv.DictReader(f):
@@ -119,20 +161,21 @@ def main(argv):
         if abs(area[k] / AREA_MM2[k] - 1) > 1e-3:
             print(f"WARNING: layer {k} area {area[k]:.0f} mm^2 differs from the calibration's "
                   f"{AREA_MM2[k]:.0f} mm^2 (different geometry?)", file=sys.stderr)
-    prod_n, e = efakes(n_after, area)
+    prod_n, e = efakes(n_after, area, su, sv)
     with open(folder / "fake_rate.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["prod_n"] + [f"efakes_{m}" for m in P_TRUE]
+        w.writerow(["sigma_u_mm", "sigma_v_mm", "prod_n"] + [f"efakes_{m}" for m in P_TRUE]
                    + [f"mu_one_fake_{m}" for m in P_TRUE]
                    + [f"bib_hits_after_{'IT' if s == 3 else 'OT'}_barrel_L{l}" for s, l in AREA_MM2])
-        w.writerow([prod_n] + [e[m] for m in P_TRUE] + [mu_one_fake(e[m]) for m in P_TRUE]
+        w.writerow([su, sv, prod_n] + [e[m] for m in P_TRUE] + [mu_one_fake(e[m]) for m in P_TRUE]
                    + [n_after[k] for k in AREA_MM2])
     plot_headroom(e, folder / "fake_rate_vs_density_multiplier.png")
     print("BIB hits after the cuts, IT/OT barrel layers:  "
           + "  ".join(f"{'IT' if s == 3 else 'OT'} L{l} {n_after[(s, l)]:,}" for s, l in AREA_MM2))
     print(summary_line(e))
-    print("  (density after cuts of each layer x tower plane area, times the calibrated "
-          "fake probability; Sections 14-16)")
+    print(f"  (density after cuts of each layer x tower plane area, times the fake probability "
+          f"calibrated at {SIGMA_REF_MM} mm and scaled to the position resolution "
+          f"{su:g}/{sv:g} mm (r-phi/z); Sections 14-16)")
     return 0
 
 
