@@ -113,9 +113,11 @@ and all results.
     |-- _highlights/                    its key plots (PNG) and the same PDF
     |-- _scan_time_<date>_<time>.pdf    PDF of the latest time scan
     |-- _scan_angle_<date>_<time>.pdf   PDF of the latest angle scan
+    |-- _scan_position_<date>_<time>.pdf  ... and position scan
+    |-- step5_headroom/            ./run_all --headroom only (Sec. 6)
     |-- latest_run.txt             which run the step* folders show, + its summary
     |-- step1_... step4_...        all plots/tables of the latest successful ./run_all
-    |-- runs/                      ARCHIVE: one folder per run or scan (see Sec. 6)
+    |-- runs/                      ARCHIVE: one folder per run or scan (see Sec. 7)
     `-- claude_scratch/            scratch files from work with Claude; ignore
 \end{tree}
 
@@ -136,8 +138,9 @@ and all results.
 |-- make_highlights_pdf.py     builds the highlights PDF of a run
 |-- check_configs.py, cuts_table.py, input_files.py   read and check the settings
 |-- templates/                 pristine copies of the four settings files
+|-- docs/paper/                the paper draft (source, PDF, figures, data, settings)
 |-- fake_rate_framework/       analytic fake-track framework of the paper (Sec. 13-14)
-`-- resolution_scans/          original scripts and results of paper Sec. 15-16
+`-- resolution_scans/          the original scan scripts of the paper's v1.4
 \end{tree}
 The launchers \code{run\_all} and \code{run\_scan} in the Analysis folder
 just find the code in \code{\textasciitilde/code/MuonCollider} and run it on
@@ -169,9 +172,10 @@ comments, which explain every line. A summary:
   \code{[time]} \code{sigma\_t\_ns}; \code{[angle\_u]}, \code{[angle\_v]}
   \code{sigma\_deg} (pointing angle). Each section has
   \code{enabled = true/false}. \code{[general] seed} fixes the random numbers.\\[3pt]
-\scan & Only for \code{./run\_scan}: \code{parameter} (\code{time} or
-  \code{angle}), \code{containment} (\% of signal hits each re-derived cut
-  keeps) and \code{grid} (the values to scan).\\
+\scan & For \code{./run\_scan}: \code{parameter} (\code{time},
+  \code{angle} or \code{position}), \code{containment} (\% of signal hits
+  each re-derived cut keeps) and \code{grid} (the values to scan); its
+  \code{[headroom]} section sets the ranges of \code{./run\_all -{}-headroom}.\\
 \bottomrule
 \end{tabularx}
 
@@ -278,12 +282,13 @@ containment = 98                 # % of signal hits kept by each re-derived cut
 grid        = log 0.010 1.0 10   # time: 10 ps - 1 ns, 10 points
 #  angle:  grid = linear 0 5 11   (0 - 5 deg in 0.5 deg steps)
 #  any:    grid = list 0.02 0.05 0.1
-#  any:    grid = factor 1 10 10  (1x - 10x the value in __smearing_config.txt)
+#  any:    grid = factor 1 10 10  (1x-10x today's value)
 \end{shell}
 \item Check \smear\ (all the resolutions that are \emph{not} scanned) and
   the \pT\ cut in \cuts.
 \item Run \code{./run\_scan} (about 15--25~s) and open
-  \code{\_scan\_time\_<date>\_<time>.pdf} (or \code{\_scan\_angle\_...}).
+  \code{\_scan\_time\_<date>\_<time>.pdf} (or \code{\_scan\_angle\_...},
+  \code{\_scan\_position\_...}).
 \end{enumerate}
 
 \textbf{What a scan does at each value.} The scanned resolution is applied
@@ -302,12 +307,14 @@ the OT barrel $z_0$ cut about four times too loose.) The scan reports \Efakes\ a
 $\pT\to\infty$, both on the barrel tower, and also the whole-tracker
 efficiency exactly as \code{./run\_all} defines it (Section~\ref{sec:fakes}).
 
-\textbf{What comes out} (in \code{runs/<date>\_<time>\_scan\_<time|angle>/}):
+\textbf{What comes out} (in \code{runs/<date>\_<time>\_scan\_<parameter>/}):
 a PDF with a settings page, a results table, and three plots (\Efakes,
 the two efficiencies, and the derived cuts of all six subsystems vs.\ the
 resolution);
-\code{scan\_results.csv} with every number. Scans made before the N-1 definition (and the paper's Sections 15--16)
-have OT barrel $z_0$ cuts about four times looser, hence a higher \Efakes.
+\code{scan\_results.csv} with every number. Scans made before the N-1 definition (and the paper's Sections 15--16 up to
+version 1.5) have OT barrel $z_0$ cuts about four times looser, hence a higher \Efakes; scans made before the fake
+probability followed the position resolution (8 October 2026) overstate \Efakes\ whenever the position resolution was
+not 0.1~mm (by $2^8=256$ at 0.05~mm).
 
 \textbf{Tip:} \code{grid = list <value>} gives a single point: the
 efficiency and \Efakes\ for one resolution with containment-derived cuts,
@@ -348,7 +355,7 @@ Every run gets its own folder, named by the date and time it started:
 \toprule
 \code{2026-10-07\_161638} & a full \code{./run\_all -{}-full} run\\
 \code{2026-10-07\_161638\_pdf} & a default \code{./run\_all} (step 4 only)\\
-\code{..\_scan\_time}, \code{..\_scan\_angle} & a \code{./run\_scan}\\
+\code{..\_scan\_time}, \code{..\_scan\_angle}, \code{..\_scan\_position} & a \code{./run\_scan}\\
 \code{..\_FAILED}, \code{..\_INTERRUPTED} & did not complete --- see its \code{run\_log.txt}\\
 \bottomrule
 \end{tabularx}
@@ -397,10 +404,14 @@ Old run folders can be deleted freely; Dropbox keeps a version history.
   analysis step and its plots, how every quantity is defined and quoted.
 \item \code{docs/efficiency\_pt\_infinity.pdf}: the efficiencies for
   $\pT\to\infty$ (the fit of $\varepsilon_\infty + c/\pT^2$).
-\item The paper draft and the project notes (milestones, decisions) are in
-  the Claude project ``Muon Collider Tracking''.
-\item \code{fake\_rate\_framework/} and \code{resolution\_scans/}: the
-  scripts behind the paper's Sections 13--16.
+\item \code{docs/paper/}: the paper draft (\code{paper\_draft.pdf}), with
+  the data, settings and figures behind its Sections 14--16 and how to
+  rebuild it (\code{README.txt}). The project notes (milestones,
+  decisions) are in the Claude project ``Muon Collider Tracking''.
+\item \code{fake\_rate\_framework/}: the scripts behind the paper's
+  Sections 13--14 (the fake-rate calibration and its plots);
+  \code{resolution\_scans/}: the original scan scripts of its version 1.4
+  (Sections 15--16 are now made with \code{./run\_scan}).
 \item Changing the code: commit with git in \code{\textasciitilde/code/MuonCollider}
   and \code{git push} to GitHub; each run records the commit it used.
 \end{itemize}
