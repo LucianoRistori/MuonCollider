@@ -1,0 +1,44 @@
+# Selection cuts for the BIB-suppression analysis, and the range of the
+# zoomed N-1 plots, one row per detector subsystem. Edit the numbers, then
+# run ./run_all.
+# Lines starting with # are comments.
+#
+# A hit is kept only if it passes all three cuts of its own subsystem:
+#   time  |t_corrected| <= time (ns): the hit time minus the time of flight
+#         expected for a particle coming from the interaction point
+#   z0    |z0| <= z0 (mm): where the track, extrapolated back from the hit's
+#         measured position and direction, crosses the beam line
+#   pT    pT >= pT (GeV/c): transverse momentum estimated from the hit's
+#         measured position and direction (the circle through the beam line
+#         tangent to it); a straight track (infinite pT) always passes
+# Write off instead of a number to switch one cut off in one subsystem.
+#
+# zoom: the subsystem's range in the zoomed N-1 plots (the ones in the
+# PDF): +/- time ns, +/- z0 mm, and |pT| >= pT GeV/c. Display only: it
+# does not change the cuts. Widen it if a cut line falls outside the
+# zoomed view.
+
+[cuts]
+#             -------- cuts --------     -------- zoom --------
+#             time    z0     pT          time    z0     pT
+#             (ns)    (mm)   (GeV/c)     (ns)    (mm)   (GeV/c)
+vxd_barrel  = 0.071   9.9    off         0.5     100    1.0
+vxd_endcap  = 0.071   51.3   off         0.5     200    1.0
+it_barrel   = 0.071   34.8   off         0.5     200    1.0
+it_endcap   = 0.081   303.1  off         0.5     1000   1.0
+ot_barrel   = 0.075   107.8  2.          0.5     300    1.0
+ot_endcap   = 0.085   243.6  2.          0.5     1000   1.0
+
+[track]
+# A signal muon counts as found if at least min_hits_found of its hits pass
+# the cuts (step4_track_efficiency). With exclude_vertex_hits = true, hits
+# in the vertex detector (VXD barrel and endcap) are not counted, even when
+# they pass.
+min_hits_found = 5
+exclude_vertex_hits = true
+
+[signal]
+# true: the signal is the muon's own hits only. Hits of its secondaries
+# (delta rays etc.) are left out; they almost never pass the cuts.
+# false: every hit of the signal events is used.
+muon_hits_only = true

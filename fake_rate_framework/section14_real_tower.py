@@ -8,7 +8,16 @@ outermost plane, real non-uniform post-cut BIB hit densities).
 Uses the calibration constants produced by real_tower_calibration.py
 (copied here as literals -- the MC run is expensive, this script only
 makes the two scan plots from the already-calibrated P_true values).
+
+The six post-cut BIB densities are read from a run's per-layer table
+(step4_cuts/density_per_layer_before_after_cuts.csv of ./run_all), by
+default the paper's copy, docs/paper/data/section14_density_per_layer.csv:
+    cd docs/paper/figures
+    python3 ../../../fake_rate_framework/section14_real_tower.py [table.csv]
 """
+import csv
+import sys
+from pathlib import Path
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -19,8 +28,15 @@ SIGMA_REF = 0.100  # mm
 
 Y_true = np.array([164.0, 354.0, 554.0, 819.0, 1153.0, 1486.0])
 W_true = 1000.0 * Y_true / Y_true[-1]
-RHO_REAL = np.array([0.02758201712269548, 0.00698052377137699, 0.00306547303960387,
-                      0.00199638791184234, 0.00108495481364917, 0.000496270894482882])
+TABLE = Path(sys.argv[1]) if len(sys.argv) > 1 else \
+    Path(__file__).resolve().parent.parent / "docs" / "paper" / "data" / "section14_density_per_layer.csv"
+_rho = {}
+with open(TABLE) as f:
+    for r in csv.DictReader(f):
+        if r["system"] in ("3", "5"):          # IT barrel, OT barrel
+            _rho[(int(r["system"]), int(r["layer"]))] = float(r["bib_mean_density_after"])
+RHO_REAL = np.array([_rho[(3, 0)], _rho[(3, 1)], _rho[(3, 2)], _rho[(5, 0)], _rho[(5, 1)], _rho[(5, 2)]])
+print(f"densities from {TABLE}:", ", ".join(f"{x:.6g}" for x in RHO_REAL))
 N_REAL = RHO_REAL * W_true ** 2
 PROD_N_REAL = float(np.prod(N_REAL))
 
@@ -39,7 +55,8 @@ for name, m in MODELS.items():
 ax.axhline(1.0, color="gray", lw=0.8)
 ax.axhline(10.0, color="gray", lw=0.8, ls="--")
 ax.axvline(1.0, color="black", lw=1.0, alpha=0.6)
-ax.text(1.05, 2e-13, "today's\nestimated\nBIB density", fontsize=8, va="bottom")
+ax.text(1.08, 0.04, "today's\nestimated\nBIB density", fontsize=8, va="bottom",
+        transform=ax.get_xaxis_transform())
 ax.set_xscale("log"); ax.set_yscale("log")
 ax.set_xlabel(r"overall density multiplier $\mu$ (BIB hit density relative to today's estimate)")
 ax.set_ylabel(r"$E[\#\mathrm{fakes}]$ (6-layer tower)")
@@ -59,7 +76,8 @@ for name, m in MODELS.items():
 ax2.axhline(1.0, color="gray", lw=0.8)
 ax2.axhline(10.0, color="gray", lw=0.8, ls="--")
 ax2.axvline(SIGMA_REF, color="black", lw=1.0, alpha=0.6)
-ax2.text(SIGMA_REF * 1.1, 2e-13, "today's\nassumed\nresolution\n(100 μm)", fontsize=8, va="bottom")
+ax2.text(SIGMA_REF * 1.1, 0.04, "today's\nassumed\nresolution\n(100 μm)", fontsize=8, va="bottom",
+         transform=ax2.get_xaxis_transform())
 ax2.set_xscale("log"); ax2.set_yscale("log")
 ax2.set_xlabel(r"hit resolution $\sigma$ (mm)")
 ax2.set_ylabel(r"$E[\#\mathrm{fakes}]$ (6-layer tower)")
