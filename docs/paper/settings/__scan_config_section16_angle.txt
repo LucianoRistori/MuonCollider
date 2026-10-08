@@ -1,0 +1,38 @@
+# Resolution scan settings, read by ./run_scan (the other settings come
+# from __cuts_config.txt, __smearing_config.txt and __input_files_config.txt
+# in the same folder). Edit, then run ./run_scan.
+# Lines starting with # are comments.
+#
+# What a scan does, at each value of the scanned resolution:
+#   - the scanned resolution is applied to the hits of ALL subsystems;
+#     every other resolution stays as in __smearing_config.txt
+#   - the pT cut stays as in __cuts_config.txt
+#   - the z0 and time cuts of every subsystem are re-derived so that each
+#     keeps <containment> % of the signal hits in its own N-1 distribution
+#     (|value| <= cut): z0 on the hits passing the pT and time cuts, time
+#     on the hits passing the pT and z0 cuts - as in the N-1 plots of
+#     ./run_all. The two are found together, by iteration.
+#     (The z0/time cut values in __cuts_config.txt are not used.)
+#   - results, for the 6-layer IT + OT barrel tower:
+#       track-finding efficiency for pT -> infinity (muons with no hit in
+#       the IT/OT endcaps; found = at least min_hits_found of [track] in
+#       __cuts_config.txt of their IT/OT barrel hits pass the cuts)
+#       expected number of fake tracks E[#fakes] (BIB density per layer
+#       after the cuts, times the calibrated fake probability of the
+#       fake-rate framework, for 3 track models)
+
+[scan]
+# time:  timing resolution sigma_t (ns)
+# angle: pointing-angle resolution (degrees), the same for the u and v axes
+parameter = angle
+
+# % of the signal hits kept by each of the z0 and time cuts
+containment = 98
+
+# Values of the scanned resolution, one of:
+#   log    <first> <last> <number of points>    (equally spaced in log)
+#   linear <first> <last> <number of points>
+#   list   <value> <value> ...
+# e.g.  time:  log 0.010 1.0 10        (10 ps - 1 ns)
+#       angle: linear 0 5 11           (0 - 5 degrees, 0.5 degree steps)
+grid = linear 0 5 11

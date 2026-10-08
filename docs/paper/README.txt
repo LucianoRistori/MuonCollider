@@ -6,6 +6,7 @@ Layout:
   paper_draft.pdf    built from it (rebuild after every change, commit both)
   figures/           the figures it includes
   data/              scan results behind Sections 15-16 (see data/README.txt)
+  settings/          the settings files of those scans, to rerun them
   make_figures.py    makes the Section 15-16 figures from data/
 
 Rebuild the figures (only when their inputs change):

@@ -1,5 +1,6 @@
 Scan results behind Sections 15-16 of the paper (v1.5), copied from the
-run folders of ./run_scan in ~/Dropbox/Documents/MuonColliderSimulation/PaperScans/runs/
+run folders of ./run_scan in
+~/Dropbox/Documents/MuonColliderSimulation/Analysis/runs/
 (each holds the settings files, log and plots of that scan):
 
   section15_time_scan.csv            2026-10-07_205705_scan_time
@@ -8,4 +9,5 @@ run folders of ./run_scan in ~/Dropbox/Documents/MuonColliderSimulation/PaperSca
 
 Settings: position 0.05 mm, time 0.03 ns, angle 1 deg (the one not scanned),
 seed 42; pT >= 2 GeV/c in the OT; z0 and time cuts of every subsystem set
-to keep 98% of the signal hits in their N-1 distributions.
+to keep 98% of the signal hits in their N-1 distributions. The settings
+files themselves are in ../settings/ (see ../README.txt to rerun).
