@@ -9,16 +9,16 @@
 [data]
 # Beam-induced background (BIB): steps 1-2 run on the plus and minus files
 # separately and on the combined file; steps 3-4 use the combined file.
-bib_plus = ntu_bib_plus_1evt.root
-bib_minus = ntu_bib_minus_1evt.root
+bib_plus = ntu_bib_plus_1bx.root
+bib_minus = ntu_bib_minus_1bx.root
 # Electromagnetic (incoherent pair production) background, added to the
 # combined file. Leave it empty to combine plus + minus only.
-bib_ipp = ntu_ipp_1evt.root
+bib_ipp = ntu_ipp_1bx.root
 # Combined BIB file = plus + minus (+ ipp). You don't need to make it:
 # ./run_all checks that this file contains exactly the three files above
 # and builds it (or rebuilds it, e.g. after new plus/minus/ipp files were
 # put in place) whenever it doesn't.
-bib_combined = ntu_bib_ipp_3evt.root
+bib_combined = ntu_bib_ipp_1bx.root
 # Signal sample (muon gun, one muon per event)
 signal = ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root
 

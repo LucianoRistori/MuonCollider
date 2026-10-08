@@ -161,6 +161,22 @@ old z0-first order; with the N-1 definition the numbers change, see above).
   folder, as `_highlights_<date>_<time>.pdf`.
 
 ## Source files
+**Current BIB files (since October 2026):** `ntu_bib_plus_1bx.root`,
+`ntu_bib_minus_1bx.root` and `ntu_ipp_1bx.root`, tree `HTAtree`: one
+bunch crossing each, the plus and minus files stored as 6,666 entries -
+one per BIB primary particle, with its `part_*` record - and the ipp file
+as one. They replace the `*_1evt.root` files (one entry each) after a bug
+in the simulation was corrected: the hits themselves (positions, times,
+sensors, 8,050,749 plus / 8,057,632 minus / 1,188,885 ipp) are identical,
+but the hit momenta `hit_px/py/pz` were wrong and `hit_mcp` was 0. Since
+the momentum gives each hit's direction - hence z0, the pT estimate and
+the time-of-flight correction - every BIB result changed (with the same
+cuts, about twice the rejection and ~70x fewer expected fakes; run
+2026-10-08_150534_pdf vs 2026-10-07_191226_pdf). The old files stay in
+`Data/`, and runs before 2026-10-08 used them. The combined file is now
+`ntu_bib_ipp_1bx.root` (13,333 entries, 17,297,266 hits). The rest of this
+section describes the original single-entry files.
+
 `ntu_bib_plus_1evt.root` and `ntu_bib_minus_1evt.root`, tree `HTAtree` —
 1 entry each, one seed/primary particle (`part_pdg = -14`, muon
 antineutrino) whose secondaries deposited ~8.05M hits in the tracker
@@ -1183,27 +1199,15 @@ three settings files, `run_log.txt`, `code_version.txt` and `summary.txt`); the 
 the latest successful run. `runs/` also keeps the older step-4-only archives made before this
 workflow existed (suffix `_step4-only`, each with a `NOTE.txt`).
 
-## Next step (in progress)
-The step-4 cut framework is in place, the starting hypothesis has been
-run (see "Selection cuts" above: ~99.7% BIB rejection overall), and
-track-finding efficiency vs. pT is now measured directly
-(`track_efficiency.py`: ~0% below ~4.5 GeV/c, ~51% at [4.5,5.6] GeV/c,
-~100% above ~5.6 GeV/c). That result - a near-step-function turn-on
-right at the 5 GeV/c momentum-cut threshold - is itself a candidate
-next topic: it's a direct consequence of how hard the current momentum
-cut is, and loosening it would likely trade some BIB
-rejection for a smoother, more physically informative efficiency curve
-(worth discussing with the user before changing it). More generally,
-next: iterate on the cut values in `__cuts_config.txt` (tighter/looser
-windows, set separately per subsystem, or switched off) - `./run_all`
-regenerates everything that depends on them in one command - to see how
-the BIB-rejection/track-efficiency trade-off moves, and decide with the
-user whether/how to combine the three cuts differently (e.g. an
-optimization rather than three independently-chosen windows). Also
-open: the dip at z=0 in the zoomed z_axis_intercept plots, and the
-asymmetric shape of the BIB corrected-time distribution (see
-"Time-of-flight correction" above) are each plausibly explained but
-not yet decomposed into their underlying sub-populations. The N-1
-cut-validation plots (`n1_cut_plots.py`) are now available to help
-judge each cut threshold against an unbiased view of the signal/BIB
-separation as this iteration proceeds.
+## Open questions (October 2026)
+- The whole-tracker track-finding efficiency falls from 99.0% to 97.1%
+  as the pointing-angle resolution goes from 0 to 5 degrees, while the
+  6-layer barrel-tower efficiency stays flat (paper, Section 16.2). Not
+  yet understood.
+- The dip at z=0 in the zoomed BIB z-intercept distribution and the
+  asymmetric BIB corrected-time distribution (see "Z-axis intercept" and
+  "Time-of-flight correction" above) were found with the old BIB files,
+  whose hit momenta were wrong; to be rechecked with the corrected files.
+- The cuts in use are set from signal containment (98% of the signal
+  hits in each cut's N-1 distribution, `./run_scan`); whether and how to
+  optimize them against the BIB instead is open.
