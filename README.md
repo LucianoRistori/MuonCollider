@@ -1204,10 +1204,17 @@ workflow existed (suffix `_step4-only`, each with a `NOTE.txt`).
   as the pointing-angle resolution goes from 0 to 5 degrees, while the
   6-layer barrel-tower efficiency stays flat (paper, Section 16.2). Not
   yet understood.
-- The dip at z=0 in the zoomed BIB z-intercept distribution and the
-  asymmetric BIB corrected-time distribution (see "Z-axis intercept" and
-  "Time-of-flight correction" above) were found with the old BIB files,
-  whose hit momenta were wrong; to be rechecked with the corrected files.
+- Rechecked with the corrected BIB files (unsmeared, plus+minus+ipp,
+  2026-10-08): the dip at z=0 in the zoomed BIB z-intercept distribution
+  (see "Z-axis intercept" above) was an artifact of the wrong hit momenta
+  - the corrected BIB is flat within +-100 mm in the IT and OT (centre/
+  shoulder ratio 0.96-1.00, was 0.7-0.95); only the VXD keeps a central
+  peak. The asymmetry of the BIB corrected time (see "Time-of-flight
+  correction" above) is gone in the endcaps and the VXD, but persists in
+  the IT and OT barrels: a peak at about +0.5 ns, smaller than before
+  (hits in (-0.5,0) ns / hits in (0,0.5) ns = 0.3-0.5, was 0.2-0.3). Its
+  sub-populations are not yet understood. The descriptions above are of
+  the old files.
 - The cuts in use are set from signal containment (98% of the signal
   hits in each cut's N-1 distribution, `./run_scan`); whether and how to
   optimize them against the BIB instead is open.
