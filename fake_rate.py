@@ -12,7 +12,9 @@ Used by resolution_scan.py (./run_scan), and by ./run_all at the end of
 its cuts step:
     python3 fake_rate.py <step4_cuts folder>
 reads density_per_layer_before_after_cuts.csv there, prints E[#fakes] and
-writes fake_rate.csv next to it.
+the headroom (the common factor on all six densities that gives one
+expected fake, mu_E1 = E^(-1/6)), writes fake_rate.csv and plots E[#fakes]
+vs. that factor (fake_rate_vs_density_multiplier.png) next to it.
 """
 import csv
 import sys
@@ -46,9 +48,53 @@ def efakes(n_after, area=AREA_MM2):
     return prod_n, {m: p * prod_n for m, p in P_TRUE.items()}
 
 
+N_LAYERS = len(AREA_MM2)
+
+
+def mu_one_fake(e):
+    """Common factor on all six densities that gives E[#fakes] = 1 (E scales as mu^6)."""
+    return e ** (-1.0 / N_LAYERS)
+
+
 def summary_line(e):
     return ("Expected fake tracks E[#fakes], 6-layer IT+OT barrel tower: "
-            + ",  ".join(f"{MODEL_LABEL[m]} {e[m]:.2e}" for m in P_TRUE))
+            + ",  ".join(f"{MODEL_LABEL[m]} {e[m]:.2e}" for m in P_TRUE)
+            + f";  1 fake at {mu_one_fake(e['exact_helix']):.0f}x these densities (exact helix)")
+
+
+def plot_headroom(e, out_png):
+    """E[#fakes] vs. a common factor mu on all six layer densities (E ~ mu^6),
+    for the three models, marking this run (mu = 1) and mu at E = 1."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    styles = {"exact_helix": ("#1b9e77", "-"), "conservative_quad": ("#d95f02", "--"),
+              "line_B0": ("#7570b3", ":")}
+    mu_max = 3 * max(mu_one_fake(v) for v in e.values())
+    mu = np.geomspace(0.1, max(mu_max, 10), 300)
+    fig, ax = plt.subplots(figsize=(8, 5.2))
+    for m, (c, ls) in styles.items():
+        ax.plot(mu, e[m] * mu ** N_LAYERS, color=c, ls=ls, lw=2,
+                label=f"{MODEL_LABEL[m]}: 1 fake at {mu_one_fake(e[m]):.0f}x")
+        ax.plot([mu_one_fake(e[m])], [1.0], "o", color=c, ms=6)
+    ax.axhline(1.0, color="gray", lw=0.9)
+    ax.axvline(1.0, color="black", lw=1.0, alpha=0.6)
+    ax.text(1.06, 0.03, "this run's\nBIB densities", transform=ax.get_xaxis_transform(),
+            fontsize=8, va="bottom")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel(r"common factor $\mu$ on the BIB hit density of all six layers")
+    ax.set_ylabel(r"$E[\#\mathrm{fakes}]$ (6-layer IT+OT barrel tower)")
+    ax.set_title(r"Fake-track headroom: $E[\#\mathrm{fakes}] \propto \mu^6$", fontsize=11)
+    ax.legend(fontsize=9, loc="upper left")
+    try:
+        import bib_common
+        bib_common.add_grid(fig)
+    except Exception:
+        ax.grid(True, which="both", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
 
 
 def main(argv):
@@ -75,8 +121,11 @@ def main(argv):
     with open(folder / "fake_rate.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["prod_n"] + [f"efakes_{m}" for m in P_TRUE]
+                   + [f"mu_one_fake_{m}" for m in P_TRUE]
                    + [f"bib_hits_after_{'IT' if s == 3 else 'OT'}_barrel_L{l}" for s, l in AREA_MM2])
-        w.writerow([prod_n] + [e[m] for m in P_TRUE] + [n_after[k] for k in AREA_MM2])
+        w.writerow([prod_n] + [e[m] for m in P_TRUE] + [mu_one_fake(e[m]) for m in P_TRUE]
+                   + [n_after[k] for k in AREA_MM2])
+    plot_headroom(e, folder / "fake_rate_vs_density_multiplier.png")
     print("BIB hits after the cuts, IT/OT barrel layers:  "
           + "  ".join(f"{'IT' if s == 3 else 'OT'} L{l} {n_after[(s, l)]:,}" for s, l in AREA_MM2))
     print(summary_line(e))

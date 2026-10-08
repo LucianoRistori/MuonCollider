@@ -144,6 +144,19 @@ def run_date(name):
         return ""
 
 
+def headroom_caption(run):
+    fk = run.get("fakes") or {}
+    if "mu_one_fake_exact_helix" not in fk:
+        return "Expected number of fake tracks vs. a common factor on the BIB densities."
+    mu = {m: float(fk[f"mu_one_fake_{m}"]) for m in ("exact_helix", "conservative_quad", "line_B0")}
+    return (f"Expected number of fake tracks in the 6-layer IT+OT barrel tower (paper, Sections 14-16) "
+            f"if the BIB hit density after the cuts were multiplied by a common factor μ in all six "
+            f"layers; μ = 1 is this run. E[#fakes] = P$_{{true}}$ ∏ n$_i$ grows as μ$^6$, so it reaches "
+            f"one fake at μ = {mu['exact_helix']:.0f} for the exact-helix model "
+            f"({mu['conservative_quad']:.0f} conservative quadratic, {mu['line_B0']:.0f} straight line, "
+            f"B = 0): the factor by which the background could grow before fakes matter.")
+
+
 def captions(run):
     c, s = run["cuts"], run["smear"]
     uniform = ct.is_uniform(c)
@@ -223,6 +236,9 @@ def captions(run):
          f"linear in 1/$p_T$ and cropped where the efficiency is below 1%). For $p_T$ → ∞ it is "
          f"{trk['eff']:.1f} ± {trk['unc']:.1f}% (red diamond), from a fit of ε$_∞$ + c/$p_T^2$ to the "
          f"muons above {trk['pt_min']:g} GeV/c (dashed){pt_tail}."),
+        ("fake_rate_vs_density_multiplier.png",
+         "Fake-track headroom vs. BIB density",
+         headroom_caption(run)),
         ("z_axis_intercept_per_subsystem_zoom_n1.png",
          "$z$-axis intercept $z_0$ (N-1)",
          f"Where each hit's direction, extrapolated in the $r$-$z$ plane, crosses the beam line, for "
@@ -422,10 +438,12 @@ def main(argv):
         note_y = box.y0 - 0.105
         if run["fakes"]:
             fk = run["fakes"]
+            head = (f"   (1 fake at {float(fk['mu_one_fake_exact_helix']):.0f}× the BIB)"
+                    if "mu_one_fake_exact_helix" in fk else "")
             fig.text(0.6, box.y0 - 0.095, "Expected fake tracks:  "
-                     f"{float(fk['efakes_exact_helix']):.1e}", fontsize=11.5, weight="bold", color=INK)
-            fig.text(0.6, box.y0 - 0.125, "6-layer IT+OT barrel tower, exact-helix model   (other models: "
-                     f"quad {float(fk['efakes_conservative_quad']):.1e}, "
+                     f"{float(fk['efakes_exact_helix']):.1e}{head}", fontsize=11.5, weight="bold", color=INK)
+            fig.text(0.6, box.y0 - 0.125, "6-layer IT+OT barrel tower, exact helix   (quad "
+                     f"{float(fk['efakes_conservative_quad']):.1e}, "
                      f"line {float(fk['efakes_line_B0']):.1e})", fontsize=8.5, color=MUTED)
             note_y = box.y0 - 0.16
         pt_min = run["signal_pt_min"]

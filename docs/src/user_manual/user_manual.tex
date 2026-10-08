@@ -232,6 +232,16 @@ plane) and $P_\mathrm{true}$ is the fake probability calibrated in
 models: exact helix (the one quoted), conservative quadratic, and straight
 line ($B=0$). Values well below 1 mean fakes are negligible.
 
+\textbf{Headroom.} Since \Efakes\ is a product of six densities, scaling
+the BIB density of all six layers by a common factor $\mu$ scales it by
+$\mu^6$; one fake is reached at $\mu = \Efakes^{-1/6}$. This factor is
+quoted on the title page (``1 fake at $N\times$ the BIB''), in the last line
+of \code{summary.txt}, in the \code{mu\_one\_fake\_*} columns of
+\code{fake\_rate.csv}, and plotted (\Efakes\ vs.\ $\mu$, three models) in
+\code{fake\_rate\_vs\_density\_multiplier.png}, a page of the highlights.
+It tells how much more background (or looser cuts) the tracker can take
+before fakes matter.
+
 \textbf{Two things to remember.}
 (1) It uses only the IT and OT barrel layers; the calibration assumes the
 current geometry (a warning is printed if the layer areas change).

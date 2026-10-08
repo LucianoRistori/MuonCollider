@@ -74,6 +74,7 @@ step4_cuts step4_track_efficiency step4_n1_cuts"
 # (in the run folder, and in the working folder next to the step folders).
 HIGHLIGHTS="step4_cuts/density_before_after_cuts.png
 step4_track_efficiency/track_efficiency_vs_pt.png
+step4_cuts/fake_rate_vs_density_multiplier.png
 step3_signal_overlay/inv_radius_per_subsystem_with_signal.png
 step3_signal_overlay/inv_radius_per_subsystem_zoom_with_signal.png
 step3_signal_overlay/time_corrected_per_subsystem_with_signal.png
@@ -90,6 +91,7 @@ step4_n1_cuts/z_axis_intercept_per_subsystem_zoom_n1.png"
 # The plots in the highlights PDF: all that a --pdf-only run makes.
 PDF_PLOTS="step4_cuts/density_before_after_cuts.png
 step4_track_efficiency/track_efficiency_vs_pt.png
+step4_cuts/fake_rate_vs_density_multiplier.png
 step4_n1_cuts/z_axis_intercept_per_subsystem_zoom_n1.png
 step4_n1_cuts/inv_radius_per_subsystem_zoom_n1.png
 step4_n1_cuts/time_corrected_per_subsystem_zoom_n1.png"
