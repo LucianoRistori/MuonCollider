@@ -229,15 +229,18 @@ n_i = \frac{\text{BIB hits after the cuts in layer } i}{\text{area of layer } i}
 where $W_i^2$ are the plane areas of the projective tower (1~m$^2$ outermost
 plane) and $P_\mathrm{true}$ is the fake probability calibrated in
 \code{fake\_rate\_framework/real\_tower\_calibration.py}, for three track
-models: exact helix (the one quoted), conservative quadratic, and straight
-line ($B=0$). Values well below 1 mean fakes are negligible.
+models: exact helix, conservative quadratic, and straight line ($B=0$).
+Only the exact helix is quoted and plotted: the quadratic agrees with it
+within about 15\% (3\% in the headroom factor below), and $B=0$ is not our
+case. All three stay in \code{fake\_rate.csv} and \code{scan\_results.csv},
+for comparison with the paper. Values well below 1 mean fakes are negligible.
 
 \textbf{Headroom.} Since \Efakes\ is a product of six densities, scaling
 the BIB density of all six layers by a common factor $\mu$ scales it by
 $\mu^6$; one fake is reached at $\mu = \Efakes^{-1/6}$. This factor is
 quoted on the title page (``1 fake at $N\times$ the BIB''), in the last line
 of \code{summary.txt}, in the \code{mu\_one\_fake\_*} columns of
-\code{fake\_rate.csv}, and plotted (\Efakes\ vs.\ $\mu$, three models) in
+\code{fake\_rate.csv}, and plotted (\Efakes\ vs.\ $\mu$) in
 \code{fake\_rate\_vs\_density\_multiplier.png}, a page of the highlights.
 It tells how much more background (or looser cuts) the tracker can take
 before fakes matter.

@@ -148,13 +148,12 @@ def headroom_caption(run):
     fk = run.get("fakes") or {}
     if "mu_one_fake_exact_helix" not in fk:
         return "Expected number of fake tracks vs. a common factor on the BIB densities."
-    mu = {m: float(fk[f"mu_one_fake_{m}"]) for m in ("exact_helix", "conservative_quad", "line_B0")}
+    mu = float(fk["mu_one_fake_exact_helix"])
     return (f"Expected number of fake tracks in the 6-layer IT+OT barrel tower (paper, Sections 14-16) "
             f"if the BIB hit density after the cuts were multiplied by a common factor μ in all six "
             f"layers; μ = 1 is this run. E[#fakes] = P$_{{true}}$ ∏ n$_i$ grows as μ$^6$, so it reaches "
-            f"one fake at μ = {mu['exact_helix']:.0f} for the exact-helix model "
-            f"({mu['conservative_quad']:.0f} conservative quadratic, {mu['line_B0']:.0f} straight line, "
-            f"B = 0): the factor by which the background could grow before fakes matter.")
+            f"one fake at μ = {mu:.0f} (exact-helix track model): the factor by which the "
+            f"background could grow before fakes matter.")
 
 
 def captions(run):
@@ -442,9 +441,8 @@ def main(argv):
                     if "mu_one_fake_exact_helix" in fk else "")
             fig.text(0.6, box.y0 - 0.095, "Expected fake tracks:  "
                      f"{float(fk['efakes_exact_helix']):.1e}{head}", fontsize=11.5, weight="bold", color=INK)
-            fig.text(0.6, box.y0 - 0.125, "6-layer IT+OT barrel tower, exact helix   (quad "
-                     f"{float(fk['efakes_conservative_quad']):.1e}, "
-                     f"line {float(fk['efakes_line_B0']):.1e})", fontsize=8.5, color=MUTED)
+            fig.text(0.6, box.y0 - 0.125, "6-layer IT+OT barrel tower, exact-helix track model",
+                     fontsize=8.5, color=MUTED)
             note_y = box.y0 - 0.16
         pt_min = run["signal_pt_min"]
         totals = ("VXD: vertex detector (barrel + endcap); IT + OT: all the rest\n"

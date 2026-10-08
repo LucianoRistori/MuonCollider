@@ -53,31 +53,34 @@ N_LAYERS = len(AREA_MM2)
 
 def mu_one_fake(e):
     """Common factor on all six densities that gives E[#fakes] = 1 (E scales as mu^6)."""
-    return e ** (-1.0 / N_LAYERS)
+    return e ** (-1.0 / N_LAYERS) if e > 0 else float("inf")
 
 
 def summary_line(e):
-    return ("Expected fake tracks E[#fakes], 6-layer IT+OT barrel tower: "
-            + ",  ".join(f"{MODEL_LABEL[m]} {e[m]:.2e}" for m in P_TRUE)
-            + f";  1 fake at {mu_one_fake(e['exact_helix']):.0f}x these densities (exact helix)")
+    return ("Expected fake tracks E[#fakes], 6-layer IT+OT barrel tower (exact helix): "
+            f"{e['exact_helix']:.2e};  1 fake at {mu_one_fake(e['exact_helix']):.0f}x these densities")
 
 
 def plot_headroom(e, out_png):
     """E[#fakes] vs. a common factor mu on all six layer densities (E ~ mu^6),
-    for the three models, marking this run (mu = 1) and mu at E = 1."""
+    for the exact-helix model (the other two models stay in fake_rate.csv),
+    marking this run (mu = 1) and mu at E = 1."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
-    styles = {"exact_helix": ("#1b9e77", "-"), "conservative_quad": ("#d95f02", "--"),
-              "line_B0": ("#7570b3", ":")}
-    mu_max = 3 * max(mu_one_fake(v) for v in e.values())
-    mu = np.geomspace(0.1, max(mu_max, 10), 300)
+    e0 = e["exact_helix"]
+    mu1 = mu_one_fake(e0)
+    mu = np.geomspace(0.1, max(3 * mu1, 10), 300)
     fig, ax = plt.subplots(figsize=(8, 5.2))
-    for m, (c, ls) in styles.items():
-        ax.plot(mu, e[m] * mu ** N_LAYERS, color=c, ls=ls, lw=2,
-                label=f"{MODEL_LABEL[m]}: 1 fake at {mu_one_fake(e[m]):.0f}x")
-        ax.plot([mu_one_fake(e[m])], [1.0], "o", color=c, ms=6)
+    c = "#1b9e77"
+    ax.plot(mu, e0 * mu ** N_LAYERS, color=c, lw=2.2)
+    ax.plot([mu1], [1.0], "o", color=c, ms=8, zorder=5)
+    ax.annotate(f"1 fake at {mu1:.0f}x", (mu1, 1.0), xytext=(-12, 10), textcoords="offset points",
+                ha="right", va="bottom", fontsize=11, weight="bold", color=c)
+    ax.plot([1.0], [e0], "s", color="black", ms=6, zorder=5)
+    ax.annotate(f"this run: {e0:.1e}", (1.0, e0), xytext=(8, -4), textcoords="offset points",
+                ha="left", va="top", fontsize=9)
     ax.axhline(1.0, color="gray", lw=0.9)
     ax.axvline(1.0, color="black", lw=1.0, alpha=0.6)
     ax.text(1.06, 0.03, "this run's\nBIB densities", transform=ax.get_xaxis_transform(),
@@ -86,7 +89,6 @@ def plot_headroom(e, out_png):
     ax.set_xlabel(r"common factor $\mu$ on the BIB hit density of all six layers")
     ax.set_ylabel(r"$E[\#\mathrm{fakes}]$ (6-layer IT+OT barrel tower)")
     ax.set_title(r"Fake-track headroom: $E[\#\mathrm{fakes}] \propto \mu^6$", fontsize=11)
-    ax.legend(fontsize=9, loc="upper left")
     try:
         import bib_common
         bib_common.add_grid(fig)

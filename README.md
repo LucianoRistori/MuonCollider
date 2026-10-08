@@ -124,8 +124,8 @@ iteration (2-4 rounds, `n1_iterations` in the CSV). Until October 2026
 z0 was set first, on the hits passing pT only: in the OT barrel ~3% of
 the signal hits (late second crossings of curling low-pT muons, which
 fail the time cut) then set a z0 cut ~4x too loose (~540 mm instead of
-~135 mm at 1.5 deg), making E[#fakes] too high by 1-2 orders of magnitude. Results: E[#fakes] for the three track models of the
-fake-rate framework (6-layer IT+OT barrel tower), and the track-finding
+~135 mm at 1.5 deg), making E[#fakes] too high by 1-2 orders of magnitude. Results: E[#fakes] (exact-helix track model; the other two
+models only in scan_results.csv) of the fake-rate framework (6-layer IT+OT barrel tower), and the track-finding
 efficiency for pT -> inf in two versions - on the same barrel tower
 (muons with no IT/OT endcap hit, found = at least `min_hits_found` of
 their IT/OT barrel hits pass) and over the whole tracker, defined exactly

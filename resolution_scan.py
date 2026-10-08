@@ -32,7 +32,7 @@ SHORT = {1: "VXD_barrel", 2: "VXD_endcap", 3: "IT_barrel",
          4: "IT_endcap", 5: "OT_barrel", 6: "OT_endcap"}
 
 # fake-rate framework constants and formula: fake_rate.py
-from fake_rate import AREA_MM2, P_TRUE, MODEL_LABEL
+from fake_rate import AREA_MM2, P_TRUE, mu_one_fake
 import fake_rate
 
 PARAM = {
@@ -339,11 +339,8 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
     figs = []
     # 1. E[#fakes]
     fig, ax = plt.subplots(figsize=(7.5, 5.2))
-    styles = {"exact_helix": ("#1b9e77", "-"), "conservative_quad": ("#d95f02", "--"),
-              "line_B0": ("#7570b3", ":")}
-    for m, (c, ls) in styles.items():
-        ax.plot(x, [r[f"efakes_{m}"] for r in rows], color=c, ls=ls, lw=2, marker="o", ms=4,
-                label=MODEL_LABEL[m])
+    ax.plot(x, [r["efakes_exact_helix"] for r in rows], color="#1b9e77", lw=2, marker="o", ms=4,
+            label="exact-helix track model")
     ax.axhline(1.0, color="gray", lw=0.8)
     ax.set_yscale("log")
     if logx:
@@ -421,10 +418,11 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
         f"their IT/OT barrel hits pass",
         f"                tracker (as ./run_all): all muons, found = >= {min_hits} of their hits pass"
         f"{', VXD not counted' if excl_vxd else ''}",
-        f"E[#fakes]:      6-layer IT+OT barrel tower, BIB density after cuts x calibrated P_true",
+        f"E[#fakes]:      6-layer IT+OT barrel tower, BIB density after cuts x calibrated P_true (exact-helix track model);\n"
+        f"                1 fake at: common factor on all six densities that gives one fake",
         "",
         f"{'res (' + sh['show_unit'] + ')':>10} {'z0 IT':>7} {'z0 OT':>7} {'t IT':>8} {'t OT':>8}"
-        f" {'eff barrel (%)':>15} {'eff tracker (%)':>16} {'E[fakes] helix':>15} {'quad':>9} {'line':>9}",
+        f" {'eff barrel (%)':>15} {'eff tracker (%)':>16} {'E[fakes]':>12} {'1 fake at':>10}",
         f"{'':>10} {'(mm)':>7} {'(mm)':>7} {'(ns)':>8} {'(ns)':>8}",
     ]
     for r, xv in zip(rows, x):
@@ -433,8 +431,7 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
             f"{r['time_cut_ns_IT_barrel']:8.4f} {r['time_cut_ns_OT_barrel']:8.4f} "
             f"{r['eff_inf']*100:8.2f} +- {r['eff_inf_unc']*100:4.2f} "
             f"{r['eff_inf_tracker']*100:9.2f} +- {r['eff_inf_tracker_unc']*100:4.2f} "
-            f"{r['efakes_exact_helix']:15.3e} "
-            f"{r['efakes_conservative_quad']:9.2e} {r['efakes_line_B0']:9.2e}")
+            f"{r['efakes_exact_helix']:12.3e} {mu_one_fake(r['efakes_exact_helix']):9.0f}x")
     lines += ["", "Cuts for every subsystem: cuts_vs_" + p + ".png and scan_results.csv"]
     title = plt.figure(figsize=(11, 8.5))
     title.text(0.05, 0.95, "\n".join(lines), family="monospace", fontsize=8.5, va="top")
