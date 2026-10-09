@@ -88,6 +88,7 @@ In that folder you edit plain-text settings files (names starting with
 Every run is archived, with a copy of the settings it used, in \code{runs/}.
 The newest results are always the files whose names start with \code{\_}
 in the Analysis folder. Nothing you do there can damage the code.
+Installing on a new computer, Mac or Linux: Section~\ref{sec:install}.
 \end{keybox}
 
 %=====================================================================
@@ -137,15 +138,16 @@ and all results.
 |-- resolution_scan.py         the resolution scans (Sec. 5)
 |-- make_highlights_pdf.py     builds the highlights PDF of a run
 |-- check_configs.py, cuts_table.py, input_files.py   read and check the settings
-|-- templates/                 pristine copies of the four settings files
+|-- setup_workdir.sh, requirements.txt   installation (Sec. 8)
+|-- templates/                 the four settings files and the launchers, for new folders
 |-- docs/paper/                the paper draft (source, PDF, figures, data, settings)
 |-- fake_rate_framework/       analytic fake-track framework of the paper (Sec. 13-14)
 `-- resolution_scans/          the original scan scripts of the paper's v1.4
 \end{tree}
 The launchers \code{run\_all} and \code{run\_scan} in the Analysis folder
-just find the code in \code{\textasciitilde/code/MuonCollider} and run it on
-the folder they are in. If you move the code, run with
-\code{MUONCOLLIDER\_CODE=/new/path ./run\_all}.
+just find the code and run it on the folder they are in. If you move the
+code, run \code{setup\_workdir.sh} again (Section~\ref{sec:install}), or
+use \code{MUONCOLLIDER\_CODE=/new/path ./run\_all}.
 
 %=====================================================================
 \section{The four settings files}
@@ -378,13 +380,94 @@ does this for you). To edit a file inside a run on purpose:
 Old run folders can be deleted freely; Dropbox keeps a version history.
 
 %=====================================================================
+\section{Installation on a new computer}\label{sec:install}
+Everything is plain bash and Python: no ROOT installation is needed (the
+n-tuples are read with \code{uproot}). The same steps work on a Mac and on
+Linux; only step~1 differs.
+
+\textbf{What goes where.} Three things, in folders of your choice:
+\begin{tree}
+~/code/MuonCollider/               the code, cloned from GitHub (step 2)
+~/MuonColliderSimulation/          any name; on your own Mac it can live in Dropbox
+|-- Data/                          the ROOT n-tuples (Appendix A)
+|-- Geometry/                      the detector-geometry XML files (Appendix A)
+`-- Analysis/                      the working folder, made by setup_workdir.sh (step 4)
+\end{tree}
+The working folder must sit next to \code{Data/} and \code{Geometry/}. The
+code can be anywhere: the launchers remember where it is.
+
+\textbf{1. Git and Python 3.9 or newer.} Check with \code{git -{}-version}
+and \code{python3 -{}-version}.
+\begin{itemize}[leftmargin=1.2em]
+\item \emph{Mac:} \code{xcode-select -{}-install} gives \code{git} and a
+  \code{python3}; for a newer Python use the installer from python.org, or
+  Homebrew (\code{brew install python git}).
+\item \emph{Linux:} Debian/Ubuntu \code{sudo apt install git python3
+  python3-venv python3-pip}; Fedora, Alma, RHEL \code{sudo dnf install git
+  python3}. On a shared machine without administrator rights, use the
+  Python already there (\code{python3 -{}-version}) if it is 3.9 or newer.
+\end{itemize}
+
+\textbf{2. The code.}
+\begin{shell}
+mkdir -p ~/code && cd ~/code
+git clone https://github.com/LucianoRistori/MuonCollider.git
+\end{shell}
+
+\textbf{3. A Python environment with the packages} (\code{numpy},
+\code{uproot}, \code{awkward}, \code{matplotlib}, and \code{scipy} for the
+paper's scripts). A virtual environment keeps them separate from the
+system's Python, which Homebrew and recent Linux distributions protect
+(\code{pip} refuses with ``externally-managed-environment''):
+\begin{shell}
+python3 -m venv ~/venvs/muoncollider
+source ~/venvs/muoncollider/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r ~/code/MuonCollider/requirements.txt
+\end{shell}
+
+\textbf{4. The data and the working folder.} Put the ROOT files in
+\code{Data/} and the XML files in \code{Geometry/} (which files:
+Appendix~A), then, \emph{with the environment of step~3 still active}:
+\begin{shell}
+mkdir -p ~/MuonColliderSimulation/Data ~/MuonColliderSimulation/Geometry
+   (copy the input files into Data/ and Geometry/)
+~/code/MuonCollider/setup_workdir.sh ~/MuonColliderSimulation/Analysis
+\end{shell}
+\code{setup\_workdir.sh} creates the working folder, copies the four
+settings files from \code{templates/} (set to the current operating point;
+an existing settings file is never overwritten), writes the launchers
+\code{run\_all} and \code{run\_scan}, and checks the packages and the input
+files, printing what is still missing. The launchers record the code's
+location and the environment's Python, so later you never need to activate
+the environment.
+
+\textbf{5. First run.}
+\begin{shell}
+cd ~/MuonColliderSimulation/Analysis
+./run_all
+\end{shell}
+The first run also builds the combined BIB file in \code{Data/} (a few
+minutes, once). Then open \code{\_highlights\_<date>\_<time>.pdf}: with the
+template settings the track-finding efficiency is 98.0\,\% and
+$\Efakes = 3.8\times10^{-12}$, as in Section~\ref{sec:fakes}.
+
+\textbf{Later.} \code{cd \textasciitilde/code/MuonCollider \&\& git pull}
+updates the code. After moving the code or the environment, run
+\code{setup\_workdir.sh} again on the same folder: it rewrites only the
+launchers. Memory: the largest steps use about 3~GB, so 8~GB or more is
+comfortable. The manual and the paper are rebuilt only if you change them
+(LaTeX and pandoc; see the \code{README.txt} next to each).
+
+%=====================================================================
 \section{If something goes wrong}
 \begin{itemize}[leftmargin=1.2em]
 \item \textbf{``ERROR: ... fix the settings file(s)''} --- nothing was run;
   the message lists each problem and the file it is in.
-\item \textbf{Python is missing packages} --- the message gives the
-  command, e.g.\ \code{python3 -m pip install uproot awkward}.
-  Needed: \code{numpy}, \code{uproot}, \code{awkward}, \code{matplotlib}.
+\item \textbf{Python is missing packages} --- the launcher is not using the
+  environment that has them: run \code{setup\_workdir.sh} again with that
+  environment active (Section~\ref{sec:install}), or install them with
+  \code{python3 -m pip install -r \textasciitilde/code/MuonCollider/requirements.txt}.
 \item \textbf{A run ends in \code{\_FAILED}} --- open its
   \code{run\_log.txt}; the step that failed is at the end. Your
   \code{step*} folders and \code{\_highlights/} still show the last good run.
@@ -415,5 +498,53 @@ Old run folders can be deleted freely; Dropbox keeps a version history.
 \item Changing the code: commit with git in \code{\textasciitilde/code/MuonCollider}
   and \code{git push} to GitHub; each run records the commit it used.
 \end{itemize}
+
+%=====================================================================
+\appendix
+\section{The input files}\label{app:inputs}
+Their names are set in \inputs; the files are looked up in \code{Data/}
+and \code{Geometry/} next to the working folder.
+
+\textbf{\code{[data]}: ROOT n-tuples}, all with one tree, \code{HTAtree}:
+\begin{itemize}[leftmargin=1.2em]
+\item \code{bib\_plus}, \code{bib\_minus}: the beam-induced background of
+  one bunch crossing from each beam; one entry per BIB primary particle,
+  with all the hits it produced;
+\item \code{bib\_ipp} (optional): the incoherent-pair-production background
+  of the same crossing;
+\item \code{bib\_combined}: the three merged --- \emph{made automatically}
+  by \code{./run\_all} when missing or out of date;
+\item \code{signal}: single-muon events (a muon gun), one muon per entry.
+\end{itemize}
+
+\textbf{Branches.} Per entry: \code{nRun}, \code{nEvt}; the primary
+particle \code{part\_pdg}, \code{part\_q}, momentum \code{part\_px},
+\code{part\_py}, \code{part\_pz}, \code{part\_e} (GeV), production vertex
+\code{part\_vx}, \code{part\_vy}, \code{part\_vz} (mm) and time
+\code{part\_t0} (ns); the number of hits \code{n\_hit}. Per hit, as
+parallel vectors:
+\begin{center}\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\code{hit\_x}, \code{hit\_y}, \code{hit\_z} & global position (mm)\\
+\code{hit\_t} & time (ns)\\
+\code{hit\_u}, \code{hit\_v}; \code{hit\_du}, \code{hit\_dv} & position in the sensor plane and its resolution (mm)\\
+\code{hit\_ux,uy,uz}, \code{hit\_vx,vy,vz} & the sensor's local $u$ and $v$ axes (unit vectors)\\
+\code{hit\_px}, \code{hit\_py}, \code{hit\_pz} & momentum of the particle at the hit (GeV): its direction gives the hit's direction\\
+\code{hit\_mcp} & PDG code of the particle the simulation credits the hit to\\
+\code{hit\_id0} & sensor identifier (below); \code{hit\_index}: hit number\\
+\bottomrule
+\end{tabularx}
+\end{center}
+\code{hit\_id0} packs \code{system:5, side:-2, layer:6, module:11, sensor:8}
+(bits, from the lowest): system = \code{id0 \& 0x1F} (1 VXD barrel, 2 VXD
+endcap, 3 IT barrel, 4 IT endcap, 5 OT barrel, 6 OT endcap), side =
+\code{(id0 >{}> 5) \& 0x3} (0 barrel, 1 and 3 the $+z$ and $-z$ endcaps),
+layer = \code{(id0 >{}> 7) \& 0x3F}. More in \code{README.md}.
+
+\textbf{\code{[geometry]}: XML files} describing the geometry of the
+detector (\code{main}, \code{vertex}, \code{inner\_tracker},
+\code{outer\_tracker}); the package reads from them the position and the
+sensitive area of every layer.
 
 \end{document}

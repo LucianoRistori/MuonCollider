@@ -4,6 +4,21 @@
 Analysis folder as `_START_HERE_user_manual.pdf`): where everything lives and how to
 run the three main cases. This README is the detailed reference.
 
+## Installation (Mac or Linux)
+
+Full instructions: Section 8 of `docs/user_manual.pdf`. In short, with Python 3.9+:
+```
+mkdir -p ~/code && cd ~/code
+git clone https://github.com/LucianoRistori/MuonCollider.git
+python3 -m venv ~/venvs/muoncollider && source ~/venvs/muoncollider/bin/activate
+python3 -m pip install -r ~/code/MuonCollider/requirements.txt
+mkdir -p ~/MuonColliderSimulation/Data ~/MuonColliderSimulation/Geometry   # put the input files here
+~/code/MuonCollider/setup_workdir.sh ~/MuonColliderSimulation/Analysis
+cd ~/MuonColliderSimulation/Analysis && ./run_all
+```
+The input files (ROOT n-tuples in `Data/`, geometry XML in `Geometry/`) are not in the
+repository; what they are and their format: Appendix A of the manual.
+
 ## How to run the analysis
 
 Everything is run from the Analysis folder in Dropbox, which holds the
