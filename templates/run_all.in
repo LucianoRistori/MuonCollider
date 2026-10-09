@@ -1,0 +1,23 @@
+#!/bin/bash
+# Runs the BIB analysis with the __cuts_config.txt, __smearing_config.txt
+# and __input_files_config.txt in THIS folder:
+#     ./run_all              only what the highlights PDF needs (step 4)
+#     ./run_all --full       the whole analysis (steps 1-4)
+#     ./run_all --headroom   adds step 5, the resolution headroom scans
+# and archives everything in runs/<date>_<time>/. The step* folders here
+# are then replaced by that run's results (only if it succeeded).
+#
+# Usage:   ./run_all [--full] [--headroom]    (./run_all --help for details)
+#
+# Made by setup_workdir.sh. The code and the Python found at that time are
+# written below; MUONCOLLIDER_CODE=... or PYTHON=... override them.
+here="$(cd "$(dirname "$0")" && pwd -P)"
+if [ -z "${PYTHON:-}" ] && [ -x "@PYTHON@" ]; then export PYTHON="@PYTHON@"; fi
+for code in "${MUONCOLLIDER_CODE:-}" "@CODE_DIR@" "$HOME/code/MuonCollider"; do
+    if [ -n "$code" ] && [ -f "$code/run_all_steps.sh" ]; then
+        exec /bin/bash "$code/run_all_steps.sh" "$here" "$@"
+    fi
+done
+echo "ERROR: cannot find the analysis code (looked in @CODE_DIR@ and ~/code/MuonCollider)." >&2
+echo "If it is somewhere else, run:  MUONCOLLIDER_CODE=/path/to/MuonCollider ./run_all" >&2
+exit 1

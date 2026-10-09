@@ -1,0 +1,8 @@
+# Python packages for the MuonCollider BIB analysis (Python 3.9 or newer).
+# Install into a virtual environment:  python3 -m pip install -r requirements.txt
+numpy>=1.21
+uproot>=5.0
+awkward>=2.0
+matplotlib>=3.5
+# only for the fake-rate framework scripts of the paper (fake_rate_framework/)
+scipy>=1.7
