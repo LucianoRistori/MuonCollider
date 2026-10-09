@@ -22,12 +22,12 @@
 #             -------- cuts --------     -------- zoom --------
 #             time    z0     pT          time    z0     pT
 #             (ns)    (mm)   (GeV/c)     (ns)    (mm)   (GeV/c)
-vxd_barrel  = 0.3     15     5           2.0     100    1.0
-vxd_endcap  = 0.3     15     5           2.0     100    1.0
-it_barrel   = 0.3     15     5           2.0     100    1.0
-it_endcap   = 0.3     15     5           2.0     100    1.0
-ot_barrel   = 0.3     15     5           2.0     100    1.0
-ot_endcap   = 0.3     15     5           2.0     100    1.0
+vxd_barrel  = 0.117   14     off         0.5     100    1.0
+vxd_endcap  = 0.118   80     off         0.5     200    1.0
+it_barrel   = 0.117   51     off         0.5     200    1.0
+it_endcap   = 0.135   466    off         0.5     1000   1.0
+ot_barrel   = 0.125   136    2.          0.5     300    1.0
+ot_endcap   = 0.135   346    2.          0.5     1000   1.0
 
 [track]
 # A signal muon counts as found if at least min_hits_found of its hits pass
