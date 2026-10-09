@@ -1,13 +1,11 @@
 ---
 title: "Paper 1 (JINST) — proposed outline"
-subtitle: "For approval before writing. Draft 1, 8 October 2026"
+subtitle: "For approval before writing. Draft 2, 9 October 2026"
 ---
 
-# Working title
+# Title
 
 *An algorithm-independent lower limit on combinatorial fake tracks in high-occupancy tracking detectors*
-
-(Alternatives: *How many random hit combinations look like a track? An exact estimate of irreducible fake tracks at high occupancy*; *Irreducible combinatorial fakes in tracking detectors: an analytic estimate and a Monte Carlo calibration at the 10^-26^ level*.)
 
 **Target:** JINST regular article, about 20 pages, 7–8 figures. **Readers:** physicists who know track reconstruction at large collider experiments; no tutorial material on fits or Kalman filters.
 
@@ -37,25 +35,28 @@ subtitle: "For approval before writing. Draft 1, 8 October 2026"
 
 ## 3. The probability that one random combination passes (4 pp)
 
-- Small-χ² power law P(χ² < c) ≈ K c^ndof/2^: the residual vector lives in an ndof-dimensional space and its density near zero is constant; P is that density times the volume of an ellipsoid. Straight-line case reproduces the (w/L)^k−2^ alignment law.
-- Exact rescaling: shrinking the geometry by λ at fixed σ multiplies χ² by λ^2^ exactly (residuals are linear in the data), so P~true~(c) = P~shrunk~(c/λ^2^); the rare event becomes common in the shrunken detector.
-- Calibration: ordinary Monte Carlo on the shrunken detector; fit K on the plateau of P/c^ndof/2^ with the exponent fixed; how to check the plateau; choice of λ (smallest plane 5–20σ wide).
-- Consequences: P ∝ σ^ndof^ (resolution scaling); planes of different size and resolution through whitened coordinates.
+Developed throughout on the B = 0 straight line, the simplest case, which shows the whole method; Section 5 adds the field.
+
+- **Whitened coordinates from the start:** every measured coordinate divided by its resolution. The fit becomes an unweighted least-squares fit, χ² is the squared length of the residual vector, and χ² < c means that this vector lies inside a **sphere** of radius √c in the ndof-dimensional residual space. Planes of different size and different resolutions need no separate treatment: in these coordinates each plane is simply a box of side W~i~/σ~i~.
+- Small-χ² power law P(χ² < c) ≈ K c^ndof/2^: the density of the residual vector near zero is constant, so P is that density times the volume of the sphere. The straight-line case reproduces the (w/L)^k−2^ alignment law.
+- Exact rescaling: in whitened coordinates shrinking the planes by λ (or, equivalently, enlarging every σ by λ) multiplies χ² by λ^2^ exactly, since the residuals are linear in the data; so P~true~(c) = P~shrunk~(c/λ^2^), and the rare event becomes common in the shrunken detector.
+- Calibration: ordinary Monte Carlo on the shrunken detector; fit K on the plateau of P/c^ndof/2^ with the exponent fixed; how to check the plateau; choice of λ (smallest plane 5–20 resolutions wide).
+- Consequence: P ∝ σ^ndof^, the resolution scaling, is the same symmetry read the other way.
 - Relation to rare-event methods and to extreme-value theory: here the scaling is an exact symmetry and the exponent is known, so only K is fitted.
 
 ## 4. Validation (2.5 pp)
 
-- The plateau of P/c^ndof/2^ over several decades of c, straight line and helix (figure).
+- The plateau of P/c^ndof/2^ over several decades of c, for the straight line and the helix (figure).
 - The resolution law checked numerically (the 10^ndof/N^ ratio of crossing densities).
-- **New:** an end-to-end test where fakes are frequent enough to count directly: generate noise-only events in a small detector, fit *all* combinations, count those passing the cut, and compare with P ∏ n~i~ (figure).
+- **New:** an end-to-end test in small, tractable detectors where fakes are frequent enough to count directly: generate noise-only events, fit *all* combinations, count those passing the cut, and compare with P ∏ n~i~ — for the straight line and for the helix, for 6 of 6 and k of N (figure).
 
 ## 5. Tracks in a solenoidal field (3.5 pp)
 
-- Tracks from the beam line: the fit splits into a bending view and a depth view, ndof = 2N − 4.
-- Conservative quadratic model (linear, a superset of helices) and the exact helix fit in (b, κ) (Levenberg–Marquardt, several starting points; one sentence on why a single start underestimates fakes).
-- Scale equivariance of the circle model: the rescaling stays exact provided curvature limits scale with λ (κ → λκ).
-- Curvature acceptance: the accepted fraction grows linearly with κ~max~ and does not depend on σ.
-- Comparison of the models; the B = 0 line as reference.
+- Tracks from the beam line: the fit splits into a bending view (circle through the beam line, parameters b, κ) and a depth view (a line), ndof = 2N − 4.
+- The exact helix fit (Levenberg–Marquardt, several starting points; one sentence on why a single start would underestimate fakes).
+- Scale equivariance of the circle model: the rescaling stays exact provided the curvature limit scales with λ (κ → λκ).
+- Curvature acceptance (the p~T~ threshold): the accepted fraction grows linearly with κ~max~ and does not depend on σ.
+- Comparison with the B = 0 line of Section 3: what the field costs and gains (one more fitted parameter, but a curvature acceptance).
 
 ## 6. Worked example: a six-layer barrel tower (3 pp)
 
@@ -80,18 +81,19 @@ subtitle: "For approval before writing. Draft 1, 8 October 2026"
 
 # What is left out of the compendium
 
-The history of the work and the "pitfalls" narratives (one sentence each where useful); the discussion on choosing λ (one rule of thumb); the angular-acceptance and impact-parameter cuts (one paragraph, or dropped); the first-order validity study (one remark); everything that refers to simulation data, which goes to paper 2.
+The history of the work and the "pitfalls" narratives (one sentence each where useful); the discussion on choosing λ (one rule of thumb); the conservative quadratic model; the angular-acceptance and impact-parameter cuts; the first-order validity study (one remark); everything that refers to simulation data, which goes to paper 2.
 
 # New work needed before writing results
 
 1. Recalibrate on the rounded geometry: exact helix for 6 of 6 and for each of the six 5-plane subsets (the slow runs; time to be estimated first).
 2. Uncertainties: statistical (bootstrap) and plateau-range systematic for every K.
-3. The end-to-end validation of Section 4 (new Monte Carlo, small detector).
+3. The end-to-end validation of Section 4 (new Monte Carlo, small detectors; straight line and helix; 6 of 6 and k of N).
 4. All figures regenerated by scripts in docs/papers/jinst_fake_rate/.
 
-# Decisions for you
+# Decided (9 October 2026)
 
-1. Title.
-2. Keep the conservative quadratic model as a cross-check, or show only the exact helix (and the B = 0 line as reference)?
-3. Angular-acceptance and impact-parameter cuts: one paragraph, or drop?
-4. The end-to-end validation (Section 4): agree that it is worth the extra Monte Carlo?
+1. Title: the one above.
+2. Whitened coordinates from the start; spheres, not ellipsoids.
+3. Only the exact helix fit; the B = 0 line as the pedagogical case. No conservative quadratic model.
+4. No angular-acceptance or impact-parameter cuts.
+5. The end-to-end validation in small, tractable detectors is included.
