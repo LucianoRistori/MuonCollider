@@ -1,6 +1,6 @@
 ---
 title: "Paper 1 (JINST) — proposed outline"
-subtitle: "For approval before writing. Draft 2, 9 October 2026"
+subtitle: "For approval before writing. Draft 3, 9 October 2026"
 ---
 
 # Title
@@ -31,14 +31,26 @@ subtitle: "For approval before writing. Draft 2, 9 October 2026"
 - Track hypothesis and acceptance: least-squares fit, χ² < cut, with the cut fixed by the efficiency for genuine tracks (one-sided 3σ: P(χ² > cut) = 1.35×10^-3^).
 - The counting identity E = P ∏ n~i~: exact for the mean by linearity of expectation, whatever the correlations between overlapping combinations.
 - **The lower-limit statement** (wording as agreed): any algorithm that uses only the hit positions and keeps genuine tracks passing this χ² cut must also accept, on average, at least E pure-noise combinations. State the class of algorithms it covers; what can lower it (an algorithm that drops candidates through hit sharing or ambiguity resolution also loses real tracks) and what it does not count (partly-fake tracks, which only add to it).
-- k of N planes: E~k-of-N~ = Σ over subsets of k planes; bounds (largest subset ≤ distinct fakes ≤ sum).
+
+### 2.x Requiring at least k of N planes
+
+- **Acceptance rule:** a candidate is accepted if its hits on some set S of at least k planes pass the χ² cut for that set's ndof; each ndof has its own cut, at the same efficiency for genuine tracks (one-sided 3σ). For 5 of 6: ndof = 8 for the full set, 6 for each 5-plane subset.
+- **Expected number of accepted combinations**, by the same linearity argument: E(≥ k of N) = Σ P~S~ ∏~i∈S~ n~i~, the sum running over the sets S of at least k planes — for 5 of 6, E~6~ plus six terms E~5~(S). Each P~S~ needs its own calibration, since removing a plane changes the geometry.
+- **From combinations to distinct fake tracks:** the sum counts some fakes more than once — a 6-hit fake usually contains 5-hit subsets that also pass, and two 5-hit fakes can share 4 hits, which any algorithm would merge. Hence: largest single term ≤ distinct fakes ≤ sum.
+- **Why the overlaps are small in practice:** E~5~ is expected to exceed E~6~ by a large factor, and two 5-hit fakes sharing 4 hits need a second hit inside an already tiny window. The sum is then a good estimate, and the lower-limit statement rests on it with the bounds stated.
+- **Checked, not just argued:** the end-to-end validation (Section 4) counts distinct fakes after merging candidates that share hits, and compares them with the sum and the bounds.
 
 ## 3. The probability that one random combination passes (4 pp)
 
 Developed throughout on the B = 0 straight line, the simplest case, which shows the whole method; Section 5 adds the field.
 
 - **Whitened coordinates from the start:** every measured coordinate divided by its resolution. The fit becomes an unweighted least-squares fit, χ² is the squared length of the residual vector, and χ² < c means that this vector lies inside a **sphere** of radius √c in the ndof-dimensional residual space. Planes of different size and different resolutions need no separate treatment: in these coordinates each plane is simply a box of side W~i~/σ~i~.
-- Small-χ² power law P(χ² < c) ≈ K c^ndof/2^: the density of the residual vector near zero is constant, so P is that density times the volume of the sphere. The straight-line case reproduces the (w/L)^k−2^ alignment law.
+- **The small-χ² power law, derived for readers who have not met it** (about one page):
+    - With m measured coordinates and p fitted parameters, the fitted residuals r are the projection of the whitened measurements x onto the (m − p) = ndof-dimensional space orthogonal to the track model; χ² = |r|^2^.
+    - P(χ² < c) is the probability that r falls inside the sphere |r| < √c in that space: P = ∫~|r|<√c~ f~r~(r) d^ndof^r.
+    - When √c is small compared with the scale over which f~r~ varies (the whitened plane sizes W~i~/σ~i~), f~r~ is constant over the sphere, so P ≈ f~r~(0) V~ndof~ c^ndof/2^, with V~d~ = π^d/2^/Γ(d/2 + 1) the volume of the unit sphere: hence K = f~r~(0) V~ndof~, and the exponent ndof/2 follows from geometry alone.
+    - f~r~(0) is the density of combinations that lie exactly on a track. For a linear model it can be written as an integral over the track parameters of the hit density along the exact tracks (with a constant Jacobian), which gives an optional analytic cross-check of K in the straight-line case.
+    - The same power appears in the familiar small-argument form of the χ² distribution, P ≈ (c/2)^ndof/2^/Γ(ndof/2 + 1) for Gaussian residuals (incomplete-gamma series; cite DLMF §8.7 or Abramowitz & Stegun) — there with a different constant, because here the hits are uniform noise, not Gaussian around a track. For straight lines it reproduces the (w/L)^k−2^ law for chance alignments of k random points (Kendall & Kendall 1980; Broadbent 1980). Small-ball probabilities (Li & Shao 2001) as the general mathematical setting.
 - Exact rescaling: in whitened coordinates shrinking the planes by λ (or, equivalently, enlarging every σ by λ) multiplies χ² by λ^2^ exactly, since the residuals are linear in the data; so P~true~(c) = P~shrunk~(c/λ^2^), and the rare event becomes common in the shrunken detector.
 - Calibration: ordinary Monte Carlo on the shrunken detector; fit K on the plateau of P/c^ndof/2^ with the exponent fixed; how to check the plateau; choice of λ (smallest plane 5–20 resolutions wide).
 - Consequence: P ∝ σ^ndof^, the resolution scaling, is the same symmetry read the other way.
@@ -97,3 +109,5 @@ The history of the work and the "pitfalls" narratives (one sentence each where u
 3. Only the exact helix fit; the B = 0 line as the pedagogical case. No conservative quadratic model.
 4. No angular-acceptance or impact-parameter cuts.
 5. The end-to-end validation in small, tractable detectors is included.
+6. k of N gets its own subsection (2.x), with the counting of distinct fakes checked by the end-to-end validation.
+7. The small-χ² power law is derived in the paper, with references, not assumed known.
