@@ -1,7 +1,9 @@
 ---
 title: "Estimating Combinatorial Fake-Track Rates in a Multi-Plane Tracking Detector"
-date: "DRAFT v1.7 — 2026-10-08"
+date: "DRAFT v1.8 — 2026-10-10"
 ---
+
+**Correction (v1.8, 10 October 2026) — read first.** From Section 11 on, the depth-view fit was implemented with the radius as the measured quantity: the curve $r = p + qZ$ is the right track model (Section 10.3), but its $\chi^2$ summed residuals in $r$ instead of in $Z$, the coordinate a barrel layer actually measures. For tracks in the tower ($|dZ/dr|\lesssim 0.34$) a residual in $r$ is at least about three times the corresponding residual in $Z$, so the $\chi^2$ was too large and every curved-track (and origin-line) fake probability from Section 11 on is too low — for the exact helix on the real tower of Section 14, $P_\mathrm{true}=3.3\times10^{-23}$ at 100 µm instead of $7.3\times10^{-26}$, a factor of about 450. In addition, a track is counted as found with 5 of its 6 layers, and the six 5-of-6 terms, not counted here, exceed the 6-of-6 term by about four orders of magnitude. The numbers of Sections 11–16 are therefore left as they were, as a record, but should not be used. The corrected fake probabilities are computed from the geometry (the volume of the accepted track manifold), validated by direct Monte Carlo and by brute-force counting, and are used by `fake_rate.py` in the analysis package; they will appear in the JINST paper being prepared from this draft (`docs/papers/jinst_fake_rate/`). Sections 1–9 (straight lines, no field) are not affected.
 
 **For discussion. Sections marked [DRAFT] are rough and meant to be revised; numbers are final (taken directly from the simulation) but the surrounding prose is not.**
 
