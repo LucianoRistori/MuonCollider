@@ -94,9 +94,10 @@ Small, tractable towers (4 and 6 planes, σ = 0.1 mm), for the straight line and
     - six layers at radii ~160–1500 mm, projective tower with a 1 m^2^ outermost plane;
     - densities after background-suppression cuts of 10^-4^–10^-2^ hits/mm^2^;
     - all rounded to two significant figures;
-    - σ = 50 µm; B = 5 T; p~T~ > 10 GeV/c.
+    - σ = 100 µm (both coordinates) and 100 ps time resolution: conventional, present-day assumptions, suited to a paper about a general method. The time resolution enters only through the hit densities left after the timing cut. B = 5 T; p~T~ > 10 GeV/c.
 - **Results:** K from the geometry and P for the exact helix; E for 6 of 6 and for 5 of 6 (six subsets, compared); η, and the distinct-fake correction.
 - **Headroom:** E vs a common density factor (∝ μ^6^ for 6 of 6, dominated by μ^5^ terms for 5 of 6) and vs resolution (∝ σ^ndof^), and the factor at which one fake is reached.
+- Futuristic detector assumptions (better resolutions for a detector 30–50 years from now) and the resolution scans that could set goals for detector R&D are left to paper 2.
 
 ## 7. Uncertainties and limitations (1.5 pp)
 
@@ -124,6 +125,7 @@ The history of the work and the "pitfalls" narratives (one sentence each where u
 
 # New work needed before writing results
 
+0. Hit densities after cuts from a run at σ = 100 µm and 100 ps (the 8 October headroom scan already has this point: 6-of-6 E = 1.1×10^-9^, about 300 times the 50 ps value), rounded to two significant figures.
 1. Geometric K on the rounded example geometry: exact helix for 6 of 6 and each of the six 5-plane subsets (minutes, no long runs).
 2. A direct Monte Carlo check at the example's c′ for one or two sets, to bound the finite-c corrections there.
 3. η for the example, and the distinct-fake correction.
@@ -141,3 +143,4 @@ The history of the work and the "pitfalls" narratives (one sentence each where u
 7. The small-χ² power law is derived in the paper, with references, not assumed known.
 8. K is computed from the track-manifold volume; Monte Carlo is used for the corrections and as a check (10 October 2026).
 9. The internal 1994 ATLAS notes are not cited.
+10. Example operating point: 100 µm position and 100 ps time resolution; futuristic resolutions and R&D-goal scans go to paper 2 (10 October 2026).
