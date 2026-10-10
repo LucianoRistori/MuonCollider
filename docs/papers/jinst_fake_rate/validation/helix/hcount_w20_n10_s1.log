@@ -1,0 +1,21 @@
+helix count: w_min 20.0, 10 hits/plane: direct P done (24s)
+  150 events (227s)
+  300 events (448s)
+  450 events (673s)
+  600 events (899s)
+  750 events (1127s)
+  900 events (1348s)
+  1050 events (1565s)
+  1200 events (1793s)
+  1350 events (2007s)
+  1500 events (2233s)
+  all 6                        counted 0.007333 +- 0.0033   predicted 0 +- 0
+  no plane 6                   counted 0.1053 +- 0.013   predicted 0.1 +- 0.05
+  no plane 5                   counted 0.1593 +- 0.019   predicted 0.15 +- 0.061
+  no plane 4                   counted 0.11 +- 0.017   predicted 0.2 +- 0.071
+  no plane 3                   counted 0.07067 +- 0.012   predicted 0.05 +- 0.035
+  no plane 2                   counted 0.03333 +- 0.0085   predicted 0.05 +- 0.035
+  no plane 1                   counted 0.018 +- 0.0044   predicted 0 +- 0
+  sum                          counted 0.504 +- 0.04   predicted 0.55 +- 0.12
+  distinct (>= 4 shared hits)  counted 0.2347 +- 0.013   predicted nan +- nan
+  eta                          counted 1.347 +- nan   predicted nan +- nan

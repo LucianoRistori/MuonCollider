@@ -1,0 +1,1 @@
+{'N': 6, 'ndof': 8, 'w_min': 16, 'c_prime': 0.396267639125902, 'P_direct': 4.35e-08, 'P_direct_err': np.float64(2.6925824035672517e-09), 'n_pass': 261, 'n_trials': 6000000000, 'P_geom': 5.0381807861340884e-08, 'ratio_geom': 0.8634068892430227, 'ratio_geom_err': np.float64(0.053443544760793146)} 4311s
