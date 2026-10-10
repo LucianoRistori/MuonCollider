@@ -6,7 +6,7 @@ The method's individual ingredients are almost all known somewhere. What appears
 - **The a contrario "number of false alarms"** (Desolneux, Moisan, Morel 2000) is conceptually the same as "expected fakes = number of trials × per-trial probability".
 - **Asymptotic Sampling** (Bucher 2009) and **Enhanced Monte Carlo** (Naess et al. 2009) both make a rare event common with an artificial scale parameter and then extrapolate back. Your version differs because the scaling is an exact identity and the exponent is known rather than fitted.
 
-The main unresolved risk is the lower-limit interpretation. It may have a precursor in a 1994 ATLAS note by S. Haywood on fake tracks with "perfect pattern recognition", which could not be read here. On AI assistance, IOP Publishing, whose policy JINST follows, requires a separate AI disclosure statement in the Acknowledgements. It must name the tool and version, say how the tool was used, and say how the output was verified. AI cannot be an author.
+The lower-limit interpretation was the main open risk. The one possible precursor, a 1994 ATLAS internal note by S. Haywood, was read by the authors (October 2026): it studies only ghost tracks from projection ambiguities, not random combinations of noise hits, and it is not publicly accessible, so it is neither a precursor nor citable. On AI assistance, IOP Publishing, whose policy JINST follows, requires a separate AI disclosure statement in the Acknowledgements. It must name the tool and version, say how the tool was used, and say how the output was verified. AI cannot be an author.
 
 ## Novelty per element: new as a whole, with three elements at medium risk
 
@@ -20,7 +20,7 @@ The table below gives a verdict for each element of the method. "Risk" means the
 | Exact shrink-and-rescale calibration, P_true(c) = P_shrunk(c/λ²) | Asymptotic Sampling (Bucher 2009) inflates σ and extrapolates with an asymptotic form; Enhanced MC (Naess et al. 2009) scales the failure domain and fits a four-parameter tail; Casarsa et al. 2025 ran MC at inflated resolution and scaled back | New in its exactness. For linear least squares χ² is homogeneous of degree 2, so the scaling step itself makes no extrapolation error. The only approximation is the small-cut law, which the plateau tests | **Medium**: cite AS and EMC and contrast with them |
 | Resolution scaling P ∝ σ^ndof | Casarsa et al. 2025 Sec. 8.5 (heuristic "product of resolutions"); the alignment law (w/L)^(k−2) | Your formalization of your own heuristic. It also settles the ambiguity left in Sec. 8.5 between 15 resolutions and 10 degrees of freedom | Medium-high, but the precursor is your own paper, so the fix is to cite it |
 | Helix fit in a solenoid | Circle-fit literature (Karimäki; Chernov–Ososkov; Crawford). No reference found for small-ball behaviour of nonlinear least squares | Apparently new. Rests on the scale-equivariance of the circle model and on the fit being locally regular near the zero-residual manifold. This should be presented as a physics argument checked numerically | Low on novelty; **moderate on rigour** |
-| Interpretation as an algorithm-independent lower limit | None found in reviews (Mankel; Strandlie & Frühwirth; Frühwirth & Strandlie). **Haywood, ATL-INDET-94-044, "Fake Tracks in the ATLAS Inner Detector with Perfect PR…"**, not read | Appears new, pending the 1994 ATLAS notes | **Open, and the highest risk** |
+| Interpretation as an algorithm-independent lower limit | None found in reviews (Mankel; Strandlie & Frühwirth; Frühwirth & Strandlie). The 1994 ATLAS internal notes turned out to be unrelated (ghosts from projection ambiguities) and are not citable | Appears new | Low to medium; rests on stating precisely which algorithms are bounded |
 | Muon Collider–inspired 6-layer barrel example | Muon Collider tracking papers quantify BIB fakes only with specific algorithms and full simulation | Fills a real gap: no algorithm-independent fake floor has been published for the Muon Collider | Low |
 
 Several sources back the HEP side of this table. The FTK associative-memory work describes fake roads only through simulation, for example "the number of fake matched roads increases nearly linearly with the bank size" ([Annovi et al., PoS RD13 014](https://pos.sissa.it/189/014/pdf)). The CDF SVT paper says only that "tracks passing programmable goodness-of-fit cuts propagate downstream" ([arXiv:physics/0306169](https://arxiv.org/pdf/physics/0306169)). The CMS tracklet papers give only a pair-count estimate of about 3600 candidate tracklets per seeding combination, and otherwise measure fakes with an emulator ([arXiv:1706.09225](https://arxiv.org/pdf/1706.09225); [arXiv:1910.09970](https://arxiv.org/pdf/1910.09970)). The HL-LHC track-trigger review treats combinatorial stubs only qualitatively ([Ryd & Skinnari, arXiv:2010.13557](https://arxiv.org/pdf/2010.13557)). INSPIRE full-text searches for "fake track rate" + "occupancy" + "analytic", and for "random combinations of hits" + "chi2", turned up only TDRs, theses and ATLAS performance documents, with no dedicated analytic paper ([INSPIRE query 1](https://inspirehep.net/api/literature?q=fulltext:%22fake%20track%20rate%22%20and%20fulltext:%22occupancy%22%20and%20fulltext:%22analytic%22&size=25&fields=titles,arxiv_eprints,publication_info); [INSPIRE query 2](https://inspirehep.net/api/literature?q=fulltext:%22random%20combinations%20of%20hits%22%20and%20fulltext:%22chi2%22&size=25&fields=titles,arxiv_eprints,publication_info)). This is good evidence but not exhaustive. The FTK TDR, the CDF XFT papers, the CMS Phase-2 Tracker TDR, the Amstutz Hough-transform papers, and the Mu3e, heavy-ion and Mu2e TDRs were not read.
@@ -57,8 +57,7 @@ For the densities: MAIA quotes about 30,000 BIB hits/cm² per crossing in the in
 
 | # | Item | Why | Who / how |
 |---|---|---|---|
-| 1 | Haywood, ATL-INDET-94-044, "Fake Tracks in the ATLAS Inner Detector with Perfect PR…" ([CDS](http://cdsweb.cern.ch/record/685881/files/indet-94-044.pdf)) | "Perfect pattern recognition" is conceptually your lower limit; this is the top novelty risk | You, with CERN access; the note is scanned, with no text layer |
-| 2 | Åkesson, Egede, Froidevaux, Gavrilenko, ATL-INDET-94-083, "Fake Tracks in the ATLAS Straw Detector" ([CDS](http://cdsweb.cern.ch/record/685925/files/indet-94-083.pdf)) | Possible analytic straw-tracker fake estimate | You (scanned) |
+| 1–2 | (Removed 10 October 2026: the 1994 ATLAS internal notes are not publicly accessible and therefore not citable; the one read does not apply) | | |
 | 3 | ATLAS FTK TDR (CERN-LHCC-2013-007), ANIMMA 2011 and NSS/MIC 2012 AM papers | Possible explicit ∏(occupancy × road width) formula | Full text not reached here |
 | 4 | CDF XFT papers; CMS Phase-2 Tracker TDR (CERN-LHCC-2017-009); Mu3e, Mu2e, heavy-ion TDRs | Short analytic estimates may be hidden in TDRs | Not read |
 | 5 | Kendall & Kendall full text; Edmunds & George | The exact form of the k-point alignment law; the (w/L)^(k−2) form here is reconstructed from a secondary source | Read before quoting |
@@ -84,7 +83,6 @@ Status key: **V** means verified against INSPIRE, Crossref, a publisher page, or
 | A. Ryd, L. Skinnari, "Tracking Triggers for the HL-LHC", Annu. Rev. Nucl. Part. Sci. 70 (2020) 1–26, arXiv:2010.13557 | V | Combinatorial stubs at HL-LHC, treated qualitatively |
 | E. Bartz et al., "FPGA-based tracking for the CMS Level-1 trigger using the tracklet algorithm", arXiv:1910.09970 | P (journal not identified) | Fakes measured by emulation |
 | W. R. Leo, *Techniques for Nuclear and Particle Physics Experiments*, 2nd ed., Springer, 1994, doi:10.1007/978-3-642-57920-2, ch. 15 (pp. 303–316) | P (exact page of the accidental-coincidence formula not checked) | The accidental-coincidence analogue |
-| S. Haywood, ATL-INDET-94-044; T. Åkesson et al., ATL-INDET-94-083 | U (not read) | Possibly the lower-limit precursor |
 | Z. Hu et al., "Statistical performance analysis of track initiation techniques", IEEE Trans. Signal Process. 45(2) (1997) 445–456 | P (full author list not seen) | Radar M-of-N analogue of k-of-N |
 
 ### Statistics, rare events, a contrario and random alignments
@@ -107,6 +105,10 @@ Status key: **V** means verified against INSPIRE, Crossref, a publisher page, or
 | S. Coles, *An Introduction to Statistical Modeling of Extreme Values*, Springer, London, 2001, doi:10.1007/978-1-4471-3675-0 | V | Peaks-over-threshold with a fixed shape |
 | W. V. Li, Q.-M. Shao, "Gaussian processes: inequalities, small ball probabilities and applications", Handbook of Statistics 19 (2001) 533–597, doi:10.1016/S0169-7161(01)19019-X | V | Small-ball terminology (Gaussian and infinite-dimensional, so background only) |
 | χ² small-x law: DLMF §8.7 or Abramowitz & Stegun 6.5.29 | U | The incomplete-gamma series |
+| H. Hotelling, "Tubes and spheres in n-spaces, and a class of statistical problems", Amer. J. Math. 61(2) (1939) 440–460 | P (pages from memory) | The volume of a tube around a curve: the geometric K (added 10 Oct 2026) |
+| H. Weyl, "On the volume of tubes", Amer. J. Math. 61(2) (1939) 461–472 | P (pages from memory) | The general tube formula; leading term = area of the manifold × sphere volume |
+| S. Johansen, I. M. Johnstone, "Hotelling's theorem on the volume of tubes: some illustrations in simultaneous inference and data analysis", Ann. Statist. 18(2) (1990) 652–684 | V | Statistical use of the tube formula for nonlinear least squares |
+| S. Kuriki, A. Takemura, "The volume-of-tubes formula: computational methods and statistical applications", arXiv:math/0511502 | V | Review |
 
 ### Muon Collider
 
@@ -166,4 +168,9 @@ If AI helped write the Monte Carlo or fitting code, also describe that briefly i
 
 The defensible claim is not "a new formula for fakes". It is that a heuristic that track-trigger designers, including the authors, have used informally for decades can be made exact and calibrated, at the 10⁻²⁶ level, with crude Monte Carlo. That framing turns each likely referee objection into a citation the paper already makes: alignments for the exponent, the a contrario NFA for the expectation, Asymptotic Sampling and Enhanced Monte Carlo for the calibration, and your own Sec. 8.5 for the scaling. The exact λ² identity and the fixed exponent are what lift the method above its relatives.
 
-The interpretation as an algorithm-independent lower limit is the paper's most quotable result and its least protected one. It depends both on a careful statement of which algorithms it bounds and on what Haywood wrote in 1994. Both should be settled before submission.
+The interpretation as an algorithm-independent lower limit is the paper's most quotable result and its least protected one. It depends on a careful statement of which algorithms it bounds, which should be settled before submission.
+
+
+## Update, 10 October 2026
+
+The track-manifold form of K (paper 1, draft 4 of the outline) has a direct mathematical ancestor in the volume-of-tubes formula of Hotelling and Weyl (1939), widely used in statistics for significance tests on nonlinear regression models (Johansen & Johnstone 1990; Kuriki & Takemura). No use of it to compute combinatorial fake rates in tracking was found. It should be cited as the source of the leading-order result; what is new is its application to random hit combinations, with a uniform rather than Gaussian measure.
