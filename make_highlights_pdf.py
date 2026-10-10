@@ -151,10 +151,17 @@ def headroom_caption(run):
     if "mu_one_fake_exact_helix" not in fk:
         return "Expected number of fake tracks vs. a common factor on the BIB densities."
     mu = float(fk["mu_one_fake_exact_helix"])
-    return (f"Expected number of fake tracks in the 6-layer IT+OT barrel tower (paper, Sections 14-16) "
+    k = int(float(fk.get("k_min", 6)))
+    if k >= 6:
+        what, law = "on all 6 layers", "grows as μ$^6$"
+    else:
+        what = f"on at least {k} of the 6 layers (as a track counts as found with {k} hits)"
+        law = ("is a sum over the layer sets, each term growing as μ$^m$ for m layers"
+               + (f"; the dashed line is the 6-of-6 term alone" if "efakes_exact_helix_6of6" in fk else ""))
+    return (f"Expected number of fake tracks {what}, in the 6-layer IT+OT barrel tower, "
             f"if the BIB hit density after the cuts were multiplied by a common factor μ in all six "
-            f"layers; μ = 1 is this run. E[#fakes] = P$_{{true}}$ ∏ n$_i$ grows as μ$^6$, so it reaches "
-            f"one fake at μ = {mu:.0f} (exact-helix track model): the factor by which the "
+            f"layers; μ = 1 is this run. E[#fakes] = Σ P$_S$ ∏ n$_i$ {law}. It reaches "
+            f"one fake at μ = {mu:.1f} (exact-helix track model): the factor by which the "
             f"background could grow before fakes matter.")
 
 
@@ -177,7 +184,7 @@ def resolution_headroom_caption(run):
             f"point the $z_0$ and time cuts are re-derived to keep {cont:g}% of the signal hits.  "
             + "; ".join(one(p, l) for p, l in (("position", "Position"), ("time", "Time"),
                                                  ("angle", "Angle")))
-            + ". Position enters through the cuts and the fake probability (∝ σ$_u^4$σ$_v^4$); "
+            + ". Position enters through the cuts and the fake probability (∝ σ$_u^{m-2}$σ$_v^{m-2}$ for m layers); "
             "time and angle only through the cuts. The step in the angle scan is where the "
             "widening $z_0$ cut lets late hits of curling muons into the time-cut distribution. "
             "Details: step5_headroom/headroom.pdf.")
@@ -469,13 +476,15 @@ def main(argv):
         note_y = box.y0 - 0.105
         if run["fakes"]:
             fk = run["fakes"]
-            head = (f"   (1 fake at {float(fk['mu_one_fake_exact_helix']):.0f}× the BIB)"
+            head = (f"   (1 fake at {float(fk['mu_one_fake_exact_helix']):.1f}× the BIB)"
                     if "mu_one_fake_exact_helix" in fk else "")
             fig.text(0.6, box.y0 - 0.095, "Expected fake tracks:  "
                      f"{float(fk['efakes_exact_helix']):.1e}{head}", fontsize=11.5, weight="bold", color=INK)
             pos = (f", position resolution {float(fk['sigma_u_mm']):g}/{float(fk['sigma_v_mm']):g} mm"
                    if "sigma_u_mm" in fk else "")
-            fig.text(0.6, box.y0 - 0.125, f"6-layer IT+OT barrel tower, exact helix{pos}",
+            kk = int(float(fk.get("k_min", 6)))
+            kt = "6 of 6 layers" if kk >= 6 else f"≥ {kk} of 6 layers"
+            fig.text(0.6, box.y0 - 0.125, f"6-layer IT+OT barrel tower, exact helix, {kt}{pos}",
                      fontsize=8.5, color=MUTED)
             note_y = box.y0 - 0.16
         pt_min = run["signal_pt_min"]

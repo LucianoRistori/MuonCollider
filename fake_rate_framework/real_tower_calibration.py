@@ -1,3 +1,8 @@
+# CORRECTION (10 October 2026): the depth-view fit in this framework had r and z
+# swapped (it fitted r = p + q z, with residuals in r instead of z), so the fake
+# probabilities computed or used here are about 450 times too low for the helix.
+# Kept as the record of the earlier paper draft; the corrected values come from
+# fake_rate_framework/geometric_K.py and are used by fake_rate.py.
 """
 real_tower_calibration.py
 

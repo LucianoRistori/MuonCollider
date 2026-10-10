@@ -140,8 +140,8 @@ iteration (2-4 rounds, `n1_iterations` in the CSV). Until October 2026
 z0 was set first, on the hits passing pT only: in the OT barrel ~3% of
 the signal hits (late second crossings of curling low-pT muons, which
 fail the time cut) then set a z0 cut ~4x too loose (~540 mm instead of
-~135 mm at 1.5 deg), making E[#fakes] too high by 1-2 orders of magnitude. Results: E[#fakes] (exact-helix track model; the other two
-models only in scan_results.csv) of the fake-rate framework (6-layer IT+OT barrel tower), and the track-finding
+~135 mm at 1.5 deg), making E[#fakes] too high by 1-2 orders of magnitude. Results: E[#fakes] (exact helix, at least
+`min_hits_found` of the 6 layers; the 6-of-6 term also in scan_results.csv) of the fake-rate framework (6-layer IT+OT barrel tower), and the track-finding
 efficiency for pT -> inf in two versions - on the same barrel tower
 (muons with no IT/OT endcap hit, found = at least `min_hits_found` of
 their IT/OT barrel hits pass) and over the whole tracker, defined exactly
@@ -161,9 +161,30 @@ old z0-first order; with the N-1 definition the numbers change, see above).
 
 Position resolution enters E[#fakes] twice: through the cuts (z0, pT and
 time come from the smeared hit positions) and through the fake
-probability, calibrated at 0.1 mm and scaled as (sigma_u/0.1)^4
-(sigma_v/0.1)^4 for the helix (u = r-phi, v = z in the barrel;
+probability of each set of m tower layers, computed at 0.1 mm and scaled as
+(sigma_u/0.1)^(m-2) (sigma_v/0.1)^(m-2) (u = r-phi, v = z in the barrel;
 `fake_rate.py`, also in `./run_all`).
+
+### Expected fake tracks (fake_rate.py)
+
+E[#fakes] counts fakes on at least k = `min_hits_found` of the 6 IT+OT
+barrel tower layers - the same k with which a track counts as found: the
+6-of-6 term plus, for k = 5, the six 5-of-6 terms (each its own layer set,
+its own chi2 cut). The 5-of-6 terms dominate by about four orders of
+magnitude. The fake probability of each layer set is computed from the
+geometry (`fake_rate_framework/geometric_K.py`: volume of the accepted
+track manifold, validated by direct Monte Carlo and brute-force counting
+in `docs/papers/jinst_fake_rate/validation/helix/`).
+
+Correction, 10 October 2026: until then the fake probability came from a
+Monte Carlo calibration (`fake_rate_framework/real_tower_calibration.py`
+and the earlier scripts there) whose depth-view fit had r and z swapped
+(residuals in r instead of z). It was about 450 times too low, and only the
+6-of-6 term was counted. Runs before that date carry the old numbers;
+`resolution_scan.py --headroom-pdf` recomputes a run's headroom from its
+hit counts. With the corrected numbers (run 2026-10-08_160207, 0.1 mm, 50 ps,
+1.5 deg, k = 5): E[#fakes] = 3.2e-5 per tower (6 of 6 alone: 1.8e-9), one fake
+at 7.9x the BIB density.
 
 ### Headroom in the detector resolutions (./run_all --headroom)
 
@@ -175,9 +196,10 @@ values, cuts re-derived as above (grids and containment from the
 `_highlights/` and the highlights PDF get `headroom_efakes_vs_resolution.png`
 (E[#fakes] vs each resolution, three panes, top axis x today's value);
 `step5_headroom/` has `headroom.pdf`, `headroom_summary.csv` and one
-folder per scan. First results (Oct 2026; 0.1 mm, 50 ps, 1.5 deg, 2 GeV/c
-OT pT cut): at 10x E[#fakes] is 4e-4 (position), 1.5e-6 (time), 4e-4
-(angle) - none reaches one fake; position alone would at ~27x. The
+folder per scan. Results (run 2026-10-08_160207; 0.1 mm, 50 ps, 1.5 deg, 2 GeV/c
+OT pT cut; corrected fake probabilities, at least 5 of 6 layers): one fake is
+reached at 5.6x the position resolution (560 um), 7.9x the time resolution
+(390 ps) and 4.6x the angle resolution (6.9 deg). The
 angle scan has a step near 7.5 deg, where the widening z0 cut lets the
 late hits of curling muons into the time-cut distribution and the OT
 barrel time cut opens to several ns - kept, as what those cuts would do.

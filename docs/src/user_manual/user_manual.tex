@@ -229,37 +229,50 @@ This is the same command as Case~1: set \cuts\ and \smear, then
 \end{itemize}
 
 \textbf{What the number is.} \Efakes\ is the expected number of fake tracks
-in the 6-layer IT + OT barrel ``tower'' of the fake-rate framework (paper,
-Sections 14--16):
+in the 6-layer IT + OT barrel ``tower'' of the fake-rate framework. A track
+counts as found if at least $k$ = \code{min\_hits\_found} of its hits pass
+the cuts (\cuts, default 5), and fakes are counted the same way: on at least
+$k$ of the 6 layers. By linearity of expectation,
 \[
-E[\#\mathrm{fakes}] = P_\mathrm{true}\prod_{i=1}^{6} n_i ,\qquad
+E[\#\mathrm{fakes}] = \sum_{S,\ |S|\ge k} P_S \prod_{i\in S} n_i ,\qquad
 n_i = \frac{\text{BIB hits after the cuts in layer } i}{\text{area of layer } i}\times W_i^2,
 \]
-where $W_i^2$ are the plane areas of the projective tower (1~m$^2$ outermost
-plane) and $P_\mathrm{true}$ is the fake probability calibrated in
-\code{fake\_rate\_framework/real\_tower\_calibration.py}, for three track
-models: exact helix, conservative quadratic, and straight line ($B=0$).
-Only the exact helix is quoted and plotted: the quadratic agrees with it
-within about 15\% (3\% in the headroom factor below), and $B=0$ is not our
-case. All three stay in \code{fake\_rate.csv} and \code{scan\_results.csv},
-for comparison with the paper. Values well below 1 mean fakes are negligible.
+the sum running over the sets $S$ of at least $k$ layers (for $k=5$: all six
+layers, plus the six sets that miss one layer). $W_i^2$ are the plane areas
+of the projective tower (1~m$^2$ outermost plane) and $P_S$ is the
+probability that one random combination of hits on the layers of $S$ passes
+the exact-helix fit (one-sided $3\sigma$ $\chi^2$ cut, $p_T>10$~GeV/$c$ in
+5~T). $P_S$ is computed from the geometry, as the volume of the accepted
+track manifold (\code{fake\_rate\_framework/geometric\_K.py}, validated by
+direct Monte Carlo). The 5-of-6 terms dominate, by about four orders of
+magnitude over the 6-of-6 term, which is also given in \code{fake\_rate.csv}.
+A fake that also passes on a subset is counted more than once; at these
+densities the overlap is negligible. Values well below 1 mean fakes are
+negligible.
 
-\textbf{Position resolution.} $P_\mathrm{true}$ was calibrated at 0.1~mm
-and scales steeply with the hit position resolution (paper Sections 5.1,
-10.4): $P_\mathrm{true}\propto(\sigma_u/0.1\,\mathrm{mm})^4(\sigma_v/0.1\,\mathrm{mm})^4$
-for the helix ($u$ = $r\phi$, bending view; $v$ = $z$; 4 degrees of
-freedom in each view). The resolutions are taken from \smear\ (with
-position smearing off, 0.1~mm is used) and are recorded in
-\code{fake\_rate.csv}. Halving both resolutions divides \Efakes\ by
-$2^8=256$.
+\textbf{Correction (10 October 2026).} Until then $P$ came from a Monte
+Carlo calibration (\code{fake\_rate\_framework/real\_tower\_calibration.py})
+whose depth-view fit had $r$ and $z$ swapped; it was about 450 times too
+low, and only the 6-of-6 term was counted. Runs made before that date carry
+the old numbers.
 
-\textbf{Headroom.} Since \Efakes\ is a product of six densities, scaling
-the BIB density of all six layers by a common factor $\mu$ scales it by
-$\mu^6$; one fake is reached at $\mu = \Efakes^{-1/6}$. This factor is
+\textbf{Position resolution.} $P_S$ is computed at 0.1~mm and scales
+steeply with the hit position resolution: for a set of $m$ layers,
+$P_S\propto(\sigma_u/0.1\,\mathrm{mm})^{m-2}(\sigma_v/0.1\,\mathrm{mm})^{m-2}$
+($u$ = $r\phi$, bending view; $v$ = $z$; $m-2$ degrees of freedom in each
+view). The resolutions are taken from \smear\ (with position smearing off,
+0.1~mm is used) and are recorded in \code{fake\_rate.csv}. Halving both
+resolutions divides the 6-of-6 term by $2^8=256$ and the 5-of-6 terms by
+$2^6=64$.
+
+\textbf{Headroom.} Scaling the BIB density of all six layers by a common
+factor $\mu$ scales each term by $\mu^m$ ($m$ = its number of layers); one
+fake is reached at the $\mu$ where the sum equals 1. This factor is
 quoted on the title page (``1 fake at $N\times$ the BIB''), in the last line
 of \code{summary.txt}, in the \code{mu\_one\_fake\_*} columns of
-\code{fake\_rate.csv}, and plotted (\Efakes\ vs.\ $\mu$) in
-\code{fake\_rate\_vs\_density\_multiplier.png}, a page of the highlights.
+\code{fake\_rate.csv}, and plotted (\Efakes\ vs.\ $\mu$, with the 6-of-6
+term dashed) in \code{fake\_rate\_vs\_density\_multiplier.png}, a page of
+the highlights.
 It tells how much more background (or looser cuts) the tracker can take
 before fakes matter.
 
@@ -341,7 +354,7 @@ re-derived at each point. It adds about 2--3 minutes.
   \code{summary.txt}.
 \end{itemize}
 Position resolution enters twice --- through the cuts and through the fake
-probability ($\propto\sigma_u^4\sigma_v^4$) --- time and angle only
+probability ($\propto\sigma_u^{m-2}\sigma_v^{m-2}$ for $m$ layers) --- time and angle only
 through the cuts. The ranges can be changed in a \code{[headroom]}
 section of \scan\ (e.g.\ \code{position = factor 1 20 20}); without it,
 1--10$\times$ and 98\,\% containment are used. In the angle scan, a step
@@ -450,7 +463,7 @@ cd ~/MuonColliderSimulation/Analysis
 The first run also builds the combined BIB file in \code{Data/} (a few
 minutes, once). Then open \code{\_highlights\_<date>\_<time>.pdf}: with the
 template settings the track-finding efficiency is 98.0\,\% and
-$\Efakes = 3.8\times10^{-12}$, as in Section~\ref{sec:fakes}.
+$\Efakes = 3.2\times10^{-5}$ (at least 5 of 6 layers), as in Section~\ref{sec:fakes}.
 
 \textbf{Later.} \code{cd \textasciitilde/code/MuonCollider \&\& git pull}
 updates the code. After moving the code or the environment, run

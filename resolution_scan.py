@@ -25,8 +25,11 @@ position); --headroom-one writes them into <run folder>/scan_<p>/, and
 
 Position resolution enters twice: through the cuts (z0, pT and time are
 computed from the smeared hit positions) and through the fake probability
-of the fake-rate framework, which scales as sigma_u^4 sigma_v^4 for the
-helix (fake_rate.py).
+of the fake-rate framework, which scales as sigma_u^(m-2) sigma_v^(m-2)
+for a set of m tower layers (fake_rate.py). E[#fakes] counts fakes on at
+least k = min_hits_found of the 6 tower layers, as the efficiency counts
+found tracks; --headroom-pdf recomputes it from the hit counts in the scans'
+scan_results.csv, so older runs are brought up to date.
 """
 import configparser
 import csv
@@ -46,8 +49,26 @@ SHORT = {1: "VXD_barrel", 2: "VXD_endcap", 3: "IT_barrel",
          4: "IT_endcap", 5: "OT_barrel", 6: "OT_endcap"}
 
 # fake-rate framework constants and formula: fake_rate.py
-from fake_rate import AREA_MM2, P_TRUE, mu_one_fake
+from fake_rate import AREA_MM2, mu_one_fake
 import fake_rate
+
+
+def fake_rows(rows, p, smear, k):
+    """(Re)compute E[#fakes] of scan rows from their BIB hits after the cuts
+    (fake_rate.py): at least k of the 6 tower layers, and 6 of 6 alone."""
+    for r in rows:
+        n_layer = {(s, l): float(r[f"bib_hits_after_{SHORT[s]}_L{l}"]) for (s, l) in AREA_MM2}
+        sig = (r["sigma_u_mm"], r["sigma_v_mm"]) if p == "position" else fake_rate.position_sigmas(smear)
+        terms = fake_rate.efake_terms(n_layer, AREA_MM2, *sig, k_min=k)
+        for old in ("efakes_conservative_quad", "efakes_line_B0"):
+            r.pop(old, None)
+        r["efakes_exact_helix"] = sum(terms.values())
+        r["efakes_exact_helix_6of6"] = terms.get(fake_rate.N_LAYERS, 0.0)
+        for m in range(fake_rate.N_LAYERS, k - 1, -1):
+            r[f"efakes_{m}_layers"] = terms.get(m, 0.0)
+        r["mu_one_fake"] = mu_one_fake(terms)
+        r["k_min"] = k
+    return rows
 
 PARAM = {
     "time":  dict(unit="ns", label=r"timing resolution $\sigma_t$", col="sigma_t_ns",
@@ -410,10 +431,9 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
         row.update(eff_inf=eff, eff_inf_unc=eff_unc, n_fit=n_fit,
                    eff_inf_tracker=eff_t, eff_inf_tracker_unc=eff_t_unc, n_fit_tracker=n_fit_t,
                    prod_n=prod_n)
-        for m in P_TRUE:
-            row[f"efakes_{m}"] = ef[m]
         for (s, layer), n in n_layer.items():
             row[f"bib_hits_after_{SHORT[s]}_L{layer}"] = n
+        fake_rows([row], p, smear, fake_rate.clamp_k(min_hits))
         rows.append(row)
         sh = PARAM[p]
         print(f"{p} res = {value*sh['show_scale']:8.3g} {sh['show_unit']}:  "
@@ -421,7 +441,7 @@ def run(scan_path, cuts_path, smear_path, signal_file, bib_file, outdir):
               f"time IT/OT = {tl[IT_BARREL]:.4f}/{tl[OT_BARREL]:.4f} ns  "
               f"eff barrel/tracker = {eff*100:.2f} +- {eff_unc*100:.2f} / "
               f"{eff_t*100:.2f} +- {eff_t_unc*100:.2f} %  "
-              f"E[fakes] (exact helix) = {row['efakes_exact_helix']:.3e}  ({time.time()-t0:.0f}s)")
+              f"E[fakes] (exact helix, {fake_rate.k_label(row['k_min'])}) = {row['efakes_exact_helix']:.3e}  ({time.time()-t0:.0f}s)")
 
     with open(outdir / "scan_results.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
@@ -459,8 +479,12 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
     figs = []
     # 1. E[#fakes]
     fig, ax = plt.subplots(figsize=(7.5, 5.2))
+    k = fake_rate.clamp_k(min_hits)
     ax.plot(x, [r["efakes_exact_helix"] for r in rows], color="#1b9e77", lw=2, marker="o", ms=4,
-            label="exact-helix track model")
+            label=f"exact helix, {fake_rate.k_label(k)}")
+    if k < fake_rate.N_LAYERS:
+        ax.plot(x, [r["efakes_exact_helix_6of6"] for r in rows], color="#1b9e77", lw=1.2, ls="--",
+                label="6 of 6 alone")
     ax.axhline(1.0, color="gray", lw=0.8)
     ax.set_yscale("log")
     if logx:
@@ -545,8 +569,8 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
         f"their IT/OT barrel hits pass",
         f"                tracker (as ./run_all): all muons, found = >= {min_hits} of their hits pass"
         f"{', VXD not counted' if excl_vxd else ''}",
-        f"E[#fakes]:      6-layer IT+OT barrel tower, BIB density after cuts x P_true (exact-helix track model,\n"
-        f"                calibrated at 0.1 mm and scaled to the position resolution: sigma_u^4 sigma_v^4);\n"
+        f"E[#fakes]:      6-layer IT+OT barrel tower, exact helix, {fake_rate.k_label(fake_rate.clamp_k(min_hits))}: BIB density after\n"
+        f"                cuts x fake probability of each layer set (from the geometry; ~ sigma_u^(m-2) sigma_v^(m-2) for m layers);\n"
         f"                1 fake at: common factor on all six densities that gives one fake",
         "",
         f"{'factor':>7} " * has_f + f"{'res (' + sh['show_unit'] + ')':>10} {'z0 IT':>7} {'z0 OT':>7} {'t IT':>8} {'t OT':>8}"
@@ -559,7 +583,7 @@ def make_plots_and_pdf(rows, scan, smear, cuts_cfg, min_hits, excl_vxd, outdir):
             f"{r['time_cut_ns_IT_barrel']:8.4f} {r['time_cut_ns_OT_barrel']:8.4f} "
             f"{r['eff_inf']*100:8.2f} +- {r['eff_inf_unc']*100:4.2f} "
             f"{r['eff_inf_tracker']*100:9.2f} +- {r['eff_inf_tracker_unc']*100:4.2f} "
-            f"{r['efakes_exact_helix']:12.3e} {mu_one_fake(r['efakes_exact_helix']):9.0f}x")
+            f"{r['efakes_exact_helix']:12.3e} {r['mu_one_fake']:9.1f}x")
     lines += ["", "Cuts for every subsystem: cuts_vs_" + p + ".png and scan_results.csv"]
     title = plt.figure(figsize=(11, 8.5))
     title.text(0.05, 0.95, "\n".join(lines), family="monospace", fontsize=8.5, va="top")
@@ -607,7 +631,13 @@ def make_headroom_pdf(scan_cfg_path, cuts_path, smear_path, run_dir):
         f = run_dir / f"scan_{p}" / "scan_results.csv"
         if not f.exists():
             raise FileNotFoundError(f"missing {f} - did the {p} scan fail?")
-        data[p] = read_rows(f)
+        data[p] = fake_rows(read_rows(f), p, smear, fake_rate.clamp_k(tp["min_hits_found"]))
+        with open(f, "w", newline="") as fh:     # E[#fakes] refreshed from the hit counts
+            w = csv.DictWriter(fh, fieldnames=list(data[p][0]))
+            w.writeheader()
+            w.writerows(data[p])
+        make_plots_and_pdf(data[p], scans[p], smear, cuts_cfg, tp["min_hits_found"],
+                           tp["exclude_vertex_hits"], run_dir / f"scan_{p}")
     color = {"position": "#7570b3", "time": "#1b9e77", "angle": "#d95f02"}
     name = {"position": "position", "time": "time", "angle": "angle"}
 
@@ -685,7 +715,7 @@ def make_headroom_pdf(scan_cfg_path, cuts_path, smear_path, run_dir):
     three_panes("efakes_exact_helix", r"$E[\#\mathrm{fakes}]$ (6-layer IT+OT barrel tower)",
                 "Fake-track headroom in the detector resolutions: one resolution scanned at a time, "
                 f"the other two at today's values\n(z0 and time cuts re-derived at {contain:g}% signal "
-                "containment at each point; exact-helix model)",
+                f"containment at each point; exact helix, {fake_rate.k_label(fake_rate.clamp_k(tp['min_hits_found']))})",
                 "headroom_efakes_vs_resolution.png")
     three_panes("eff_inf_tracker", r"track-finding efficiency, $p_T\to\infty$ (%)",
                 "Track-finding efficiency along the same scans", "headroom_efficiency_vs_resolution.png",
@@ -713,9 +743,10 @@ def make_headroom_pdf(scan_cfg_path, cuts_path, smear_path, run_dir):
              "two stay at today's values. At each point the z0 and time cuts of every subsystem are",
              f"re-derived to keep {scans['time']['containment']:g}% of the signal hits in their N-1 distributions; "
              f"pT cut fixed ({pt_txt} GeV/c).",
-             "E[#fakes]: 6-layer IT+OT barrel tower, exact-helix model. Position resolution enters both",
-             "through the cuts and through the fake probability (~ sigma_u^4 sigma_v^4); time and angle",
-             "only through the cuts.", "",
+             f"E[#fakes]: 6-layer IT+OT barrel tower, exact helix, {fake_rate.k_label(fake_rate.clamp_k(tp['min_hits_found']))}. "
+             "Position resolution enters",
+             "both through the cuts and through the fake probability (~ sigma_u^(m-2) sigma_v^(m-2) for m layers);",
+             "time and angle only through the cuts.", "",
              f"{'resolution':<11}{'today':>22}{'factors':>18}{'E[fakes] today':>16}"
              f"{'1 fake at':>12}{'E at max':>11}{'eff. tracker today -> max':>28}"]
     for p in HEADROOM_ORDER:
@@ -747,7 +778,8 @@ def make_headroom_pdf(scan_cfg_path, cuts_path, smear_path, run_dir):
                 pdf.savefig(fg)
                 plt.close(fg)
     plt.close("all")
-    print("Headroom in the detector resolutions (E[#fakes], exact helix; one resolution at a time):")
+    print(f"Headroom in the detector resolutions (E[#fakes], exact helix, "
+          f"{fake_rate.k_label(fake_rate.clamp_k(tp['min_hits_found']))}; one resolution at a time):")
     for p in HEADROOM_ORDER:
         sm = summary[p]
         print(f"  {name[p]:<9} today {today_txt(p):<18} E = {sm['e0']:.2e};  "
