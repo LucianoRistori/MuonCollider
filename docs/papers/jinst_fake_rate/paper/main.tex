@@ -234,39 +234,149 @@ reference detector and $c'=c/\lambda^2$ the cut mapped onto it.
 
 \subsection{Requiring at least $k$ of $N$ planes}\label{sec:kofn}
 
-Real detectors are inefficient, and track finders usually accept candidates with hits on at
-least $k$ of the $N$ planes. Each set $S$ of planes with $|S|\ge k$ then defines its own fit,
-with its own number of degrees of freedom and its own cut at the same efficiency for real
-tracks: for five of six planes, $\ndof=8$ for the full set and $6$ for each of the six subsets
-of five planes. By the same linearity argument,
+\paragraph{Why sets of planes.} A real detector is not fully efficient, and a track finder
+that required a hit on every plane would lose every track with a missing hit. Track finders
+therefore accept candidates with hits on \emph{at least} $k$ of the $N$ planes, five of six
+for example. Any such algorithm must also accept the noise combinations that pass on a subset
+of the planes. We therefore extend the counting of section~\ref{sec:limit} from one set of planes to all
+the sets that the algorithm accepts.
+
+\paragraph{Candidates.} Let $S$ be a set of planes with $|S|\ge k$. A \emph{candidate on $S$}
+is a choice of one hit on each plane of $S$, nothing being required of the planes outside
+$S$. It is fitted to the track model with the planes of $S$ only, with
+$\ndof(S)=2|S|-4$ degrees of freedom, and it is \emph{accepted} if
 \begin{equation}
-  E(\ge k) = \sum_{|S|\ge k} P_S\prod_{i\in S} n_i ,
+  \chi^2_S < c_S \quad\text{and}\quad \hat\theta_S\in\Theta ,
+  \label{eq:accept}
+\end{equation}
+where $\hat\theta_S$ are the fitted parameters. Each set has its own cut $c_S$, chosen at the
+same efficiency for real tracks as for the full set. With our one-sided $3\sigma$ choice the
+cut depends only on $\ndof(S)$: for five of six planes, $c=25.36$ for the full set
+($\ndof=8$) and $c=21.74$ for each of the six five-plane sets ($\ndof=6$).
+
+\paragraph{The expected number of accepted candidates.} We define $E(\ge k)$ as the expected
+number of accepted candidates, summed over all sets of at least $k$ planes. A candidate on $S$
+is accepted with probability $P_S$, the probability of section~\ref{sec:method} computed for the planes of
+$S$ alone (their depths, sizes and resolutions), and there are $\prod_{i\in S}n_i$ candidates
+on $S$. By linearity of expectation, as in eq.~\eqref{eq:identity},
+\begin{equation}
+  E(\ge k) \;=\; \sum_{S:\,|S|\ge k} E_S ,\qquad E_S \;=\; P_S\prod_{i\in S} n_i .
   \label{eq:kofn}
 \end{equation}
-where $P_S$ is the probability for the planes of $S$ alone, computed for their own geometry.
-Each term with fewer planes has a larger probability and one factor $n_i$ less; when the $n_i$
-are large but the resolution is good, the terms with the fewest planes dominate, by orders of
-magnitude (section~\ref{sec:example}).
-
-The sum counts combinations, not distinct fake tracks. A six-hit fake usually contains five-hit
-subsets that also pass, and two five-hit fakes can share four hits; any algorithm would merge
-such candidates. The size of the double counting is set by the \emph{window occupancy} $\eta$:
-for an accepted candidate, the expected number of other hits that could replace one of its hits
-and still pass, summed over its planes. For plane $i$ of the set,
+For at least five of six planes the sum has seven terms:
 \begin{equation}
-  \eta_i \simeq (n_i-1)\,\frac{\pi\,(c/2)\,\sqrt{(\sigma_{u,i}^2+V_{u,i})(\sigma_{v,i}^2+V_{v,i})}}{A_i},
+  E(\ge 5) \;=\; P_{123456}\;n_1n_2n_3n_4n_5n_6 \;+\; \sum_{j=1}^{6}\,P_{\bar\jmath}\prod_{i\ne j} n_i ,
+  \label{eq:5of6}
+\end{equation}
+where $\bar\jmath$ denotes the five planes other than $j$. Note that a candidate on five planes
+is counted whether or not the sixth plane happens to have a hit near the track; this is what an
+algorithm accepting five of six planes does.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{kofn_sketch}
+  \caption{Candidates that share hits, shown in one view and not to scale. A candidate on
+  planes 1--5 (filled red points) is accepted. The fit to planes 1, 2, 4 and 5 predicts where
+  its hit on plane 3 must lie: any other hit in this \emph{replacement window} (open point)
+  forms a second accepted candidate on the same planes, sharing four hits with the first. The
+  fit to planes 1--5 predicts plane 6: a hit in this \emph{extension window} forms an accepted
+  candidate on all six planes, which contains the first one.}
+  \label{fig:windows}
+\end{figure}
+
+\paragraph{Windows.} Two accepted candidates can share hits, and the size of the overlap is
+governed by a single quantity, the number of hits expected in a \emph{window}
+(figure~\ref{fig:windows}). Take an accepted candidate on $S$ and one of its planes, $i$. The
+fit to the other planes of $S$ predicts the position $(\hat u_i,\hat v_i)$ of the track on plane
+$i$, with variances $V_{u,i}$ and $V_{v,i}$, and has its own $\chi^2_{S\setminus i}$. For a
+linear track model the $\chi^2$ of the full set separates exactly into
+\begin{equation}
+  \chi^2_S \;=\; \chi^2_{S\setminus i} \;+\; \frac{(u_i-\hat u_i)^2}{\sigma_{u,i}^2+V_{u,i}}
+  \;+\; \frac{(v_i-\hat v_i)^2}{\sigma_{v,i}^2+V_{v,i}} .
+  \label{eq:split}
+\end{equation}
+Any hit $(u,v)$ on plane $i$ therefore forms an accepted candidate together with the other
+hits of $S$ if it lies inside the ellipse in which the last two terms add up to less than
+$b_i=c_S-\chi^2_{S\setminus i}$, the part of the $\chi^2$ budget not used by the other planes.
+The area of this ellipse is $\pi b_i\sqrt{(\sigma_{u,i}^2+V_{u,i})(\sigma_{v,i}^2+V_{v,i})}$.
+
+The budget $b_i$ varies from candidate to candidate, and its mean is simple. In the whitened
+space of section~\ref{sec:method} the accepted noise combinations fill the $\ndof$-dimensional $\chi^2$
+sphere of radius $\sqrt{c_S}$ uniformly, and eq.~\eqref{eq:split} splits the squared distance
+from the centre into two coordinates for plane $i$ and $\ndof-2$ for the rest. For a uniformly
+filled sphere each coordinate carries on average $c_S/(\ndof+2)$, so the mean of
+$\chi^2_{S\setminus i}$ is $c_S(\ndof-2)/(\ndof+2)$ and
+\begin{equation}
+  \langle b_i\rangle \;=\; \frac{4\,c_S}{\ndof+2} ,
+  \label{eq:budget}
+\end{equation}
+which is $c_S/2$ for $\ndof=6$.
+
+\paragraph{The window occupancy.} The expected number of \emph{other} noise hits in the
+replacement window of plane $i$ is its area times the density of the other hits,
+\begin{equation}
+  \eta_i \;=\; \frac{n_i-1}{A_i}\;\pi\,\langle b_i\rangle\,
+  \sqrt{(\sigma_{u,i}^2+V_{u,i})(\sigma_{v,i}^2+V_{v,i})} ,
+  \label{eq:eta_i}
+\end{equation}
+and the \emph{window occupancy} of the candidate is the sum over its planes,
+\begin{equation}
+  \eta \;=\; \sum_{i\in S}\eta_i .
   \label{eq:eta}
 \end{equation}
-where $V_{u,i}$, $V_{v,i}$ are the variances of the track position predicted on plane $i$ by
-the fit to the other planes, and $c/2$ is the mean $\chi^2$ budget left to the extra hit. If the
-number of such neighbours is Poisson with mean $\eta$, the number of distinct fakes is the number
-of combinations times $1-\eta/2+O(\eta^2)$, and we find that
+It is the expected number of other accepted candidates on the same planes that share all but
+one hit with the given one. In the same way, for a plane $j$ outside $S$ crossed by the
+track, the expected number of hits in the extension window is
 \begin{equation}
-  E_\mathrm{distinct}\simeq e^{-\eta/2}\,E(\ge k)
+  \mu_j \;=\; \frac{n_j}{A_j}\;\pi\,\langle b_j\rangle\,\sqrt{(\sigma_{u,j}^2+V_{u,j})(\sigma_{v,j}^2+V_{v,j})},
+  \qquad \langle b_j\rangle = c_{S\cup j}-\frac{\ndof(S)}{\ndof(S)+2}\,c_S ,
+  \label{eq:mu}
+\end{equation}
+with $V_{u,j}$, $V_{v,j}$ now the variances of the position predicted on plane $j$ by the fit to
+all of $S$.
+
+\paragraph{Why the sets with fewest planes dominate.} Every accepted candidate on $S\cup j$
+contains a candidate on $S$, and it is accepted when a hit falls in the extension window of
+plane $j$. Therefore, approximately,
+\begin{equation}
+  E_{S\cup j} \;\simeq\; \mu_j\,E_S ,
+  \label{eq:ratio}
+\end{equation}
+for the tracks of $S$ that cross plane $j$. Each additional plane multiplies the expected number
+by the probability that it contains a compatible hit. When the windows are nearly empty, as they
+must be for tracking to work at all, $\mu_j\ll1$ and the terms with exactly $k$ planes dominate
+the sum~\eqref{eq:kofn}, by a factor $1/\mu$. In the example of section~\ref{sec:example}, at
+$10^{-3}$~hits/mm$^2$, $\mu_6=6.0\times10^{-4}$ for the planes 1--5 and plane 6, and
+eq.~\eqref{eq:ratio} gives $E_{123456}\simeq 6.0\times10^{-4}\times3.2\times10^{-6}
+=1.9\times10^{-9}$, as computed directly from eq.~\eqref{eq:kofn}.
+
+\paragraph{From candidates to distinct fake tracks.} $E(\ge k)$ counts candidates, and the
+same fake can appear as several of them, in two ways. (i)~Two candidates on the same planes
+share all but one hit (the replacement window). (ii)~A candidate on $S\cup j$ contains
+candidates on $S$ (the extension window). A reconstruction algorithm reports such overlapping
+candidates as one track. We count as one \emph{distinct fake} each group of accepted candidates
+connected by sharing at least $k-1$ hits; an algorithm cannot report fewer distinct fakes than
+groups without losing real tracks in the same configurations.
+
+Overlaps of type (ii) are of relative size $\mu$, already small whenever the sets of $k$ planes
+dominate. For type (i), each accepted candidate has on average $\eta$ partners. Each pair is
+seen from both of its candidates, so when overlaps are rare the number of groups is the number
+of candidates minus the number of pairs, $E(\ge k)(1-\eta/2)$. We find that
+\begin{equation}
+  E_\mathrm{distinct} \;\simeq\; e^{-\eta/2}\,E(\ge k)
   \label{eq:distinct}
 \end{equation}
-describes the straight-line case within a few per cent up to $\eta\approx2$
-(section~\ref{sec:validation}). It is exact as $\eta\to0$, which is the regime of interest.
+describes the counted number of distinct fakes within a few per cent up to $\eta\approx2$
+(section~\ref{sec:validation}), with $\eta$ averaged over the accepted candidates.
+
+\paragraph{Summary.} The lower limit on the number of distinct fake tracks for an algorithm
+that accepts at least $k$ of $N$ planes is $E_\mathrm{distinct}$ of eq.~\eqref{eq:distinct},
+with $E(\ge k)$ from eq.~\eqref{eq:kofn}. In the regime where tracking is possible the windows
+are nearly empty, $\eta\ll1$, and the two coincide: in the example of section~\ref{sec:example} the
+five-plane candidates have $\eta\approx3\times10^{-3}$, so $E_\mathrm{distinct}$ and $E(\ge5)$
+differ by 0.15\%. Since $\eta$ grows linearly with the density, it is still only about
+$0.02$ at the density where one fake per event is expected ($7.6\times10^{-3}$ hits/mm$^2$),
+so the correction remains small wherever the limit matters.
 
 \subsection{A numerical example}\label{sec:example}
 
