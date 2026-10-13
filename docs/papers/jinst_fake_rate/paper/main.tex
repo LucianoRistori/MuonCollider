@@ -154,6 +154,13 @@ surroundings, which removes real tracks in the same surroundings. When $E$ appro
 event, the information needed to reconstruct tracks with the stated efficiency is no longer in
 the data.
 
+Strictly, $E$ counts combinations, while an algorithm reports tracks: two accepted
+combinations that share all but one hit would be reported as one fake. The lower limit is
+therefore on the expected number of \emph{distinct} fakes, which is smaller than $E$ by a factor
+$e^{-\eta/2}$ set by the window occupancy $\eta$ (section~\ref{sec:kofn}). Wherever tracking is
+possible $\eta\ll1$ and the two coincide, so we use $E$ for both where the difference does not
+matter.
+
 The limit counts only combinations made entirely of noise hits. Combinations in which some
 hits belong to a real track and others are noise are also fakes in the usual sense; they only
 add to the number given here.
@@ -619,9 +626,11 @@ and inefficiency of real tracks all add fakes or remove real tracks; none can lo
 % =====================================================================
 \section{Conclusions}\label{sec:conclusions}
 
-The expected number of combinations of noise hits that pass the goodness-of-fit cut of a track fit
-is a lower limit on the fake-track rate of any reconstruction algorithm that keeps the efficiency
-for real tracks given by that cut and acceptance. It is the product of the noise densities and a
+The expected number of distinct fake tracks made of noise hits that pass the goodness-of-fit cut of
+a track fit is a lower limit on the fake-track rate of any reconstruction algorithm that keeps the
+efficiency for real tracks given by that cut and acceptance. It equals the expected number of
+passing combinations up to a factor $e^{-\eta/2}$, where the window occupancy $\eta$ is small
+wherever tracking is possible, and that number is the product of the noise densities and a
 geometric factor: the number of distinguishable tracks in the acceptance times the volume of the
 $\chi^2$ sphere, everything in units of the resolution. The result holds for layers of any shape and
 orientation, for helical tracks in a solenoidal field and for noise densities that vary across the
