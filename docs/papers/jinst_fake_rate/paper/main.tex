@@ -1,5 +1,5 @@
 % main.tex - paper 1 (JINST): an algorithm-independent lower limit on
-% combinatorial fake tracks. Draft 3: the simple case first, then the general solution.
+% combinatorial fake tracks. Draft 4 (in progress): the simple case first, then the general solution.
 %
 % Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
 % The official JINST class (jinst.cls, and JHEP.bst for the references) is
@@ -105,7 +105,17 @@ to the tracker of a muon collider is the subject of a companion paper~\todo{ref}
 
 \subsection{Detector, noise and acceptance}\label{sec:defs}
 
-The detector consists of $N$ parallel planes at depths $Y_i$. Plane $i$ measures two
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.72\textwidth]{planes_sketch}
+  \caption{The simple case: six parallel square planes at depths $Y_i$, of side $W_i$ (the
+  projective tower of section~\ref{sec:example}), each with a few uniformly distributed noise
+  hits (grey). A straight track (red) crosses every plane; each plane measures the two
+  coordinates $u$ and $v$ of its hit.}
+  \label{fig:planes}
+\end{figure}
+
+The detector consists of $N$ parallel planes at depths $Y_i$ (figure~\ref{fig:planes}). Plane $i$ measures two
 coordinates $u$ and $v$ of each hit, with Gaussian resolutions $\sigma_{u,i}$ and
 $\sigma_{v,i}$, over a region of area $A_i$ (in the examples a square of side $W_i$). Noise
 hits are distributed uniformly over each plane, independently of each other, with $n_i$ hits
@@ -395,7 +405,7 @@ six-plane points, down to $P=4\times10^{-8}$, follow the same trend. At larger $
 falls below one, as expected from the finite size of the sphere.
 
 \paragraph{General surfaces.} Four detectors of four layers each, of growing size $L$
-(figure~\ref{fig:val-general}): coaxial cylinders of equal length; planes tilted
+(figures~\ref{fig:gsurf-sketch} and~\ref{fig:val-general}): coaxial cylinders of equal length; planes tilted
 by $45^\circ$ in the transverse plane; planes tilted by $60^\circ$ towards the beam axis; and two
 cylinders followed by two disks perpendicular to the beam. Exact helices are fitted to random combinations of hits on the four surfaces and the
 passing fraction is compared with eq.~\eqref{eq:general}, computed by sampling. The ratio tends to
@@ -448,6 +458,25 @@ is precise to $10^{-4}$ for the towers and to better than $1\%$ by sampling.
   six of six planes and for each five-plane subset, in three configurations. Right: distinct
   fakes over passing combinations against $\eta$, with the straight-line points for comparison.}
   \label{fig:val-helix}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{minipage}[b]{0.40\textwidth}\centering
+    \includegraphics[width=\textwidth]{gsurf_sketch_cylinders}\\(a)\end{minipage}\hfill
+  \begin{minipage}[b]{0.56\textwidth}\centering
+    \includegraphics[width=\textwidth]{gsurf_sketch_tilted45z}\\(b)\end{minipage}\\[1ex]
+  \begin{minipage}[b]{0.62\textwidth}\centering
+    \includegraphics[width=\textwidth]{gsurf_sketch_tilted60_endcaplike}\\(c)\end{minipage}\hfill
+  \begin{minipage}[b]{0.33\textwidth}\centering
+    \includegraphics[width=\textwidth]{gsurf_sketch_mixed}\\(d)\end{minipage}
+  \caption{The four detectors used to validate the general formula, drawn to scale for one
+  value of $L$: (a) four coaxial cylinders; (b) four planes tilted by $45^\circ$ in the
+  transverse plane, in alternate directions; (c) four planes tilted by $60^\circ$ towards the beam
+  axis, in alternate directions; (d) two cylinders followed by two disks perpendicular to the
+  beam. The beam line is the $z$ axis (dashed). Each layer carries a few uniformly
+  distributed noise hits (grey); a helix from the beam line (red) crosses all four layers.}
+  \label{fig:gsurf-sketch}
 \end{figure}
 
 \begin{figure}[htbp]
