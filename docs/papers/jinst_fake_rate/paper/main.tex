@@ -1,5 +1,5 @@
 % main.tex - paper 1 (JINST): an algorithm-independent lower limit on
-% combinatorial fake tracks. Draft 2: the simple case first, then the general solution.
+% combinatorial fake tracks. Draft 3: the simple case first, then the general solution.
 %
 % Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
 % The official JINST class (jinst.cls, and JHEP.bst for the references) is
@@ -18,11 +18,11 @@
 \title{An algorithm-independent lower limit on combinatorial fake tracks in high-occupancy tracking detectors}
 
 \author[a]{M.~Casarsa}
-\author[b]{L.~Ristori}
+\author[b,1]{L.~Ristori\note{Corresponding author.}}
 \affiliation[a]{INFN, Sezione di Trieste, Trieste, Italy}
 \affiliation[b]{Fermi National Accelerator Laboratory, Batavia, IL 60510, USA}
-\emailAdd{\todo{to be added}}
-% TO DECIDE: author order (alphabetical here), corresponding author and e-mail
+\emailAdd{luciano@fnal.gov}
+% TO DECIDE: author order (alphabetical here)
 
 \abstract{When the density of noise hits in a tracking detector becomes large compared with
 its resolution, some random combinations of hits are indistinguishable from real tracks:
@@ -330,7 +330,10 @@ crossing with a plane of any orientation is found by a few Newton iterations in 
 derivatives of the crossing coordinates follow analytically by implicit differentiation, so
 $J_S$ costs no more than the crossing itself. The fit has $p=4$ parameters and
 $\ndof=2|S|-4$. The acceptance requires $|\kappa|\le\kappa_\mathrm{max}$, a minimum transverse
-momentum $p_T>0.3\,B/\kappa_\mathrm{max}$ (GeV/$c$, tesla, metres).
+momentum $p_T>0.3\,B/\kappa_\mathrm{max}$ (GeV/$c$, tesla, metres), and an origin within the
+luminous region: we assume a longitudinal beam spot of $\sigma_z=1.5$~mm, the bunch length foreseen
+at the interaction point of a 10~TeV muon collider~\cite{IMCC:2024interim}, and require
+$|z_0|<3\sigma_z=4.5$~mm.
 
 The track manifold is now curved, but eq.~\eqref{eq:general} still holds to leading order; the
 curvature adds corrections of relative order $c$, as the edges do. For the fits needed in the
@@ -345,8 +348,8 @@ tracks is mapped onto itself and eq.~\eqref{eq:rescale} remains exact.
 
 \subsection{At least $k$ of $N$ layers in a general detector}\label{sec:kofn-general}
 
-In a real detector different tracks cross different layers: a track in the transition between
-barrel and endcap may cross some barrel cylinders and some endcap disks. Equation~\eqref{eq:kofn}
+In a real detector different tracks cross different layers: a track may cross some
+cylinders coaxial with the beam and some disks perpendicular to it. Equation~\eqref{eq:kofn}
 generalizes to a single integral over the track parameters, in which each track contributes the
 sum over the subsets of the layers it actually crosses,
 \begin{equation}
@@ -356,7 +359,7 @@ sum over the subsets of the layers it actually crosses,
   \label{eq:w}
 \end{equation}
 where $C(\theta)$ is the set of layers crossed by track $\theta$ and each subset has its own
-cut. Overlapping modules within a layer, gaps and mixed barrel--endcap combinations need no
+cut. Overlapping modules within a layer, gaps and mixed combinations of cylinders and disks need no
 special treatment: they are all accounted for by $C(\theta)$.
 
 \subsection{Evaluating the integral}\label{sec:sampling}
@@ -371,16 +374,6 @@ by layer combination or by region. Symmetries reduce the work: with densities in
 azimuth, $\phi_0$ needs to be sampled only over a small range. The densities $\rho_i(x)$ can be
 taken directly from a simulation of the background, layer by layer and, where needed, as
 functions of position on the layer.
-
-\subsection{The acceptance}\label{sec:acceptance}
-
-The lower limit is defined for a given acceptance $\Theta$: the set of tracks the algorithm must
-find. Requirements that real tracks always satisfy belong in $\Theta$ and reduce the limit at no
-cost in efficiency. An example is the longitudinal origin: if the tracks of interest come from
-a luminous region of length $\ell$, restricting $|z_0|$ to a few times $\ell$ removes the fakes
-whose extrapolation misses it. In eq.~\eqref{eq:w} this is a restriction of the integration
-region, and the distribution of $w(\theta)$ in $z_0$ shows directly how much it matters. The
-limit should always be quoted together with the acceptance it refers to.
 
 % =====================================================================
 \section{Validation}\label{sec:validation}
@@ -402,10 +395,9 @@ six-plane points, down to $P=4\times10^{-8}$, follow the same trend. At larger $
 falls below one, as expected from the finite size of the sphere.
 
 \paragraph{General surfaces.} Four detectors of four layers each, of growing size $L$
-(figure~\ref{fig:val-general}): coaxial cylinders of equal length, as in a barrel; planes tilted
-by $45^\circ$ in the transverse plane; planes tilted by $60^\circ$ towards the beam axis, as in an
-endcap; and two cylinders followed by two disks perpendicular to the beam, as in the transition
-region. Exact helices are fitted to random combinations of hits on the four surfaces and the
+(figure~\ref{fig:val-general}): coaxial cylinders of equal length; planes tilted
+by $45^\circ$ in the transverse plane; planes tilted by $60^\circ$ towards the beam axis; and two
+cylinders followed by two disks perpendicular to the beam. Exact helices are fitted to random combinations of hits on the four surfaces and the
 passing fraction is compared with eq.~\eqref{eq:general}, computed by sampling. The ratio tends to
 one as the detectors grow: $0.95\pm0.05$ and $1.17\pm0.10$ for the two largest sets of cylinders,
 $1.04\pm0.05$ and $0.99\pm0.08$ for the $45^\circ$ planes, $1.09\pm0.05$ and $1.06\pm0.09$ for the

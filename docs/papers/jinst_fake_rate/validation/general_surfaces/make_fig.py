@@ -6,8 +6,8 @@ for f in glob.glob("v_*.log"):
     for l in open(f):
         if l.startswith("{"):
             r = json.loads(l); rows.setdefault(r["geom"], {})[r["L"]] = r
-lab = {"cylinders": "4 coaxial cylinders (barrel-like)", "tilted45z": "4 planes tilted 45° (transverse)",
-       "tilted60_endcaplike": "4 planes tilted 60° towards the beam", "mixed": "2 cylinders + 2 endcap disks"}
+lab = {"cylinders": "4 coaxial cylinders", "tilted45z": "4 planes tilted 45° (transverse)",
+       "tilted60_endcaplike": "4 planes tilted 60° towards the beam", "mixed": "2 cylinders + 2 disks"}
 fig, ax = plt.subplots(figsize=(7, 4.6))
 for (g, mk, col) in (("cylinders", "o", "#1b9e77"), ("tilted45z", "s", "#d95f02"), ("tilted60_endcaplike", "^", "#7570b3"), ("mixed", "D", "#e7298a")):
     rs = [rows[g][L] for L in sorted(rows[g])]

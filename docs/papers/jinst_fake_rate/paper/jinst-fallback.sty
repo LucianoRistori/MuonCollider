@@ -14,6 +14,10 @@
 \newcommand*{\jinst@keywords}{}
 \newcommand*{\jinst@arxiv}{}
 \newcounter{jinstauthor}
+\newcommand*{\jinst@notes}{}
+\newcounter{jinstnote}
+\providecommand{\note}[1]{\stepcounter{jinstnote}%
+  \xdef\jinst@notes{\jinst@notes\noexpand\par\noindent$^{\arabic{jinstnote}}$\,\unexpanded{#1}}}
 \let\jinst@title\@empty
 \renewcommand*{\title}[1]{\gdef\jinst@title{#1}}
 \let\jinst@authors\@empty
@@ -31,6 +35,7 @@
     {\large\jinst@authors\par}\vspace{0.6em}
     {\small\itshape\jinst@affils\par}\vspace{0.4em}
     {\small E-mail:\jinst@emails\par}
+    {\small\jinst@notes\par}
   \end{center}
   \vspace{0.8em}
   \noindent\textsc{Abstract:} \jinst@abstract\par\vspace{0.6em}

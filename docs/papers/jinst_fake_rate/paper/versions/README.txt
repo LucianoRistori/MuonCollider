@@ -9,3 +9,8 @@ are always the current draft.
                                 (any surfaces, helices, local densities);
                                 authors Casarsa (INFN Trieste), Ristori (Fermilab);
                                 the worked example moved to paper 2
+  paper1_draft3_2026-10-13.pdf  corresponding author L. Ristori (luciano@fnal.gov);
+                                the z0-acceptance subsection replaced by one
+                                statement (beam spot sigma_z = 1.5 mm, |z0| < 4.5 mm);
+                                no endcap / transition-region wording; validation
+                                figure legend made generic
