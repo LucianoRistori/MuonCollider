@@ -5,7 +5,7 @@ figures/section16_*.png. The Section 13-14 figures are made by
 fake_rate_framework/section13_density_resolution.py and
 section14_real_tower.py, run from figures/.
 
-    cd docs/paper && python3 make_figures.py
+    cd docs/papers/old_draft_v1.8 && python3 make_figures.py
 """
 import csv
 from pathlib import Path

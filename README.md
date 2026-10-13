@@ -205,8 +205,10 @@ late hits of curling muons into the time-cut distribution and the OT
 barrel time cut opens to several ns - kept, as what those cuts would do.
 
 ## Documentation
-- `docs/paper/paper_draft.pdf`: the paper draft on the fake-track rate
-  (source `docs/paper/paper_draft.md`; see `docs/paper/README.txt`).
+- `docs/papers/`: the papers. `jinst_fake_rate/` is paper 1 (the method:
+  an algorithm-independent lower limit on fake tracks), `muc_tracking/` is
+  paper 2 (the Muon Collider application), and `old_draft_v1.8/` is the
+  original single draft (v1.4-v1.8), superseded and kept frozen.
 - `docs/user_manual.pdf`: the user manual - folders, settings files,
   `./run_all`, `./run_scan`, the archive (source: `docs/src/user_manual/`).
 - This README: the n-tuple format, the analysis steps and their plots,

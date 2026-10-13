@@ -16,9 +16,9 @@ makes the two scan plots from the already-calibrated P_true values).
 
 The six post-cut BIB densities are read from a run's per-layer table
 (step4_cuts/density_per_layer_before_after_cuts.csv of ./run_all), by
-default the paper's copy, docs/paper/data/section14_density_per_layer.csv:
-    cd docs/paper/figures
-    python3 ../../../fake_rate_framework/section14_real_tower.py [table.csv]
+default the paper's copy, docs/papers/old_draft_v1.8/data/section14_density_per_layer.csv:
+    cd docs/papers/old_draft_v1.8/figures
+    python3 ../../../../fake_rate_framework/section14_real_tower.py [table.csv]
 """
 import csv
 import sys
@@ -36,7 +36,7 @@ SIGMA_REF = 0.100  # mm: the resolution P_true was calibrated at
 # at SIGMA_REF unscaled - 2^8 = 256 times too high for the helix models.
 import configparser
 _cp = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-_cp.read(Path(__file__).resolve().parent.parent / "docs" / "paper" / "settings" / "__smearing_config.txt")
+_cp.read(Path(__file__).resolve().parent.parent / "docs" / "papers" / "old_draft_v1.8" / "settings" / "__smearing_config.txt")
 SIGMA_OP = _cp.getfloat("position", "sigma_u_mm", fallback=SIGMA_REF)
 assert abs(SIGMA_OP - _cp.getfloat("position", "sigma_v_mm", fallback=SIGMA_OP)) < 1e-12
 print(f"operating position resolution {SIGMA_OP} mm (P_true calibrated at {SIGMA_REF} mm)")
@@ -44,7 +44,7 @@ print(f"operating position resolution {SIGMA_OP} mm (P_true calibrated at {SIGMA
 Y_true = np.array([164.0, 354.0, 554.0, 819.0, 1153.0, 1486.0])
 W_true = 1000.0 * Y_true / Y_true[-1]
 TABLE = Path(sys.argv[1]) if len(sys.argv) > 1 else \
-    Path(__file__).resolve().parent.parent / "docs" / "paper" / "data" / "section14_density_per_layer.csv"
+    Path(__file__).resolve().parent.parent / "docs" / "papers" / "old_draft_v1.8" / "data" / "section14_density_per_layer.csv"
 _rho = {}
 with open(TABLE) as f:
     for r in csv.DictReader(f):

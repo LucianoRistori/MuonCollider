@@ -140,7 +140,8 @@ and all results.
 |-- check_configs.py, cuts_table.py, input_files.py   read and check the settings
 |-- setup_workdir.sh, requirements.txt   installation (Sec. 8)
 |-- templates/                 the four settings files and the launchers, for new folders
-|-- docs/paper/                the paper draft (source, PDF, figures, data, settings)
+|-- docs/papers/               the papers: jinst_fake_rate/ (paper 1), muc_tracking/
+|                              (paper 2), old_draft_v1.8/ (the original draft, frozen)
 |-- fake_rate_framework/       analytic fake-track framework of the paper (Sec. 13-14)
 `-- resolution_scans/          the original scan scripts of the paper's v1.4
 \end{tree}
@@ -500,9 +501,11 @@ comfortable. The manual and the paper are rebuilt only if you change them
   analysis step and its plots, how every quantity is defined and quoted.
 \item \code{docs/efficiency\_pt\_infinity.pdf}: the efficiencies for
   $\pT\to\infty$ (the fit of $\varepsilon_\infty + c/\pT^2$).
-\item \code{docs/paper/}: the paper draft (\code{paper\_draft.pdf}), with
-  the data, settings and figures behind its Sections 14--16 and how to
-  rebuild it (\code{README.txt}). The project notes (milestones,
+\item \code{docs/papers/}: the papers. \code{jinst\_fake\_rate/} is paper~1
+  (the method), \code{muc\_tracking/} is paper~2 (the Muon Collider
+  application); \code{old\_draft\_v1.8/} is the original single draft
+  (\code{paper\_draft.pdf}), superseded and kept frozen, with the data,
+  settings and figures behind its Sections 14--16 (\code{README.txt}). The project notes (milestones,
   decisions) are in the Claude project ``Muon Collider Tracking''.
 \item \code{fake\_rate\_framework/}: the scripts behind the paper's
   Sections 13--14 (the fake-rate calibration and its plots);
