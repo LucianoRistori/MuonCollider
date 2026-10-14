@@ -60,7 +60,6 @@ for r, sub in enumerate(("IT", "OT", "ITE", "OTE")):
         ax.set_xlim(e[0], e[-1])
         lo, hi = ax.get_ylim(); ax.set_ylim(lo, hi * 25)               # headroom for the panel label
         ax.set_xlabel(labels[var], labelpad=1)
-        ax.set_ylabel(ylabels[var], labelpad=1)
         ax.text(0.03, 0.95, NAMES[sub], transform=ax.transAxes, ha="left", va="top", fontsize=8,
                 bbox=dict(facecolor="white", edgecolor="none", pad=1.0))
         if r == 0 and c == 0:

@@ -219,8 +219,9 @@ speed $\beta$ follows from the momentum estimated from the curvature and the muo
 from the collision $\tc$ is zero within the time resolution; for a background hit it carries the
 delay of the background particle.
 
-\paragraph{Distributions.} Figure~\ref{fig:obs} shows the three observables in the four parts of
-the IT and OT for background and signal hits, each after the cuts on the other two observables. The signal peaks
+\paragraph{Distributions.} Figure~\ref{fig:obs} (section~\ref{sec:selection}) shows the three
+observables in the four parts of the IT and OT for background and signal hits, each after the cuts on
+the other two observables. The signal peaks
 sharply: $\tc$ within the time resolution, $z_0$ within a few centimetres in the IT and about a
 decimetre in the OT, where the lever arm of the direction measurement is longer, and the curvature
 within the range of the muon momenta. The background is broad in all three. Its corrected time
@@ -231,27 +232,48 @@ much closer to that of the signal: on a disk the direction measures the polar an
 crossing at small angle to the beam, with a short lever arm towards the axis, and in the OT endcap
 the two $z_0$ distributions nearly coincide.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{fig_observables}
-  \caption{Corrected time, longitudinal intercept and curvature of the hits in the IT barrel, OT
-  barrel, IT endcaps and OT endcaps (top to bottom), for one bunch crossing of background (blue) and for signal muons (red),
-  each normalized to unit area. Each distribution is shown after the cuts on the other two
-  observables (N$-$1); the dashed lines are the cuts of table~\ref{tab:cuts}. No curvature cut is
-  applied in the IT. Note the wider $z_0$ range in the endcaps.}
-  \label{fig:obs}
-\end{figure}
-
 % =====================================================================
 \section{Selection}\label{sec:selection}
 
-\paragraph{Construction of the cuts.} Each subsystem has a symmetric window on $\tc$ and on $z_0$,
-and the OT has in addition a minimum transverse momentum of 2~GeV/$c$ (a maximum $|1/R|$). The time
-and $z_0$ windows are set to keep 98\% of the signal hits in their N$-$1 distributions, that is
-among the hits passing the other cuts. Since each window depends on the other, they are found
-together by iteration, which converges in two or three steps. The cuts are thus fixed by the signal
-alone, not tuned on the background, and they follow automatically when a resolution changes.
-Table~\ref{tab:cuts} lists them.
+\paragraph{Construction of the cuts.} Each subsystem (VXD, IT and OT, barrel and endcaps separately)
+has a symmetric window on each of the first two observables, $|\tc|\le T$ and $|z_0|\le Z$, and the
+OT has in addition a minimum transverse momentum, $\pT\ge2$~GeV/$c$, applied as a maximum curvature
+$|1/R|\le0.3B/p_{T,\min}$. The momentum cut is chosen by hand; $T$ and $Z$ are derived from the
+signal sample as follows.
+\begin{enumerate}
+  \item The reference population is the hits of the signal muons, over the whole momentum spectrum of
+    the sample ($\pT\ge1.5$~GeV/$c$), that pass the momentum cut of their subsystem (in the IT, all of
+    them).
+  \item Each window is set on the \emph{N$-$1 distribution} of its own observable: the distribution of
+    that observable for the reference hits that pass the \emph{other} cut. $Z$ is the value of $|z_0|$
+    below which 98\% of these hits lie, and the same for $T$ with $|\tc|$.
+  \item The two windows depend on each other, so they are found by iteration. We start with $Z$
+    computed on the reference hits with no time cut, then compute $T$ on the hits passing that $Z$,
+    then $Z$ again on the hits passing $T$, and so on, until neither window changes by more than
+    0.1\%. Two or three steps are enough.
+\end{enumerate}
+Figure~\ref{fig:obs} shows the N$-$1 distributions for the four parts of the IT and OT, with the
+resulting windows. The windows are fixed by the signal alone, not tuned on the background, so they
+follow automatically when a resolution changes: every point of the resolution scans of
+section~\ref{sec:scans} has its own windows, derived in the same way. Since the reference population
+includes low-momentum muons, whose distributions are wider because of multiple scattering, the
+fraction of hits kept for high-momentum muons is slightly higher than 98\% for each cut alone.
+Table~\ref{tab:cuts} lists the cuts.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{fig_observables}
+  \caption{N$-$1 distributions of the corrected time (left), longitudinal intercept (centre) and
+  curvature (right) in the IT barrel, OT barrel, IT endcaps and OT endcaps (top to bottom). Each
+  panel shows the hits that pass the other cuts of their subsystem, for one bunch crossing of
+  background (blue) and for the signal muons (red); the dashed lines are the cuts of
+  table~\ref{tab:cuts}, each set to keep 98\% of the signal hits in its own distribution (no
+  curvature cut in the IT). Both curves are normalized to unit area, so that the plot compares the
+  \emph{shapes}: in absolute numbers the signal is many orders of magnitude below the background, one
+  muon leaving one or two hits per subsystem against millions of background hits per bunch
+  crossing.}
+  \label{fig:obs}
+\end{figure}
 
 \begin{table}[htbp]
   \centering
@@ -433,6 +455,51 @@ everything the limit leaves out (section~\ref{sec:discussion}). Equivalently, at
 density the limit stays below one per crossing for resolutions up to about twice the assumed ones
 (section~\ref{sec:scans}).
 
+\paragraph{What the cuts buy.} The same limit, computed with the background densities before the
+cuts or after only part of them, shows how much each per-hit measurement contributes
+(figure~\ref{fig:stages}, table~\ref{tab:stages}). Each cut alone reduces the mean densities by a
+factor between 4 and 25, depending on the subsystem; the two together by 37 to 62. Since the
+expected number of fakes grows as the fifth power of the densities, these factors are amplified
+enormously. Without any cut the formula gives $7\times10^{6}$ accepted combinations per bunch
+crossing: at that level the number is no longer a meaningful count of distinct fakes (most
+combinations share hits, $\eta\gg1$), but it shows that track finding with the hit positions alone
+would be hopeless. The time cut alone, or the $z_0$ cut alone, still leaves $10^{2}$--$10^{3}$
+combinations per crossing, almost all in the barrel. Only the two together bring the limit below
+one, to $5.9\times10^{-2}$, and the momentum cut of the OT, which uses the azimuthal component of
+the same direction measurement, gains a further factor of three. Neither a time nor a direction
+measurement is enough by itself: it is their combination on every hit that makes the background
+manageable.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{fig_cut_stages}
+  \caption{Mean BIB hit density per bunch crossing in the four parts of the IT and OT with no cuts,
+  with the time cut only, with the $z_0$ cut only, and with the two combined (cuts of
+  table~\ref{tab:cuts}). The momentum cut of the OT, not included here, lowers the last values in
+  the OT barrel and endcaps to $8.1\times10^{-4}$ and $2.6\times10^{-4}$~mm$^{-2}$.}
+  \label{fig:stages}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Expected fakes per bunch crossing ($|z_0|<4.5$~mm, at least five layers) with the
+  background densities before the cuts and after part of them. The last row is the selection of
+  section~\ref{sec:selection} (table~\ref{tab:regions}). Above about one, the numbers count accepted
+  combinations, many of which share hits, rather than distinct fakes.}
+  \label{tab:stages}
+  \begin{tabular}{lrrrr}
+    \toprule
+    cuts applied & barrel & intermediate & endcap & total \\
+    \midrule
+    none                      & $6.9\times10^{6}$  & $4.7\times10^{5}$  & $3.0\times10^{3}$  & $7.4\times10^{6}$ \\
+    time only                 & 104                & 0.62               & $7.9\times10^{-4}$ & 104 \\
+    $z_0$ only                & 632                & 5.4                & 0.36               & 637 \\
+    time and $z_0$            & $5.4\times10^{-2}$ & $4.6\times10^{-3}$ & $4.1\times10^{-6}$ & $5.9\times10^{-2}$ \\
+    time, $z_0$ and $\pT$ (OT) & $1.7\times10^{-2}$ & $1.7\times10^{-3}$ & $1.5\times10^{-6}$ & $1.9\times10^{-2}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 % =====================================================================
 \section{Resolution requirements}\label{sec:scans}
 
@@ -536,7 +603,8 @@ outer trackers of a 10~TeV muon collider by a factor of 57, keeping 97\% of the 
 tracks is $1.9\times10^{-2}$ per bunch crossing, 90\% of it in the barrel, 9\% in the intermediate
 region and almost nothing in the endcaps; this is a factor 2.2 in background density below one fake
 per crossing: the background does not make track reconstruction impossible
-in principle. The margin grows rapidly with better resolutions, by six orders of magnitude for a
+in principle. Without the cuts the same limit is $7\times10^{6}$, and with either the time or
+the $z_0$ cut alone it is still $10^{2}$--$10^{3}$: both measurements are needed. The margin grows rapidly with better resolutions, by six orders of magnitude for a
 ten-fold improvement in position resolution, and the scans give the resolutions needed for any
 chosen margin. The direction measurement is the most demanding of the three requirements and a
 natural target for detector R\&D.
