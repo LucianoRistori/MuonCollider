@@ -120,12 +120,13 @@ def main():
     surfs = load_geometry()
     rng = np.random.default_rng(seed)
     DPHI = 0.2
-    box = [(0.0, DPHI), (-KMAX, KMAX), (-1500.0, 1500.0), (0.0, 8.0)]
+    Z0W = float(os.environ.get("REG_Z0W", "1500"))
+    box = [(0.0, DPHI), (-KMAX, KMAX), (-Z0W, Z0W), (0.0, 8.0)]
     lo = np.array([b[0] for b in box]); hi = np.array([b[1] for b in box])
     vol = np.prod(hi - lo) * (2 * np.pi / DPHI) * 2          # full phi, and both signs of t
     acc = {k: [0.0, 0.0] for k in ("barrel", "intermediate", "endcap")}
     accm = {}
-    z0_bins = np.linspace(-1500, 1500, 61); t_bins = np.linspace(0, 8, 33)
+    z0_bins = np.linspace(-Z0W, Z0W, 61); t_bins = np.linspace(0, 8, 33)
     hz = {k: np.zeros(60) for k in acc}; ht = {k: np.zeros(32) for k in acc}
     done = 0; B = 100_000
     while done < n_samp:
@@ -148,7 +149,7 @@ def main():
     out["by_n_layers"] = {m: vol * v / done for m, v in accm.items()}
     out["z0_bins"] = z0_bins.tolist(); out["t_bins"] = t_bins.tolist()
     print("by number of layers:", {m: f"{v:.2e}" for m, v in out["by_n_layers"].items()})
-    json.dump(out, open(f"regions_result_s{seed}.json", "w"), indent=1)
+    json.dump(out, open(os.environ.get("REG_OUT", f"regions_result_s{seed}.json"), "w"), indent=1)
 
 
 if __name__ == "__main__":

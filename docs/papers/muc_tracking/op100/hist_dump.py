@@ -17,14 +17,14 @@ for name, f, mu in (("bib", "ntu_bib_ipp_1bx.root", False), ("sig", "ntu_muongun
     keys = list(per.keys())
     sy = np.asarray(h["system"])
     t = np.asarray(h["t_corrected_ns"]); z = np.asarray(h["z_axis_intercept_mm"]); k = np.asarray(h["inv_radius_per_mm"]) * 1000.0
-    for s, lab in ((3, "IT"), (5, "OT")):
+    for s, lab in ((3, "IT"), (5, "OT"), (4, "ITE"), (6, "OTE")):
         m = sy == s
         pt, pz, pm = (np.asarray(per[c])[m] for c in ("t_corrected_ns", "z_axis_intercept_mm", "momentum_gev"))
-        for var, x, edges, other in (("t", t[m], np.linspace(-1, 3, 161), pz & pm), ("z0", z[m], np.linspace(-400, 400, 161), pt & pm),
+        for var, x, edges, other in (("t", t[m], np.linspace(-1, 3, 161), pz & pm), ("z0", z[m], np.linspace(-1000, 1000, 201) if s in (4, 6) else np.linspace(-400, 400, 161), pt & pm),
                                      ("k", k[m], np.linspace(-3, 3, 121), pt & pz)):
             res[f"{name}_{lab}_{var}_all"] = np.histogram(x, edges)[0]
             res[f"{name}_{lab}_{var}_n1"] = np.histogram(x, edges)[0] if False else np.histogram(x[other], edges)[0]
-            res[f"edges_{var}"] = edges
+            res[f"edges_{var}"] = edges; res[f"edges_{lab}_{var}"] = edges
         res[f"{name}_{lab}_n"] = int(m.sum()); res[f"{name}_{lab}_pass"] = int((pt & pz & pm).sum())
     print(name, keys)
 np.savez_compressed(out, **res)

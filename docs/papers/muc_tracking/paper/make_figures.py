@@ -17,7 +17,9 @@ plt.rcParams.update({"mathtext.fontset": "cm", "font.family": "serif", "font.siz
                      "xtick.top": True, "ytick.right": True, "legend.frameon": False})
 IN = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
 BIB, SIG, GREY = "#1f4e8c", "#c0392b", "0.45"
-CUTS = {"IT": dict(t=0.233, z0=52, pt=None), "OT": dict(t=0.245, z0=137, pt=2.0)}
+CUTS = {"IT": dict(t=0.233, z0=52, pt=None), "OT": dict(t=0.245, z0=137, pt=2.0),
+        "ITE": dict(t=0.242, z0=474, pt=None), "OTE": dict(t=0.241, z0=349, pt=2.0)}
+NAMES = {"IT": "IT barrel", "OT": "OT barrel", "ITE": "IT endcap", "OTE": "OT endcap"}
 
 
 def rows(name):
@@ -32,11 +34,11 @@ def save(fig, name):
 
 # ---------------------------------------------------------------- 1. observables (N-1)
 H = np.load(IN / "hists_op100.npz")
-fig, axs = plt.subplots(2, 3, figsize=(7.2, 4.6))
+fig, axs = plt.subplots(4, 3, figsize=(7.2, 8.6))
 labels = {"t": r"$t_\mathrm{corr}$ (ns)", "z0": r"$z_0$ (mm)", "k": r"curvature $1/R$ (m$^{-1}$)"}
-for r, sub in enumerate(("IT", "OT")):
+for r, sub in enumerate(("IT", "OT", "ITE", "OTE")):
     for c, var in enumerate(("t", "z0", "k")):
-        ax = axs[r, c]; e = H[f"edges_{var}"]; x = 0.5 * (e[1:] + e[:-1]); w = np.diff(e)
+        ax = axs[r, c]; e = H[f"edges_{sub}_{var}"]; x = 0.5 * (e[1:] + e[:-1]); w = np.diff(e)
         for name, col, lab in (("bib", BIB, "BIB"), ("sig", SIG, "signal")):
             h = H[f"{name}_{sub}_{var}_n1"].astype(float)
             ax.step(x, h / h.sum() / w, where="mid", color=col, lw=0.9, label=lab)
@@ -52,28 +54,31 @@ for r, sub in enumerate(("IT", "OT")):
             for s in (-lim, lim):
                 ax.axvline(s, color="0.2", lw=0.7, ls=(0, (3, 2)))
         ax.set_xlim(e[0], e[-1])
-        if r == 1:
+        if r == 3:
             ax.set_xlabel(labels[var])
         if c == 0:
-            ax.set_ylabel(f"{sub} barrel\nnormalized")
+            ax.set_ylabel(f"{NAMES[sub]}\nnormalized")
         if r == 0 and c == 0:
             ax.legend(loc="upper right", fontsize=8)
 fig.tight_layout(h_pad=0.6, w_pad=0.8)
 save(fig, "fig_observables")
 
 # ---------------------------------------------------------------- 2. densities per layer
-d = [r for r in rows("density_per_layer_before_after_cuts.csv") if r["system"] in ("3", "5")]
-lab = [f"{'IT' if r['system'] == '3' else 'OT'} L{r['layer']}" for r in d]
-R = [float(r["mean_r_mm"]) for r in d]
-before = [float(r["bib_mean_density_before"]) for r in d]
-after = [float(r["bib_mean_density_after"]) for r in d]
-fig, ax = plt.subplots(figsize=(4.6, 3.1))
-ax.plot(R, before, "o-", color=GREY, lw=1.0, ms=5, label="before the cuts")
-ax.plot(R, after, "o-", color=BIB, lw=1.0, ms=5, label="after the cuts")
-for x, y, l in zip(R, before, lab):
-    ax.annotate(l, (x, y), textcoords="offset points", xytext=(4, 5), fontsize=7.5, color="0.3")
-ax.set_yscale("log"); ax.set_ylim(3e-4, 5); ax.set_xlabel("layer radius (mm)"); ax.set_ylabel(r"BIB hit density (mm$^{-2}$)")
-ax.legend(loc="upper right", fontsize=8.5)
+dd = rows("density_per_layer_before_after_cuts.csv")
+fig, axs = plt.subplots(1, 2, figsize=(7.2, 3.0), sharey=True)
+for ax, systems, xkey, xl in ((axs[0], (("3", "IT"), ("5", "OT")), "mean_r_mm", "barrel layer radius (mm)"),
+                              (axs[1], (("4", "IT"), ("6", "OT")), "mean_abs_z_mm", r"endcap disk $|z|$ (mm)")):
+    for sysid, nm in systems:
+        d = [r for r in dd if r["system"] == sysid]
+        X = [float(r[xkey]) for r in d]
+        mk = "o" if nm == "IT" else "s"
+        ax.plot(X, [float(r["bib_mean_density_before"]) for r in d], mk + "-", color=GREY, lw=1.0, ms=4,
+                label=f"{nm}, before the cuts")
+        ax.plot(X, [float(r["bib_mean_density_after"]) for r in d], mk + "-", color=BIB, lw=1.0, ms=4,
+                label=f"{nm}, after the cuts")
+    ax.set_yscale("log"); ax.set_ylim(5e-5, 5); ax.set_xlabel(xl)
+    ax.legend(loc="upper right", fontsize=7.5)
+axs[0].set_ylabel(r"BIB hit density (mm$^{-2}$)")
 fig.tight_layout(); save(fig, "fig_density")
 
 # ---------------------------------------------------------------- 3. efficiency vs pT
@@ -101,9 +106,12 @@ fr = rows("fake_rate.csv")[0]
 E5, E6 = float(fr["efakes_5_layers"]), float(fr["efakes_6_layers"])
 B = json.load(open(IN / "barrel_z0_4.5_s1.json"))
 B5, B6 = B["by_m"]["5"], B["by_m"]["6"]
+RG = json.load(open(IN / "regions_op100_z4.5_s1.json"))
+T5, T6 = RG["by_n_layers"]["5"], RG["by_n_layers"]["6"]
 lam = np.geomspace(0.1, 10, 200)
 fig, ax = plt.subplots(figsize=(4.6, 3.2))
-ax.plot(lam, B5 * lam ** 5 + B6 * lam ** 6, color=SIG, lw=1.4, label=r"whole barrel, $|z_0|<4.5$ mm")
+ax.plot(lam, T5 * lam ** 5 + T6 * lam ** 6, color="k", lw=1.4, label=r"IT + OT, $|z_0|<4.5$ mm")
+ax.plot(lam, B5 * lam ** 5 + B6 * lam ** 6, color=SIG, lw=1.2, ls=(0, (5, 2)), label=r"barrel only")
 ax.plot(lam, E5 * lam ** 5 + E6 * lam ** 6, color=BIB, lw=1.4, label="one projective tower")
 ax.plot(lam, E6 * lam ** 6, color=BIB, lw=0.9, ls=(0, (3, 2)), label="tower, 6 of 6 only")
 ax.axhline(1, color="0.3", lw=0.7); ax.axvline(1, color="0.6", lw=0.7, ls=":")
@@ -112,13 +120,19 @@ ax.set_xlabel("BIB density / simulated density"); ax.set_ylabel("expected fakes 
 ax.legend(loc="upper left", fontsize=8.5)
 fig.tight_layout(); save(fig, "fig_density_factor")
 
-# ---------------------------------------------------------------- 5. fakes vs cot(theta)
-fig, ax = plt.subplots(figsize=(4.6, 3.0))
-tb = np.array(B["t_bins"]); th = np.array(B["t_hist"]) / np.diff(tb)
-ax.step(np.r_[tb[:-1], tb[-1]], np.r_[th, th[-1]], where="post", color=SIG, lw=1.2)
-ax.set_xlim(0, 2); ax.set_xlabel(r"$|\cot\vartheta|$ of the fake track")
-ax.set_ylabel(r"$\mathrm{d}E/\mathrm{d}|\cot\vartheta|$ per bunch crossing")
-fig.tight_layout(); save(fig, "fig_cottheta")
+# ---------------------------------------------------------------- 5. fakes vs polar angle, three regions
+fig, ax = plt.subplots(figsize=(4.6, 3.1))
+tb = np.array(RG["t_bins"]); ang = np.degrees(np.arctan2(1.0, tb))       # cot(theta) -> theta (deg)
+for reg, col, ls in (("barrel", SIG, "-"), ("intermediate", BIB, "-"), ("endcap", "0.35", "-")):
+    h = np.array(RG[reg]["t_hist"])
+    dens = h / np.abs(np.diff(ang))                                       # per degree, both ends together
+    ax.step(np.r_[ang[:-1], ang[-1]], np.r_[dens, dens[-1]], where="post", color=col, lw=1.2, ls=ls,
+            label=f"{reg} ({RG[reg]['E']:.1e})")
+ax.set_yscale("log"); ax.set_ylim(1e-10, 1e-2); ax.set_xlim(5, 90)
+ax.set_xlabel(r"polar angle $\vartheta$ of the fake track (deg, both ends folded)")
+ax.set_ylabel(r"$\mathrm{d}E/\mathrm{d}\vartheta$ per BX (deg$^{-1}$)")
+ax.legend(loc="upper left", fontsize=8)
+fig.tight_layout(); save(fig, "fig_polar")
 
 # ---------------------------------------------------------------- 6. resolution scans
 OP = {"position": 0.1, "time": 0.1, "angle": 1.5}

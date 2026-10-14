@@ -1,6 +1,7 @@
-% main.tex - paper 2 (JINST): hit-level background rejection in the barrel tracker of a
-% muon collider and the resolutions it requires, using the fake-track lower limit of paper 1.
-% Draft 1, 14 October 2026. Numbers: run 2026-10-14_162239_pdf (100 um, 100 ps, 1.5 deg) and
+% main.tex - paper 2 (JINST): hit-level background rejection in the inner and outer trackers of a
+% muon collider (barrel, intermediate and endcap regions) and the resolutions it requires, using
+% the fake-track lower limit of paper 1.
+% Draft 2, 14 October 2026. Numbers: run 2026-10-14_162239_pdf (100 um, 100 ps, 1.5 deg) and
 % the resolution scans around it (claude_scratch/op100); figures from make_figures.py.
 %
 % Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
@@ -13,8 +14,8 @@
 \newcommand{\tc}{t_\mathrm{corr}}
 \newcommand{\todo}[1]{\textcolor{red!70!black}{[#1]}}
 
-\title{Beam-induced background rejection with hit timing and direction in the barrel tracker
-of a muon collider, and the resolutions it requires}
+\title{Beam-induced background rejection with hit timing and direction in the tracker of a muon
+collider, and the resolutions it requires}
 
 \author[a]{M.~Casarsa}
 \author[b,1]{L.~Ristori\note{Corresponding author.}}
@@ -25,16 +26,18 @@ of a muon collider, and the resolutions it requires}
 \abstract{At a 10~TeV muon collider the decays of the circulating muons fill the tracker with
 millions of background hits per bunch crossing. We study how far this beam-induced background
 can be reduced hit by hit, before any pattern recognition, if every hit carries a time and a
-direction measurement, and what that implies for track reconstruction in the barrel of the
-inner and outer trackers. Three cuts test whether a hit is compatible with a particle coming
+direction measurement, and what that implies for track reconstruction in the inner and outer
+trackers. Three cuts test whether a hit is compatible with a particle coming
 from the interaction point: on its time corrected for the time of flight, on the extrapolation
 of its direction to the beam axis, and on the transverse momentum implied by its direction.
 With a position resolution of 100~$\mu$m, a time resolution of 100~ps and a direction
 resolution of $1.5^\circ$, and cuts set to keep 98\% of the signal hits each, the background
-in the six barrel layers is reduced by a factor of 57 while 97--98\% of the hits of signal
+in the inner and outer trackers is reduced by a factor of 57 while 97\% of the hits of signal
 muons and 98\% of the tracks are kept. The algorithm-independent lower limit on combinatorial
-fake tracks of a companion paper then gives $1.7\times10^{-2}$ fakes per bunch crossing in the
-whole barrel, a factor 2.3 below the density at which one fake per crossing is expected. Scans
+fake tracks of a companion paper then gives $1.9\times10^{-2}$ fakes per bunch crossing: $1.7\times10^{-2}$
+in the barrel, $1.7\times10^{-3}$ in the region where tracks cross both barrel layers and endcap
+disks, and $1.5\times10^{-6}$ in the endcaps. One fake per crossing would be reached at 2.2 times the
+simulated background density. Scans
 of the three resolutions show how this margin depends on each of them and set targets for
 detector R\&D.}
 
@@ -76,15 +79,16 @@ compatibility of the hit with a particle produced at the interaction point. The 
 algorithm-independent lower limit on combinatorial fake tracks derived in a companion
 paper~\cite{Paper1}: the expected number of combinations of background hits that pass the same
 goodness-of-fit cut as real tracks, which no algorithm keeping the efficiency for real tracks can
-reject. Both are evaluated for the six barrel layers of the inner and outer trackers, where the
-limit can be computed for the whole barrel from the measured hit densities. Finally, scanning the
+reject. Both are evaluated for the inner and outer trackers, where the limit is computed from the
+measured hit densities, layer by layer, in three regions: the barrel, the endcaps, and the
+intermediate region in which tracks cross both barrel layers and endcap disks. Finally, scanning the
 position, time and direction resolutions shows how much margin the selection leaves and which
 resolution matters most. The direction measurement in particular is treated as a capability to be
 developed: the scans give the precision it would need.
 
 Section~\ref{sec:samples} describes the simulated samples and the detector, section~\ref{sec:obs}
 the per-hit observables and section~\ref{sec:selection} the selection and its performance.
-Section~\ref{sec:fakes} applies the fake-track limit to the barrel, section~\ref{sec:scans}
+Section~\ref{sec:fakes} applies the fake-track limit to the three regions, section~\ref{sec:scans}
 presents the resolution scans and section~\ref{sec:discussion} discusses the limitations.
 
 % =====================================================================
@@ -93,16 +97,18 @@ presents the resolution scans and section~\ref{sec:discussion} discusses the lim
 \paragraph{Detector.} We use the MUSIC detector concept for a 10~TeV muon
 collider~\cite{Andreetto:2026music} \todo{confirm the geometry version and the reference}, with a
 5~T solenoidal field. Its tracker consists of a vertex detector (VXD), an inner tracker (IT) and
-an outer tracker (OT), each with a barrel and two endcaps. This paper concentrates on the barrel of
-the IT and OT: three IT layers at radii of 165, 355 and 555~mm and three OT layers at 820, 1154 and
-1491~mm, with the half-lengths and sensitive areas listed in table~\ref{tab:layers}. The cuts of
-section~\ref{sec:selection} are derived for every subsystem, but the results quoted are for these
-six layers. The sensitive areas are taken from the geometry description of the modules.
+an outer tracker (OT), each with a barrel and two endcaps. This paper concerns the IT and OT. Their
+barrels have three IT layers at radii of 165, 355 and 555~mm and three OT layers at 820, 1154 and
+1491~mm; each endcap has seven IT disks between $|z|=606$ and 2192~mm and four OT disks between
+1408 and 2192~mm (table~\ref{tab:layers}). The vertex detector is not used: its hits do not count
+towards the track-finding criterion and its layers are not included in the fake-track limit. The
+sensitive areas are taken from the geometry description of the modules.
 
 \paragraph{Background sample.} One bunch crossing of BIB, the sum of the samples of the
 $\mu^+$ and $\mu^-$ beams and of the incoherent pair production at the interaction point,
 \todo{provenance: generation with FLUKA, detector simulation; who produced it and which version},
-gives 17.3 million hits in the tracker, of which 7.7 million are in the six barrel layers. Each hit
+gives 17.3 million hits in the tracker, of which 10.4 million are in the IT and OT (7.7 million in
+the six barrel layers). Each hit
 has its position, its local sensor coordinates, its time and the momentum of the particle that
 produced it, from which its direction is computed.
 
@@ -122,20 +128,34 @@ consequences section~\ref{sec:scans} quantifies.
 
 \begin{table}[htbp]
   \centering
-  \caption{The six barrel layers: mean radius, half-length, sensitive area, and the mean BIB hit
-  density before and after the selection of section~\ref{sec:selection}.}
+  \caption{The barrel layers and the endcap disks of the IT and OT: position, extent, sensitive area
+  (for the disks, of both endcaps together), and the mean BIB hit density before and after the
+  selection of section~\ref{sec:selection}.}
   \label{tab:layers}
+  \small
   \begin{tabular}{lrrrrrr}
     \toprule
-    layer & $R$ (mm) & $|z|_\mathrm{max}$ (mm) & area (m$^2$) & \multicolumn{2}{c}{density (mm$^{-2}$)} & rejection \\
-          &          &                          &              & before & after & \\
+    layer & position (mm) & extent (mm) & area (m$^2$) & \multicolumn{2}{c}{density (mm$^{-2}$)} & rejection \\
+          &               &             &              & before & after & \\
     \midrule
-    IT L0 & 165  & 482  & 1.04 & 1.58  & 0.0392   & 40 \\
-    IT L1 & 355  & 482  & 2.20 & 0.552 & 0.0112   & 49 \\
-    IT L2 & 555  & 692  & 5.17 & 0.244 & 0.00373  & 66 \\
-    OT L0 & 820  & 1264 & 14.0 & 0.101 & 0.00131  & 77 \\
-    OT L1 & 1154 & 1264 & 19.5 & 0.0603 & 0.000837 & 72 \\
-    OT L2 & 1491 & 1264 & 28.6 & 0.0356 & 0.000541 & 66 \\
+    IT barrel L0 & $R=165$  & $|z|<482$  & 1.04 & 1.58   & $3.9\times10^{-2}$ & 40 \\
+    IT barrel L1 & $R=355$  & $|z|<482$  & 2.20 & 0.552  & $1.1\times10^{-2}$ & 49 \\
+    IT barrel L2 & $R=555$  & $|z|<692$  & 5.17 & 0.244  & $3.7\times10^{-3}$ & 66 \\
+    OT barrel L0 & $R=820$  & $|z|<1264$ & 14.0 & 0.101  & $1.3\times10^{-3}$ & 77 \\
+    OT barrel L1 & $R=1154$ & $|z|<1264$ & 19.5 & 0.0603 & $8.4\times10^{-4}$ & 72 \\
+    OT barrel L2 & $R=1491$ & $|z|<1264$ & 28.6 & 0.0356 & $5.4\times10^{-4}$ & 66 \\
+    \midrule
+    IT disk D0 & $|z|=606$  & $116<r<451$ & 1.33 & 0.273  & $1.7\times10^{-2}$ & 16 \\
+    IT disk D1 & $|z|=886$  & $166<r<578$ & 2.12 & 0.153  & $3.6\times10^{-3}$ & 43 \\
+    IT disk D2 & $|z|=1175$ & $201<r<567$ & 2.02 & 0.106  & $1.4\times10^{-3}$ & 77 \\
+    IT disk D3 & $|z|=1455$ & $225<r<576$ & 1.98 & 0.0774 & $6.5\times10^{-4}$ & 119 \\
+    IT disk D4 & $|z|=1743$ & $249<r<570$ & 1.86 & 0.0588 & $3.7\times10^{-4}$ & 161 \\
+    IT disk D5 & $|z|=1944$ & $266<r<557$ & 1.72 & 0.0486 & $2.0\times10^{-4}$ & 239 \\
+    IT disk D6 & $|z|=2192$ & $287<r<563$ & 1.66 & 0.0425 & $1.4\times10^{-4}$ & 303 \\
+    OT disk D0 & $|z|=1408$ & $618<r<1435$ & 13.9 & 0.0257 & $4.4\times10^{-4}$ & 59 \\
+    OT disk D1 & $|z|=1669$ & $618<r<1435$ & 13.9 & 0.0276 & $2.9\times10^{-4}$ & 96 \\
+    OT disk D2 & $|z|=1931$ & $618<r<1435$ & 13.9 & 0.0231 & $1.9\times10^{-4}$ & 123 \\
+    OT disk D3 & $|z|=2192$ & $618<r<1435$ & 13.9 & 0.0228 & $1.1\times10^{-4}$ & 202 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -175,22 +195,26 @@ speed $\beta$ follows from the momentum estimated from the curvature and the muo
 from the collision $\tc$ is zero within the time resolution; for a background hit it carries the
 delay of the background particle.
 
-\paragraph{Distributions.} Figure~\ref{fig:obs} shows the three observables in the IT and OT barrel
-for background and signal hits, each after the cuts on the other two observables. The signal peaks
+\paragraph{Distributions.} Figure~\ref{fig:obs} shows the three observables in the four parts of
+the IT and OT for background and signal hits, each after the cuts on the other two observables. The signal peaks
 sharply: $\tc$ within the time resolution, $z_0$ within a few centimetres in the IT and about a
 decimetre in the OT, where the lever arm of the direction measurement is longer, and the curvature
 within the range of the muon momenta. The background is broad in all three. Its corrected time
 peaks about 0.3--0.5~ns late, with a long tail of delayed hits and a smaller population arriving
 early. \todo{the origin of the late peak is not yet understood; Monte Carlo truth may explain it}
+In the endcaps the background time distribution is broader, and the $z_0$ of the background is
+much closer to that of the signal: on a disk the direction measures the polar angle of a track
+crossing at small angle to the beam, with a short lever arm towards the axis, and in the OT endcap
+the two $z_0$ distributions nearly coincide.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{fig_observables}
-  \caption{Corrected time, longitudinal intercept and curvature of the hits in the IT barrel (top)
-  and OT barrel (bottom), for one bunch crossing of background (blue) and for signal muons (red),
+  \caption{Corrected time, longitudinal intercept and curvature of the hits in the IT barrel, OT
+  barrel, IT endcaps and OT endcaps (top to bottom), for one bunch crossing of background (blue) and for signal muons (red),
   each normalized to unit area. Each distribution is shown after the cuts on the other two
   observables (N$-$1); the dashed lines are the cuts of table~\ref{tab:cuts}. No curvature cut is
-  applied in the IT.}
+  applied in the IT. Note the wider $z_0$ range in the endcaps.}
   \label{fig:obs}
 \end{figure}
 
@@ -203,40 +227,48 @@ and $z_0$ windows are set to keep 98\% of the signal hits in their N$-$1 distrib
 among the hits passing the other cuts. Since each window depends on the other, they are found
 together by iteration, which converges in two or three steps. The cuts are thus fixed by the signal
 alone, not tuned on the background, and they follow automatically when a resolution changes.
-Table~\ref{tab:cuts} lists them for the barrel.
+Table~\ref{tab:cuts} lists them.
 
 \begin{table}[htbp]
   \centering
-  \caption{Cuts, background rejection factor and signal hit efficiency in the IT and OT barrel.
-  Rejection factor: hits before over hits after the cuts. Efficiency: fraction of the muon's own
-  hits kept, extrapolated to $\pT\to\infty$. ``Alone'': each cut applied alone; ``N$-$1'': each cut
-  applied on top of the other two.}
+  \caption{Cuts, background rejection factor and signal hit efficiency in the four parts of the IT
+  and OT. Rejection factor: hits before over hits after the cuts, for each cut alone and (in
+  parentheses) on top of the other two. Efficiency: fraction of the muon's own hits kept,
+  extrapolated to $\pT\to\infty$, for each cut alone.}
   \label{tab:cuts}
-  \begin{tabular}{lrrrrrr}
+  \small
+  \begin{tabular}{llrrrr}
     \toprule
-              & \multicolumn{3}{c}{IT barrel} & \multicolumn{3}{c}{OT barrel} \\
-              & cut & rejection & efficiency & cut & rejection & efficiency \\
+            &           & IT barrel & OT barrel & IT endcaps & OT endcaps \\
     \midrule
-    $|\tc|$   & 0.233 ns & 10.3 (4.6) & 98.4\% & 0.245 ns & 10.2 (5.8) & 98.7\% \\
-    $|z_0|$   & 52 mm    & 10.5 (4.7) & 98.4\% & 137 mm   & 7.8 (3.6)  & 99.4\% \\
-    $\pT$     & ---      & ---        & ---    & 2 GeV/$c$ & 1.8 (1.8) & 100\% \\
+    $|\tc|$ & cut       & 0.233 ns   & 0.245 ns   & 0.242 ns   & 0.241 ns \\
+            & rejection & 10.3 (4.6) & 10.2 (5.8) & 16.0 (8.4) & 25.4 (4.9) \\
+            & efficiency& 98.4\%     & 98.7\%     & 98.2\%     & 98.4\% \\
+    $|z_0|$ & cut       & 52 mm      & 137 mm     & 474 mm     & 349 mm \\
+            & rejection & 10.5 (4.7) & 7.8 (3.6)  & 4.5 (2.3)  & 9.0 (1.1) \\
+            & efficiency& 98.4\%     & 99.4\%     & 97.8\%     & 98.5\% \\
+    $\pT$   & cut       & ---        & 2 GeV/$c$  & ---        & 2 GeV/$c$ \\
+            & rejection & ---        & 1.8 (1.8)  & ---        & 3.4 (1.5) \\
+            & efficiency& ---        & 100\%      & ---        & 99.9\% \\
     \midrule
-    all       &          & 48.6       & 96.9\% &          & 72.0       & 98.1\% \\
+    all     & rejection & 48.6       & 72.0       & 37.4       & 96.6 \\
+            & efficiency& 96.9\%     & 98.1\%     & 96.1\%     & 96.9\% \\
     \bottomrule
-  \end{tabular}\\[0.5ex]
-  {\small Rejection factors: each cut alone (in parentheses: on top of the other two).}
+  \end{tabular}
 \end{table}
 
-\paragraph{Background rejection.} Together the cuts reduce the background in the six barrel layers
-from 7.7 million to 135\,000 hits per bunch crossing, a factor of 57: 49 in the IT barrel and 72 in
-the OT barrel. The time and $z_0$ cuts are comparably powerful, a factor of about ten each alone and
-four to six on top of the others; the momentum cut adds a factor of two in the OT. The densities
-after the cuts range from $3.9\times10^{-2}$~mm$^{-2}$ in the innermost IT layer to
-$5.4\times10^{-4}$~mm$^{-2}$ in the outermost OT layer (table~\ref{tab:layers},
-figure~\ref{fig:density}).
+\paragraph{Background rejection.} Together the cuts reduce the background in the IT and OT from
+10.4 million to 185\,000 hits per bunch crossing, a factor of 57, with factors between 37 and 97
+in the four parts. In the barrel the time and $z_0$ cuts are comparably powerful, a factor of about
+ten each alone and four to six on top of the others; the momentum cut adds a factor of two in the
+OT. In the endcaps the time cut does most of the work, while the $z_0$ cut adds little on top of the
+others, only 1.1 in the OT endcaps. The densities after the cuts range from
+$3.9\times10^{-2}$~mm$^{-2}$ in the innermost IT layer to about $10^{-4}$~mm$^{-2}$ on the outermost
+disks; the rejection grows with the distance from the interaction point, from 16 on the first IT
+disk to 300 on the last (table~\ref{tab:layers}, figure~\ref{fig:density}).
 
-\paragraph{Signal efficiency.} The cuts keep 96.9\% of the hits of high-momentum muons in the IT
-barrel and 98.1\% in the OT barrel. A track is counted as found if at least five of its hits in the
+\paragraph{Signal efficiency.} The cuts keep 96--98\% of the hits of high-momentum muons in the
+four parts, 96.8\% overall. A track is counted as found if at least five of its hits in the
 IT and OT survive (vertex-detector hits are not counted); the track-finding efficiency for
 $\pT\to\infty$ is $97.9\pm0.2\%$ (figure~\ref{fig:eff}), and $98.1\pm0.3\%$ for muons confined to
 the barrel. It falls below about 2.5~GeV/$c$, where the momentum cut of the OT and the curvature
@@ -244,17 +276,18 @@ of the track remove hits.
 
 \begin{figure}[htbp]
   \centering
-  \begin{minipage}[t]{0.49\textwidth}\centering
-    \includegraphics[width=\textwidth]{fig_density}
-    \caption{Mean BIB hit density in the six barrel layers, before and after the cuts.}
-    \label{fig:density}
-  \end{minipage}\hfill
-  \begin{minipage}[t]{0.49\textwidth}\centering
-    \includegraphics[width=\textwidth]{fig_efficiency}
-    \caption{Track-finding efficiency (at least five surviving IT and OT hits) against $1/\pT$,
-    with the fit $\varepsilon_\infty+c/\pT^2$ to the muons above 10~GeV/$c$.}
-    \label{fig:eff}
-  \end{minipage}
+  \includegraphics[width=\textwidth]{fig_density}
+  \caption{Mean BIB hit density in the barrel layers (left) and endcap disks (right) of the IT
+  (circles) and OT (squares), before and after the cuts.}
+  \label{fig:density}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.6\textwidth]{fig_efficiency}
+  \caption{Track-finding efficiency (at least five surviving IT and OT hits) against $1/\pT$,
+  with the fit $\varepsilon_\infty+c/\pT^2$ to the muons above 10~GeV/$c$.}
+  \label{fig:eff}
 \end{figure}
 
 % =====================================================================
@@ -272,11 +305,17 @@ that vary across them,
 \end{equation}
 where $\theta$ are the helix parameters, $C(\theta)$ the layers crossed, $J_S$ the derivatives of
 the crossing points on the layers of $S$ in units of the resolution, $c_S$ the $\chi^2$ cut and
-$V_d$ the volume of the unit $d$-sphere. We require at least five of the six barrel layers, with a
-one-sided $3\sigma$ cut for each set of layers. The integral is evaluated by sampling helices with
-$\pT$ above 10~GeV/$c$ and the densities after the cuts, taken from the background sample as
-functions of $|z|$ in each layer; the azimuthal symmetry of the BIB lets us sample a narrow range of
-azimuth.
+$V_d$ the volume of the unit $d$-sphere. The layers are the six barrel cylinders and the eleven disks
+of each endcap, with their actual extents. We require at least five layers, with a one-sided
+$3\sigma$ cut for each set of layers. The integral is evaluated by sampling helices with $\pT$
+above 10~GeV/$c$ and polar angles in both hemispheres, with the densities after the cuts taken from
+the background sample as functions of $|z|$ on each barrel layer and of $r$ on each disk; the
+azimuthal symmetry of the BIB lets us sample a narrow range of azimuth.
+
+\paragraph{Three regions.} Each combination is assigned to a region by the layers it uses: the
+\emph{barrel} if all its layers are barrel cylinders, the \emph{endcap} if all are disks, and the
+\emph{intermediate} region if it uses both. Every combination belongs to exactly one region, and the
+three add up to the total.
 
 \paragraph{The acceptance.} The limit refers to a given acceptance: the tracks that the algorithm
 must find. Real tracks come from the luminous region, and restricting the longitudinal origin of
@@ -285,41 +324,70 @@ luminous region of 1.5~mm, the bunch length foreseen at a 10~TeV
 collider~\cite{IMCC:2024interim}, and require $|z_0|<4.5$~mm for the fitted track. This
 \emph{track} $z_0$ should not be confused with the per-hit $z_0$ of section~\ref{sec:obs}, whose cut
 is tens of millimetres wide: the fit of five or six hits measures the origin of a real track to
-0.1--0.3~mm. Without it the barrel would have 1.1 expected fakes per bunch crossing; with it, 68
-times fewer.
+0.1--0.3~mm. Without it the IT and OT would have 1.4 expected fakes per bunch crossing; with it,
+76 times fewer.
 
-\paragraph{Results.} With $|z_0|<4.5$~mm the whole barrel has
+\paragraph{Results.} Table~\ref{tab:regions} gives the expected fakes in the three regions. With
+$|z_0|<4.5$~mm the IT and OT together have
 \begin{equation}
-  E(\ge5) = 1.7\times10^{-2}\ \text{fakes per bunch crossing},
+  E(\ge5) = 1.9\times10^{-2}\ \text{fakes per bunch crossing},
 \end{equation}
-almost entirely from five-layer combinations: the six-layer term is $2.9\times10^{-6}$. The fakes
-concentrate at $|\cot\vartheta|$ between 0.5 and 1 (figure~\ref{fig:cot}). The background density
-after the cuts is highest at intermediate $|z|$ in every layer, up to 1.4--1.8 times its mean, and
-these tracks cross the layers there, obliquely. For comparison,
-one projective tower of six square planes with an outermost plane of 1~m$^2$, placed at
-$\vartheta=90^\circ$, gives $4.1\times10^{-3}$. Since the five-layer terms dominate, the expected
+almost entirely from five-layer combinations: the six-layer term is $3\times10^{-6}$. The barrel
+contributes 90\%, the intermediate region 9\%, and the endcaps a negligible $10^{-4}$ of the total.
+Figure~\ref{fig:polar} shows how the fakes are distributed in polar angle. In the barrel they
+concentrate at $45^\circ<\vartheta<76^\circ$ (both hemispheres folded together): the background
+density after the cuts is highest at intermediate $|z|$ in every layer, up to 1.4--1.8 times its
+mean, and these tracks cross the layers there, obliquely. The intermediate region covers
+$30^\circ$--$53^\circ$ and the endcaps $13^\circ$--$34^\circ$. The endcaps are so quiet because
+the densities on the disks after the cuts are low, $10^{-4}$--$10^{-3}$~mm$^{-2}$ except on the
+first IT disk.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Expected fakes per bunch crossing in the IT and OT (both endcaps, full azimuth), at least
+  five layers, by region, with and without the restriction on the longitudinal origin of the
+  fitted track. The statistical uncertainties of the integration are below 1\%.}
+  \label{tab:regions}
+  \begin{tabular}{lrrl}
+    \toprule
+    region & $|z_0|<4.5$~mm & no $z_0$ restriction & polar angle (10--90\%) \\
+    \midrule
+    barrel       & $1.7\times10^{-2}$ & 1.1  & $45^\circ$--$76^\circ$ \\
+    intermediate & $1.7\times10^{-3}$ & 0.27 & $30^\circ$--$53^\circ$ \\
+    endcap       & $1.5\times10^{-6}$ & $2.7\times10^{-4}$ & $13^\circ$--$34^\circ$ \\
+    \midrule
+    total        & $1.9\times10^{-2}$ & 1.4 & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For comparison, one projective tower of six square planes with an outermost plane of 1~m$^2$,
+placed at $\vartheta=90^\circ$, gives $4.1\times10^{-3}$: the simplest example of
+ref.~\cite{Paper1}, with the measured densities. Since the five-layer terms dominate, the expected
 number grows as the fifth power of a common scale factor of the densities; one fake per crossing is
-reached at 2.3 times the simulated density (figure~\ref{fig:lambda}). The number of distinct fakes is smaller than $E$ by the factor $e^{-\eta/2}$, where the window
-occupancy $\eta$ measures how often accepted combinations share hits~\cite{Paper1}; we expect
-$\eta\ll1$ at these densities \todo{compute $\eta$ for the barrel}.
+reached at 2.2 times the simulated density (figure~\ref{fig:lambda}). The number of distinct fakes
+is smaller than $E$ by the factor $e^{-\eta/2}$, where the window occupancy $\eta$ measures how often
+accepted combinations share hits~\cite{Paper1}; we expect $\eta\ll1$ at these densities
+\todo{compute $\eta$ for the three regions}.
 
 \begin{figure}[htbp]
   \centering
   \begin{minipage}[t]{0.49\textwidth}\centering
-    \includegraphics[width=\textwidth]{fig_density_factor}
-    \caption{Expected fakes per bunch crossing against a common scale factor of the background
-    densities, for the whole barrel and for one projective tower.}
-    \label{fig:lambda}
+    \includegraphics[width=\textwidth]{fig_polar}
+    \caption{Distribution of the expected fakes in polar angle, for the three regions, with
+    $|z_0|<4.5$~mm (both hemispheres together). The binning follows equal steps in
+    $\cot\vartheta$.}
+    \label{fig:polar}
   \end{minipage}\hfill
   \begin{minipage}[t]{0.49\textwidth}\centering
-    \includegraphics[width=\textwidth]{fig_cottheta}
-    \caption{Distribution of the expected fakes of the whole barrel in $|\cot\vartheta|$, with
-    $|z_0|<4.5$~mm.}
-    \label{fig:cot}
+    \includegraphics[width=\textwidth]{fig_density_factor}
+    \caption{Expected fakes per bunch crossing against a common scale factor of the background
+    densities: IT and OT, barrel alone, and one projective tower.}
+    \label{fig:lambda}
   \end{minipage}
 \end{figure}
 
-\paragraph{Margin.} A factor 2.3 in density is the margin against an underestimate of the BIB in
+\paragraph{Margin.} A factor 2.2 in density is the margin against an underestimate of the BIB in
 the simulation, against statistical fluctuations of a single simulated bunch crossing, and against
 everything the limit leaves out (section~\ref{sec:discussion}). Equivalently, at the simulated
 density the limit stays below one per crossing for resolutions up to about twice the assumed ones
@@ -332,9 +400,10 @@ density the limit stays below one per crossing for resolutions up to about twice
 100~ps, $1.5^\circ$), from ten times better to ten times worse, keeping the other two fixed. At
 every point the time and $z_0$ cuts are derived again at 98\% signal containment, so the efficiency
 stays constant by construction, and the background densities after the cuts and the fake-track
-limit are recomputed. Figure~\ref{fig:scans} shows the limit for one tower and for the whole barrel,
-scaled from the tower by their ratio at the operating point (4.1), and the track-finding efficiency.
-The level of one fake per crossing in the whole barrel is reached at a position resolution of
+limit are recomputed. The scans are done for the barrel, which contains 90\% of the fakes.
+Figure~\ref{fig:scans} shows the limit for one tower and for the whole barrel, scaled from the tower
+by their ratio at the operating point (4.1), and the track-finding efficiency. The level of one fake
+per crossing in the whole barrel is reached at a position resolution of
 200~$\mu$m, a time resolution of 220~ps or a direction resolution of $4.1^\circ$.
 
 \begin{figure}[htbp]
@@ -407,9 +476,10 @@ noise, combinations of background with signal hits and correlated background suc
 particles curling in the field can only add fakes or lose real tracks. A real algorithm will
 produce more fakes than the limit; the limit says how many are unavoidable.
 
-\paragraph{The endcaps.} The same method applies to the endcaps and to the transition region, with
-disks in place of cylinders~\cite{Paper1}; the per-hit $z_0$ is less selective there, because the
-direction measures the polar angle with a shorter lever arm, and we leave them to future work.
+\paragraph{Scans of the other regions.} The resolution scans cover the barrel only. The intermediate
+region, with a tenth of the fakes, would cross one fake per crossing at somewhat worse resolutions;
+in the endcaps the per-hit $z_0$ is weak and the margin rests on the time cut and on the low
+densities, so the time resolution matters most there. \todo{scans per region}
 
 \paragraph{Cut optimization.} The cuts are set by signal containment alone. Optimizing them against
 the background, or combining the three observables into one likelihood, may gain further, at the
@@ -419,12 +489,13 @@ same efficiency.
 \section{Conclusions}\label{sec:conclusions}
 
 With a time and a direction measured on every hit, three cuts that test the compatibility of each
-hit with a particle from the interaction point reduce the beam-induced background in the barrel of
-the inner and outer trackers of a 10~TeV muon collider by a factor of 57, keeping 97--98\% of the
-signal hits and 98\% of the tracks. With present-day position and time resolutions, 100~$\mu$m and
+hit with a particle from the interaction point reduce the beam-induced background in the inner and
+outer trackers of a 10~TeV muon collider by a factor of 57, keeping 97\% of the signal hits and
+98\% of the tracks. With present-day position and time resolutions, 100~$\mu$m and
 100~ps, and a direction resolution of $1.5^\circ$, the algorithm-independent lower limit on fake
-tracks is $1.7\times10^{-2}$ per bunch crossing for the whole barrel, a factor 2.3 in background
-density below one fake per crossing: the background does not make track reconstruction impossible
+tracks is $1.9\times10^{-2}$ per bunch crossing, 90\% of it in the barrel, 9\% in the intermediate
+region and almost nothing in the endcaps; this is a factor 2.2 in background density below one fake
+per crossing: the background does not make track reconstruction impossible
 in principle. The margin grows rapidly with better resolutions, by six orders of magnitude for a
 ten-fold improvement in position resolution, and the scans give the resolutions needed for any
 chosen margin. The direction measurement is the most demanding of the three requirements and a
