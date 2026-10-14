@@ -34,7 +34,11 @@ def save(fig, name):
 
 # ---------------------------------------------------------------- 1. observables (N-1)
 H = np.load(IN / "hists_op100.npz")
+_rc = plt.rcParams.copy(); plt.rcParams.update({"font.size": 8})
 fig, axs = plt.subplots(4, 3, figsize=(7.2, 8.6))
+ylabels = {"t": r"$\frac{1}{N}\,\mathrm{d}N/\mathrm{d}t_\mathrm{corr}$ (ns$^{-1}$)",
+           "z0": r"$\frac{1}{N}\,\mathrm{d}N/\mathrm{d}z_0$ (mm$^{-1}$)",
+           "k": r"$\frac{1}{N}\,\mathrm{d}N/\mathrm{d}(1/R)$ (m)"}
 labels = {"t": r"$t_\mathrm{corr}$ (ns)", "z0": r"$z_0$ (mm)", "k": r"curvature $1/R$ (m$^{-1}$)"}
 for r, sub in enumerate(("IT", "OT", "ITE", "OTE")):
     for c, var in enumerate(("t", "z0", "k")):
@@ -54,14 +58,16 @@ for r, sub in enumerate(("IT", "OT", "ITE", "OTE")):
             for s in (-lim, lim):
                 ax.axvline(s, color="0.2", lw=0.7, ls=(0, (3, 2)))
         ax.set_xlim(e[0], e[-1])
-        if r == 3:
-            ax.set_xlabel(labels[var])
-        if c == 0:
-            ax.set_ylabel(f"{NAMES[sub]}\nnormalized")
+        lo, hi = ax.get_ylim(); ax.set_ylim(lo, hi * 25)               # headroom for the panel label
+        ax.set_xlabel(labels[var], labelpad=1)
+        ax.set_ylabel(ylabels[var], labelpad=1)
+        ax.text(0.03, 0.95, NAMES[sub], transform=ax.transAxes, ha="left", va="top", fontsize=8,
+                bbox=dict(facecolor="white", edgecolor="none", pad=1.0))
         if r == 0 and c == 0:
-            ax.legend(loc="upper right", fontsize=8)
-fig.tight_layout(h_pad=0.6, w_pad=0.8)
+            ax.legend(loc="upper right", fontsize=7)
+fig.tight_layout(h_pad=0.5, w_pad=0.6)
 save(fig, "fig_observables")
+plt.rcParams.update(_rc)
 
 # ---------------------------------------------------------------- 2. densities per layer
 dd = rows("density_per_layer_before_after_cuts.csv")

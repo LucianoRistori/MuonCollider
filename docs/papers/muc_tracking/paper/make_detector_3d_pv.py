@@ -99,9 +99,10 @@ for name, th, col in (("barrel", 65.0, "#c0392b"), ("intermediate", 40.0, "#7b32
     for q in helix_pts(phi0, cot, Q_PT, sh):
         pl.add_mesh(pv.Sphere(radius=24, center=q), color=col, smooth_shading=True)
     labels.append(name); lab_pts.append(pts[-1] + np.array([0, 60, 40]))
-    pl.add_point_labels([pts[-1] + np.array([0, 70, 40])], [name], font_size=34, text_color=col, font_family="times",
-                        shape="rect", fill_shape=True, shape_color="white", shape_opacity=1.0, margin=6,
-                        show_points=False, always_visible=True, bold=False)
+    for sc, tc, mg in (("black", "black", 8), ("white", col, 6)):     # black rectangle under a white one: a thin border
+        pl.add_point_labels([pts[-1] + np.array([0, 70, 40])], [name], font_size=34, text_color=tc, font_family="times",
+                            shape="rect", fill_shape=True, shape_color=sc, shape_opacity=1.0, margin=mg,
+                            show_points=False, always_visible=True, bold=False)
 
 # beam line and axes
 pl.add_mesh(pv.Line((0, 0, -300), (0, 0, 2500)), color="#555555", line_width=2)
