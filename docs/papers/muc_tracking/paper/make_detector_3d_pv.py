@@ -100,7 +100,8 @@ for name, th, col in (("barrel", 65.0, "#c0392b"), ("intermediate", 40.0, "#7b32
         pl.add_mesh(pv.Sphere(radius=24, center=q), color=col, smooth_shading=True)
     labels.append(name); lab_pts.append(pts[-1] + np.array([0, 60, 40]))
     pl.add_point_labels([pts[-1] + np.array([0, 70, 40])], [name], font_size=34, text_color=col, font_family="times",
-                        shape=None, show_points=False, always_visible=True, bold=False)
+                        shape="rect", fill_shape=True, shape_color="white", shape_opacity=1.0, margin=6,
+                        show_points=False, always_visible=True, bold=False)
 
 # beam line and axes
 pl.add_mesh(pv.Line((0, 0, -300), (0, 0, 2500)), color="#555555", line_width=2)
