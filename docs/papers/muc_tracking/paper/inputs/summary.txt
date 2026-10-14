@@ -1,0 +1,49 @@
+Run 2026-10-14_162239_pdf
+BIB data:    ntu_bib_ipp_1bx.root (plus + minus + ipp)
+Signal:      ntu_muongun_pt1p5GeV_theta10-170_phi0-360_dz1p5_100k.root
+Cuts:        set per subsystem - see the table below
+Track found: >= 5 surviving hits, vertex-detector hits not counted
+Signal hits: the muon's own only (secondaries left out)
+Resolutions: position u/v 0.1/0.1 mm, time 0.1 ns, angle u/v 1.5/1.5 deg, seed 42
+
+Summary: BIB rejection factor and signal hit efficiency for pT -> inf (all cuts combined)
+  region       time (ns)   z0 (mm)   pT (GeV/c)   BIB rejection factor   signal hit efficiency, pT -> inf
+  VXD barrel       0.233        14          off                   30.4                       95.8 +- 0.1%
+  VXD endcap       0.234        80          off                   9.61                       96.0 +- 0.2%
+  IT barrel        0.233        52          off                   48.6                       96.9 +- 0.2%
+  IT endcap        0.242       474          off                   37.4                       96.1 +- 0.1%
+  OT barrel        0.245       137            2                   72.0                       98.1 +- 0.1%
+  OT endcap        0.241       349            2                   96.6                       96.9 +- 0.2%
+  VXD                                                             21.3                       95.9 +- 0.1%
+  IT + OT                                                         56.5                       96.8 +- 0.1%
+  ALL                                                             34.1                       96.4 +- 0.1%
+  Rejection factor: BIB hits before / after the cuts = 1/(1 - R), R = fraction removed.
+  Hit efficiency for pT -> inf: fraction of the muon's own hits kept (per hit, not per track), from a fit of eff + c/pT^2 vs. the generated pT to muons with pT > 10 GeV/c.
+
+Each cut alone - BIB rejection factor and signal hit efficiency for pT -> inf:
+  region       time: rej.           eff.   z0: rej.           eff.   pT: rej.            eff.
+  VXD barrel         5.22   97.9 +- 0.1%       10.6   97.8 +- 0.1%        off
+  VXD endcap         4.12   98.2 +- 0.1%       5.92   97.7 +- 0.2%        off
+  IT barrel          10.3   98.4 +- 0.1%       10.5   98.4 +- 0.1%        off
+  IT endcap          16.0   98.2 +- 0.1%       4.47   97.8 +- 0.1%        off
+  OT barrel          10.2   98.7 +- 0.1%       7.76   99.4 +- 0.1%       1.76   100.0 +- 0.0%
+  OT endcap          25.4   98.4 +- 0.1%       8.96   98.5 +- 0.1%       3.38    99.9 +- 0.0%
+  VXD                4.96   98.0 +- 0.1%       9.17   97.8 +- 0.1%        off
+  IT + OT            11.7   98.4 +- 0.1%       7.97   98.4 +- 0.1%       1.32   100.0 +- 0.0%
+  ALL                7.59   98.2 +- 0.0%       8.41   98.2 +- 0.1%       1.17   100.0 +- 0.0%
+
+Each cut on top of the other two, as in the N-1 plots:
+  region       time: rej.           eff.   z0: rej.           eff.   pT: rej.            eff.
+  VXD barrel         2.87   97.9 +- 0.1%       5.83   97.8 +- 0.1%        off
+  VXD endcap         1.62   98.2 +- 0.1%       2.34   97.8 +- 0.2%        off
+  IT barrel          4.65   98.4 +- 0.1%       4.74   98.4 +- 0.1%        off
+  IT endcap          8.37   98.2 +- 0.1%       2.34   97.9 +- 0.1%        off
+  OT barrel          5.80   98.7 +- 0.1%       3.64   99.4 +- 0.1%       1.83   100.0 +- 0.0%
+  OT endcap          4.87   98.4 +- 0.1%       1.13   98.5 +- 0.1%       1.55    99.9 +- 0.0%
+  VXD                2.32   98.0 +- 0.1%       4.30   97.8 +- 0.1%        off
+  IT + OT            5.69   98.4 +- 0.1%       3.70   98.4 +- 0.1%       1.27   100.0 +- 0.0%
+  ALL                3.55   98.2 +- 0.0%       4.08   98.2 +- 0.1%       1.10   100.0 +- 0.0%
+  Dropping a cut divides the combined rejection factor and efficiency by its values in this last table.
+
+Track-finding efficiency for pT -> inf: 97.9 +- 0.2% (fit eff + c/pT^2 to the 14,974 tracks with pT > 10 GeV/c)
+Expected fake tracks E[#fakes], 6-layer IT+OT barrel tower (exact helix, at least 5 of 6 layers): 4.06e-03;  1 fake at 3.0x these densities  (6 of 6 alone: 5.7e-07)

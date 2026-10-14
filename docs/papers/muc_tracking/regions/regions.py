@@ -15,7 +15,7 @@ kappa within the p_T threshold, z0 free, t = cot(theta) > 0 (the t < 0 half is
 the mirror image). A fake on set S is "barrel" if S has only barrel layers,
 "endcap" if only disks, "intermediate" if both.
 """
-import csv, itertools, json, math, sys
+import csv, itertools, json, math, os, sys
 import numpy as np
 from scipy.stats import chi2 as chi2dist
 import gsurf as g
@@ -32,9 +32,9 @@ def load_geometry():
     for r in csv.DictReader(open(f"{UP}/claude_scratch/regions/extents.csv")):
         ext[(int(r["system"]), int(r["side"]), int(r["layer"]))] = {k: float(v) for k, v in r.items()}
     area = {}
-    for r in csv.DictReader(open(f"{UP}/runs/2026-10-10_112338_pdf/step4_cuts/density_per_layer_before_after_cuts.csv")):
+    for r in csv.DictReader(open(os.environ.get("REG_DENS", f"{UP}/runs/2026-10-10_112338_pdf/step4_cuts/density_per_layer_before_after_cuts.csv"))):
         area[(int(r["system"]), int(r["layer"]))] = float(r["area_mm2"])
-    hits = np.load(f"{UP}/claude_scratch/regions/bib_pass.npz")
+    hits = np.load(os.environ.get("REG_BIB", f"{UP}/claude_scratch/regions/bib_pass.npz"))
     s, sd, l = hits["system"], hits["side"], hits["layer"]
     r = np.hypot(hits["x"], hits["y"]); z = hits["z"]
     surfs = []

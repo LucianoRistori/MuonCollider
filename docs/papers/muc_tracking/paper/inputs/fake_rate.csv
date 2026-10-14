@@ -1,0 +1,2 @@
+sigma_u_mm,sigma_v_mm,k_min,prod_n,efakes_exact_helix,efakes_exact_helix_6of6,efakes_6_layers,efakes_5_layers,mu_one_fake_exact_helix,mu_one_fake_exact_helix_6of6,bib_hits_after_IT_barrel_L0,bib_hits_after_IT_barrel_L1,bib_hits_after_IT_barrel_L2,bib_hits_after_OT_barrel_L0,bib_hits_after_OT_barrel_L1,bib_hits_after_OT_barrel_L2
+0.1,0.1,5,1.709272473902697e+16,0.004060744676594266,5.700133124144931e-07,5.700133124144931e-07,0.004060174663281851,3.007837614590992,10.982111116689468,40882,24695,19253,18389,16309,15485

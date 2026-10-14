@@ -1,0 +1,45 @@
+% jinst-fallback.sty - a minimal stand-in for the JINST class (jinst.cls), so
+% that main.tex compiles before the official class is installed. It only
+% provides the JINST front-matter commands with a plain layout; the
+% submitted version must use the official jinst.cls (put it in this folder:
+% main.tex picks it up automatically). Not a copy of the official class.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{jinst-fallback}[2026/10/10 stand-in for jinst.cls]
+\RequirePackage[a4paper,margin=2.5cm]{geometry}
+\RequirePackage{amsmath,amssymb,graphicx,xcolor}
+\RequirePackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\newcommand*{\jinst@affils}{}
+\newcommand*{\jinst@emails}{}
+\newcommand*{\jinst@abstract}{}
+\newcommand*{\jinst@keywords}{}
+\newcommand*{\jinst@arxiv}{}
+\newcounter{jinstauthor}
+\newcommand*{\jinst@notes}{}
+\newcounter{jinstnote}
+\providecommand{\note}[1]{\stepcounter{jinstnote}%
+  \xdef\jinst@notes{\jinst@notes\noexpand\par\noindent$^{\arabic{jinstnote}}$\,\unexpanded{#1}}}
+\let\jinst@title\@empty
+\renewcommand*{\title}[1]{\gdef\jinst@title{#1}}
+\let\jinst@authors\@empty
+\renewcommand*{\author}[2][]{%
+  \ifx\jinst@authors\@empty\gdef\jinst@authors{#2$^{#1}$}%
+  \else\g@addto@macro\jinst@authors{, #2$^{#1}$}\fi}
+\newcommand*{\affiliation}[2][]{\g@addto@macro\jinst@affils{\par\noindent$^{#1}$\,#2}}
+\newcommand*{\emailAdd}[1]{\g@addto@macro\jinst@emails{\ #1}}
+\renewcommand{\abstract}[1]{\gdef\jinst@abstract{#1}}
+\newcommand{\keywords}[1]{\gdef\jinst@keywords{#1}}
+\newcommand{\arxivnumber}[1]{\gdef\jinst@arxiv{#1}}
+\renewcommand{\maketitle}{%
+  \begin{center}
+    {\LARGE\bfseries\jinst@title\par}\vspace{1em}
+    {\large\jinst@authors\par}\vspace{0.6em}
+    {\small\itshape\jinst@affils\par}\vspace{0.4em}
+    {\small E-mail:\jinst@emails\par}
+    {\small\jinst@notes\par}
+  \end{center}
+  \vspace{0.8em}
+  \noindent\textsc{Abstract:} \jinst@abstract\par\vspace{0.6em}
+  \noindent\textsc{Keywords:} \jinst@keywords\par\vspace{1em}
+  \hrule\vspace{0.5em}\tableofcontents\vspace{0.5em}\hrule\vspace{1.5em}}
+\newcommand{\acknowledgments}{\section*{Acknowledgments}}
+\endinput
