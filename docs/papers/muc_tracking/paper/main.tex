@@ -1,7 +1,7 @@
 % main.tex - paper 2 (JINST): hit-level background rejection in the inner and outer trackers of a
 % muon collider (barrel, intermediate and endcap regions) and the resolutions it requires, using
 % the fake-track lower limit of paper 1.
-% Draft 2, 14 October 2026. Numbers: run 2026-10-14_162239_pdf (100 um, 100 ps, 1.5 deg) and
+% Draft 3, 14 October 2026. Numbers: run 2026-10-14_162239_pdf (100 um, 100 ps, 1.5 deg) and
 % the resolution scans around it (claude_scratch/op100); figures from make_figures.py.
 %
 % Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
@@ -103,6 +103,30 @@ barrels have three IT layers at radii of 165, 355 and 555~mm and three OT layers
 1408 and 2192~mm (table~\ref{tab:layers}). The vertex detector is not used: its hits do not count
 towards the track-finding criterion and its layers are not included in the fake-track limit. The
 sensitive areas are taken from the geometry description of the modules.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{fig_detector_3d_a.png}
+  \caption{The inner and outer trackers of the MUSIC detector, for $z\ge0$, with the quarter facing
+  the viewer cut away: barrel layers in blue (IT light, OT dark), IT disks in tan and OT disks in
+  lavender. Three tracks from the interaction point, with their hits, illustrate the three regions
+  of section~\ref{sec:fakes}: barrel ($\vartheta=65^\circ$), intermediate ($40^\circ$) and endcap
+  ($15^\circ$). They are drawn with $\pT=4$~GeV/$c$ so that the bending in the 5~T field is
+  visible.}
+  \label{fig:det3d}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{fig_detector_rz}
+  \caption{Quarter view of the inner and outer trackers in $(|z|,r)$, to scale: the six barrel layers
+  and the eleven disks of each endcap, coloured by the BIB hit density after the selection of
+  section~\ref{sec:selection} (as a function of $|z|$ on the barrel layers and of $r$ on the disks,
+  both ends together); the vertex detector, not used here, in grey. The three straight tracks from
+  the interaction point, with their hits, are examples of the three regions of
+  section~\ref{sec:fakes}.}
+  \label{fig:rz}
+\end{figure}
 
 \paragraph{Background sample.} One bunch crossing of BIB, the sum of the samples of the
 $\mu^+$ and $\mu^-$ beams and of the incoherent pair production at the interaction point,
@@ -315,7 +339,23 @@ azimuthal symmetry of the BIB lets us sample a narrow range of azimuth.
 \paragraph{Three regions.} Each combination is assigned to a region by the layers it uses: the
 \emph{barrel} if all its layers are barrel cylinders, the \emph{endcap} if all are disks, and the
 \emph{intermediate} region if it uses both. Every combination belongs to exactly one region, and the
-three add up to the total.
+three add up to the total. Figure~\ref{fig:towers} illustrates what a combination looks like in each
+region: the pieces of the layers crossed by a narrow bundle of tracks, with one track and a few
+background hits.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{fig_towers.png}
+  \caption{One ``tower'' per region at its true position: the pieces of the actual layers crossed by
+  a bundle of tracks from the interaction point within $\pm6^\circ$ in polar angle and $\pm9^\circ$
+  in azimuth, around a track (with its hits) at $\vartheta=65^\circ$ (barrel: six barrel layers),
+  $40^\circ$ (intermediate: four barrel layers and two OT disks) and $15^\circ$ (endcap: six IT
+  disks). Colours as in figure~\ref{fig:det3d}. The small grey spheres are background hits, drawn
+  for illustration only: their number is proportional to the area of each piece, not to the actual
+  density. The expected numbers of fakes of table~\ref{tab:regions} are for the whole regions, not
+  for these towers.}
+  \label{fig:towers}
+\end{figure}
 
 \paragraph{The acceptance.} The limit refers to a given acceptance: the tracks that the algorithm
 must find. Real tracks come from the luminous region, and restricting the longitudinal origin of
